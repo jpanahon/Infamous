@@ -465,7 +465,7 @@ class Community:
             user = self.bot.get_user(int(wiki['image']))
 
         if wiki:
-            embed = discord.Embed(color=0x51619f)
+            embed = discord.Embed(color=0xba1c1c)
 
             if str(wiki['image']).startswith('https:'):
                 user = wiki['image']
@@ -499,7 +499,7 @@ class Community:
             return
 
         question = await ctx.bot.db.fetch("SELECT * FROM trivia ORDER BY RANDOM() LIMIT 1")
-        embed = discord.Embed(color=0x51619f)
+        embed = discord.Embed(color=0xba1c1c)
         embed.title = 'Trivia Question'
         embed.description = question[0]
         embed.set_image(url=question[2])
