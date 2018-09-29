@@ -1,3 +1,4 @@
+# Edited by me but from Rapptz and EvieePy
 import asyncio
 import inspect
 import itertools
