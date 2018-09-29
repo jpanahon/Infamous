@@ -28,7 +28,7 @@ async def run():
 
     bot = Bot(description='A community bot for the server Fame', db=db)
     try:
-        await bot.start(os.getenv('TOKEN'))
+        await bot.start(config.token)
     except KeyboardInterrupt:
         await db.close()
         await bot.logout()
