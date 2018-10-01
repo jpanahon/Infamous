@@ -24,12 +24,12 @@ initial_extensions = (
 
 
 async def run():
-    credentials = {"database": "fameassassin", "host": "127.0.0.1"}
+    credentials = {"database": os.getenv('DATABASE'), "host": os.getenv('HOST')}
     db = await asyncpg.create_pool(**credentials)
 
     bot = Bot(description='A community bot for the server Fame', db=db)
     try:
-        await bot.start(config.token)
+        await bot.start(os.getenv('TOKEN'))
     except KeyboardInterrupt:
         await db.close()
         await bot.logout()
