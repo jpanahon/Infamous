@@ -112,7 +112,7 @@ class Utility:
         await ctx.trigger_typing()
         t_2 = time.perf_counter()
         ping = round((t_2 - t_1) * 1000)
-        embed = discord.Embed(color=0x51619f)
+        embed = discord.Embed(color=0xba1c1c)
         embed.title = 'Pong! :ping_pong:'
         embed.description = f'That took {ping}ms!'
         await ctx.send(embed=embed)
@@ -232,7 +232,7 @@ class Utility:
         cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
         ram_usage = self.process.memory_full_info().uss / 1024 ** 2
 
-        embed = discord.Embed(color=0x51619f)
+        embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
         embed.description = 'A Community Bot for ★ Fame ★.'
         embed.set_thumbnail(
@@ -347,7 +347,7 @@ class Utility:
         created = created.strftime('%a %b %d %Y at %I:%M %p')
 
         channels = len(ctx.guild.channels)
-        embed = discord.Embed(color=0x51619f)
+        embed = discord.Embed(color=0xba1c1c)
 
         members = [x for x in ctx.guild.members if not x.bot]
         bots = [x for x in ctx.guild.members if x.bot]
@@ -379,7 +379,7 @@ class Utility:
                 definition = json_data['list']
                 first_def = definition[0]
 
-        embed = discord.Embed(color=0x51619f)
+        embed = discord.Embed(color=0xba1c1c)
 
         embed.set_author(name=first_def['word'], url=first_def['permalink'])
         embed.description = first_def['definition']
@@ -402,7 +402,7 @@ class Utility:
 
         avatar = user.avatar_url_as(format='png', size=1024)
 
-        embed = discord.Embed(color=0x51619f)
+        embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=f"{user}'s avatar", icon_url=avatar)
         embed.description = f'[[Download Avatar]]({avatar})'
 
@@ -420,7 +420,7 @@ class Utility:
         accept = random.randint(1, 100)
         deny = 100 - accept
         vortex = self.bot.get_user(299879858572492802)
-        embed = discord.Embed(color=0x51619f)
+        embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
         embed.description = string
         embed.add_field(name='Probability', value=(f'**Chances of being accepted:** {accept}% \n'
@@ -440,7 +440,7 @@ class Utility:
             await vortex.send("I'll take that as a no.")
         else:
             if str(reaction.emoji) == '<:checkmark1:434297575663861761>':
-                e = discord.Embed(color=0x51619f)
+                e = discord.Embed(color=0xba1c1c)
                 e.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
                 e.add_field(name='Suggestion', value=string, inline=False)
                 e.add_field(name='Status', value='Accepted')
@@ -449,7 +449,7 @@ class Utility:
                 await ctx.author.send(embed=e)
             elif str(reaction.emoji) == '<:xmark:404503695502344203>':
                 await vortex.send("Ok... So I won't be getting any new feature?")
-                e = discord.Embed(color=0x51619f)
+                e = discord.Embed(color=0xba1c1c)
                 e.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
                 e.add_field(name='Suggestion', value=string, inline=False)
                 e.add_field(name='Status', value='Denied')
