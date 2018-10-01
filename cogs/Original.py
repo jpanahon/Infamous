@@ -30,7 +30,7 @@ class Original:
             embed = discord.Embed(
                 title="Sent in PM",
                 description=f'{string}',
-                color=0x51619f,
+                color=0xba1c1c,
 
             )
 
@@ -63,7 +63,7 @@ class Original:
             embed = discord.Embed(
                 title="Changed/Set Nickname",
                 description=f"{string}",
-                color=0x51619f,
+                color=0xba1c1c,
 
             )
             embed.set_author(name=user, icon_url=user.avatar_url)
@@ -90,7 +90,7 @@ class Original:
             discrim = str(user).split(user.name)
             discrim = ''.join(discrim)
 
-        embed = discord.Embed(color=0x51619f)
+        embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name='Can you guess who this is?')
         embed.description = f'Their discriminant is `{discrim}`'
         embed.set_image(
