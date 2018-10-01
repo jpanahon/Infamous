@@ -167,7 +167,7 @@ def drawtext(x, y, text, font, image):
 
 
 def item_embed(item, thumbnail):
-    embed = discord.Embed(color=0x232323)
+    embed = discord.Embed(color=0xba1c1c)
     embed.set_author(name=item[0])
     embed.description = item[7]
     embed.add_field(name="Type", value=item[1])
@@ -184,7 +184,7 @@ def item_embed(item, thumbnail):
 async def lb_embed(ctx, pfp):
     mast = await ctx.bot.db.fetchrow("SELECT * FROM rpg_mastery WHERE id=$1",
                                      pfp[0])
-    embed = discord.Embed(color=0x232323)
+    embed = discord.Embed(color=0xba1c1c)
     embed.set_author(name=ctx.guild.get_member(pfp[0]).display_name)
     embed.description = f"**Level:** {pfp[2]} \n" \
                         f"**Class:** {pfp[1]} \n" \
