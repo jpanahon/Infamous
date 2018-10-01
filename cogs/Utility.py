@@ -247,10 +247,8 @@ class Utility:
                                f'**{self.bot.lines} lines** \n'
                         )
 
-        embed.add_field(name='Uptime ⏰', value=(f'**{days} days.** \n'
-                                                 f'**{hours} hours.** \n'
-                                                 f'**{minutes} minutes.** \n'
-                                                 f'**{seconds} seconds.**'), inline=True)
+        embed.add_field(name='Uptime ⏰', value=f'**{days} days.** \n **{hours} hours.** \n **{minutes} minutes.** \n'
+                                               f'**{seconds} seconds.**', inline=True)
 
         embed.add_field(name='Developer 🕵', value=author)
         embed.add_field(name='Resources 💻', value='`CPU:` {:.2f}% \n`RAM:` {:.2f}%'.format(cpu_usage, ram_usage))
