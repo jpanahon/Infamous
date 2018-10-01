@@ -1,4 +1,4 @@
-# Edited by me but from Rapptz and EvieePy
+# From EvieePy and Rapptz but edited by me
 import asyncio
 import inspect
 import itertools
@@ -36,7 +36,7 @@ class Pages:
             pages += 1
         self.maximum_pages = pages
         self.maximum_pages = pages
-        self.embed = discord.Embed(colour=0x51619f)
+        self.embed = discord.Embed(colour=0xba1c1c)
         self.paginating = len(entries) > per_page
         self.show_entry_count = show_entry_count
         self.reaction_emojis = [
@@ -714,7 +714,7 @@ class HelpPaginator(Pages):
             self.embed.set_author(
                 name='Infamous',
                 icon_url=
-                "https://cdn.discordapp.com/avatars/347205176903335937/c5e74aa22949243419892d3856f2222f.png?size=1024"
+                "https://cdn.discordapp.com/avatars/347205176903335937/ed455d734107fff84666695399d08683.png?size=1024"
             )
 
         if not self.paginating:
