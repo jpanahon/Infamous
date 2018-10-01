@@ -4,7 +4,6 @@ import os
 import sys
 import traceback
 import aiohttp
-import config
 import asyncpg
 import discord
 from discord.ext import commands
