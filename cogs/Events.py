@@ -15,27 +15,14 @@ class Events:
     def __init__(self, bot):
         self.bot = bot
 
-    # Quotes system
+    # Meant for speaking through bot
     async def on_message(self, message):
-        if message.content.endswith((".png", ".jpg", ".PNG", ".JPG")):
-            if message.channel.id == 396228504716443658:
-                quotes = open('/Users/student/Documents/FameAssassin/txt/quotationfile.txt', 'a')
-                quotes.write(f'\n{message.content}')
-                await message.channel.send("A quote has been added.")
-
         if message.channel.id == 399442902524362753:
             if message.author.id == 299879858572492802:
                 channel_ = self.bot.get_channel(258801388836880385)
                 await channel_.send(message.content)
-
-        # Meant for Quotes
-        if message.attachments:
-            if message.channel.id == 396228504716443658:
-                quotes = open('/Users/student/Documents/FameAssassin/txt/quotationfile.txt', 'a')
-                url = ' '.join(m.url for m in message.attachments)
-                quotes.write(f'\n{url}')
-                await message.channel.send("A quote has been added.")
-
+    
+    # Concept inspired by Rapptz
     async def on_reaction_add(self, reaction, user):
         if reaction.message.guild.id != 258801388836880385:
             return
@@ -66,7 +53,7 @@ class Events:
                     "INSERT INTO starboard VALUES($1, $2, $3, $4)",
                     reaction.message.id, reaction.count, reaction.message.channel.id, user.name)
 
-                embed = discord.Embed(color=0x51619f)
+                embed = discord.Embed(color=0xba1c1c)
                 embed.set_author(name=reaction.message.author,
                                  icon_url=reaction.message.author.avatar_url)
 
@@ -147,7 +134,7 @@ class Events:
                 traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
         elif isinstance(error, commands.MissingRequiredArgument):
-            embed = discord.Embed(color=0x51619f)
+            embed = discord.Embed(color=0xba1c1c)
             embed.title = ctx.command.signature
             embed.description = ctx.command.help
             await ctx.send(embed=embed)
@@ -189,7 +176,7 @@ class Events:
             )
 
         elif isinstance(error, commands.BadArgument):
-            embed = discord.Embed(color=0x51619f)
+            embed = discord.Embed(color=0xba1c1c)
             embed.title = ctx.command.signature
             embed.description = ctx.command.help
             await ctx.send(embed=embed)
