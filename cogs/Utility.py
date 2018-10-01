@@ -280,11 +280,6 @@ class Utility:
                  '**[[Fame Discord]](https://discord.gg/NY2MSA3)** \n'
                  '**[[Discord.py]](https://github.com/Rapptz/discord.py/tree/rewrite)**')
 
-        for root, dirs, files in os.walk("/Users/student/Documents/FameAssassin"):
-            for file in files:
-                if file.endswith(".py"):
-                    files = os.path.join(root, file)
-
         cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
         ram_usage = self.process.memory_full_info().uss / 1024 ** 2
 
@@ -301,7 +296,6 @@ class Utility:
                                f'**{channels} channels.**\n'
                                f'**{users} users.** \n'
                                f'**{self.bot.lines} lines** \n'
-                               f'**{len(files)} files**')
                         )
 
         embed.add_field(name='Uptime ⏰', value=(f'**{days} days.** \n'
