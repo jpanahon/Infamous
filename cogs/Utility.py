@@ -19,7 +19,7 @@ from cogs.utils.paginator import HelpPaginator
 
 logging.basicConfig(level=logging.INFO)
 
-
+# From Rapptz
 class Plural:
     def __init__(self, **attr):
         iterator = attr.items()
@@ -92,7 +92,8 @@ class Utility:
         self._last_result = None
         self.sessions = set()
         self.process = psutil.Process()
-
+    
+    # From Rapptz
     def cleanup_code(self, content):
         """Automatically removes code blocks from the code."""
         # remove ```py\n```
@@ -102,7 +103,7 @@ class Utility:
         # remove `foo`
         return content.strip('` \n')
 
-    # Checks if bot is responding
+
     @commands.command()
     async def ping(self, ctx):
         """Shows the response time of the bot."""
@@ -115,7 +116,8 @@ class Utility:
         embed.title = 'Pong! :ping_pong:'
         embed.description = f'That took {ping}ms!'
         await ctx.send(embed=embed)
-
+    
+    # From Rapptz
     @commands.command(pass_context=True, hidden=True, name='eval')
     @commands.is_owner()
     async def _eval(self, ctx, *, body: str):
@@ -166,7 +168,8 @@ class Utility:
                     await ctx.send(f"```py\n" + "*" * 59 + "```")
                 else:
                     await ctx.send(f'```py\n{value}{ret}\n```')
-
+    
+    # From Rapptz
     @commands.command(hidden=True)
     @commands.is_owner()
     async def sql(self, ctx, *, query: str):
@@ -205,7 +208,8 @@ class Utility:
     @commands.group(case_insensitive=True, aliases=['stats'], invoke_without_command=True)
     async def info(self, ctx):
         """Shows information about this bot"""
-
+        
+        # From Modelmat
         delta_uptime = datetime.utcnow() - self.bot.launch_time
         hours, remainder = divmod(int(delta_uptime.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
@@ -223,7 +227,8 @@ class Utility:
         links = (f'**[[Invite Bot]]({invite})** \n'
                  '**[[Fame Discord]](https://discord.gg/NY2MSA3)** \n'
                  '**[[Discord.py]](https://github.com/Rapptz/discord.py/tree/rewrite)**')
-
+        
+        # From Modelmat
         cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
         ram_usage = self.process.memory_full_info().uss / 1024 ** 2
 
