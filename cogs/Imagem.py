@@ -1,7 +1,7 @@
 import datetime
 from functools import partial
 from io import BytesIO
-import os
+
 from typing import Union
 
 import aiohttp
