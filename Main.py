@@ -23,7 +23,7 @@ initial_extensions = (
 
 
 async def run():
-    credentials = {"database": os.getenv('DATABASE'), "host": os.getenv('HOST')}
+    credentials = {"database": os.getenv('DATABASE'), "host": os.getenv('HOST'), "password": os.getenv('PASSWORD')}
     db = await asyncpg.create_pool(**credentials)
 
     bot = Bot(description='A community bot for the server Fame', db=db)
