@@ -721,20 +721,20 @@ class Rpg:
                 profile = Image.open(BytesIO(pfp))
                 profile = profile.resize((188, 188))
                 # Class
-                drawtext(278, 45, text=you[1], font=font, image=image)
+                drawtext(278, 49, text=you[1], font=font, image=image)
 
                 # Level
-                drawtext(280, 87, text=str(you[2]), font=font, image=image)
+                drawtext(280, 91, text=str(you[2]), font=font, image=image)
 
                 # Experience Points
-                drawtext(385, 130, text=str(you[4]), font=font, image=image)
+                drawtext(385, 134, text=str(you[4]), font=font, image=image)
 
                 # Mastery Level
-                drawtext(352, 174, text=str(youm[1]), font=font, image=image)
+                drawtext(352, 178, text=str(youm[1]), font=font, image=image)
 
                 # Equipped
-                drawtext(388, 217, text=str(you[5]), font=font, image=image)
-
+                drawtext(388, 221, text=str(you[5]), font=font, image=image)
+                
                 image.paste(profile, (15, 50))
                 b = BytesIO()
                 b.seek(0)
