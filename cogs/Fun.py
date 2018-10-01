@@ -2,14 +2,13 @@ import datetime
 import logging
 import random
 from io import BytesIO
-import os
 import discord
 from PIL import Image
 from discord.ext import commands
 
 logging.basicConfig(level=logging.INFO)
 
-
+# From MIkusaba
 def _splice(s1, s2):
     return s1[:len(s1) // 2] + s2[len(s2) // 2:]
 
@@ -31,7 +30,7 @@ class Fun:
 
         quotes = await ctx.bot.db.fetchrow("SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1")
         embed = discord.Embed(title="Some random quote",
-                              color=0x51619f,
+                              color=0xba1c1c,
                               timestamp=datetime.datetime.utcnow()
                               )
 
@@ -51,7 +50,7 @@ class Fun:
         question = await ctx.bot.db.fetchrow("SELECT * FROM questions ORDER BY RANDOM() LIMIT 1")
         embed = discord.Embed(title="Random Question",
                               description=question[0],
-                              color=0x51619f)
+                              color=0xba1c1c)
 
         await ctx.send(embed=embed)
 
@@ -70,7 +69,7 @@ class Fun:
         """Answer a question with a randomly picked user."""
 
         embed = discord.Embed(title=f'Answer to "{string}"',
-                              color=0x51619f,
+                              color=0xba1c1c,
                               timestamp=datetime.datetime.utcnow()
                               )
         roulette = random.choice([x for x in ctx.guild.members if not x.bot])
@@ -102,7 +101,7 @@ class Fun:
         embed = discord.Embed(title="Random Gay Couple",
                               description=f"<@{gay.id}> and <@{gay2.id}> have a gay/lesbian "
                                           f"relationship with each other.",
-                              color=0x51619f)
+                              color=0xba1c1c)
 
         embed.set_image(url=photo)
         await ctx.send(embed=embed)
