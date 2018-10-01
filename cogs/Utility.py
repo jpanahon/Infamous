@@ -167,62 +167,6 @@ class Utility:
                 else:
                     await ctx.send(f'```py\n{value}{ret}\n```')
 
-    @commands.group(case_insensitive=True, name="prefix", invoke_without_command=True)
-    async def _prefix(self, ctx):
-        """Shows the prefix for this server"""
-
-        if os.path.exists(f"/Users/student/Documents/FameAssassin/txt/prefixes/{ctx.guild.id}.txt"):
-            prefixe = open(f"/Users/student/Documents/FameAssassin/txt/prefixes/{ctx.guild.id}.txt", "r")
-            prefixes = prefixe.read()
-            prefixes = json.loads(prefixes)
-            prefixe.close()
-
-            await ctx.send(f"The prefix for this server is: **{prefixes['custom']['prefix']}**")
-        else:
-            await ctx.send("This server doesn't have a custom prefix.")
-
-    @_prefix.command()
-    @commands.guild_only()
-    @commands.has_permissions(manage_guild=True)
-    async def set(self, ctx, prefix: str):
-        """Set the custom prefix for this server"""
-
-        if os.path.exists(f"/Users/student/Documents/FameAssassin/txt/prefixes/{ctx.guild.id}.txt"):
-            prefixe = open(f"/Users/student/Documents/FameAssassin/txt/prefixes/{ctx.guild.id}.txt", "r")
-            prefixes = prefixe.read()
-            prefixes = json.loads(prefixes)
-            prefixe.close()
-
-            prefixes['custom']['prefix'] = prefix
-
-            s = json.dumps(prefixes)
-            with open(f"/Users/student/Documents/FameAssassin/txt/prefixes/{ctx.guild.id}.txt", "w") as f:
-                f.write(s)
-
-            await ctx.send(f"The prefix for this server has been set to: **{prefix}**")
-        else:
-            custom = {}
-            pass
-            custom['custom'] = {
-                "prefix": prefix
-            }
-
-            s = json.dumps(custom)
-            with open(f"/Users/student/Documents/FameAssassin/txt/prefixes/{ctx.guild.id}.txt", "w+") as f:
-                f.write(s)
-
-            await ctx.send(f"The prefix for this server has been set to: **{prefix}**")
-
-    @_prefix.command()
-    async def reset(self, ctx):
-        """Resets the prefix for this server to default"""
-
-        if os.path.exists(f"/Users/student/Documents/FameAssassin/txt/prefixes/{ctx.guild.id}.txt"):
-            os.remove(f"/Users/student/Documents/FameAssassin/txt/prefixes/{ctx.guild.id}.txt")
-            await ctx.send("The prefix for this server has been set to default.")
-        else:
-            await ctx.send("This server doesn't have a custom prefix.")
-
     @commands.command(hidden=True)
     @commands.is_owner()
     async def sql(self, ctx, *, query: str):
@@ -299,9 +243,9 @@ class Utility:
                         )
 
         embed.add_field(name='Uptime ⏰', value=(f'**{days} days.** \n'
-                                                f'**{hours} hours.** \n'
-                                                f'**{minutes} minutes.** \n'
-                                                f'**{seconds} seconds.**'), inline=True)
+                                                 f'**{hours} hours.** \n'
+                                                 f'**{minutes} minutes.** \n'
+                                                 f'**{seconds} seconds.**'), inline=True)
 
         embed.add_field(name='Developer 🕵', value=author)
         embed.add_field(name='Resources 💻', value='`CPU:` {:.2f}% \n`RAM:` {:.2f}%'.format(cpu_usage, ram_usage))
