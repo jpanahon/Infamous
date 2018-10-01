@@ -714,7 +714,7 @@ class Rpg:
                 async with s.get(user.avatar_url_as(format="png", size=512)) as r:
                     pfp = await r.read()
 
-            font = ImageFont.truetype("fonts/CenturyGothic", 18)
+            font = ImageFont.truetype("fonts/gothic.ttf", 18)
 
             def text():
                 image = Image.open("img/rpgp.png")
