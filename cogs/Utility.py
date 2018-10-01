@@ -244,7 +244,7 @@ class Utility:
                         value=(f'**{len(self.bot.guilds)} guilds.**\n '
                                f'**{channels} channels.**\n'
                                f'**{users} users.** \n'
-                               f'**{self.bot.lines} lines**'), inline=False)
+                               f'**{self.bot.lines} lines**'), inline=True)
 
         embed.add_field(name='Uptime ⏰', value=(f'**{days} days.** \n '
                                                 f'**{hours} hours.** \n '
