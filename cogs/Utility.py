@@ -19,6 +19,7 @@ from cogs.utils.paginator import HelpPaginator
 
 logging.basicConfig(level=logging.INFO)
 
+
 # From Rapptz
 class Plural:
     def __init__(self, **attr):
@@ -92,7 +93,7 @@ class Utility:
         self._last_result = None
         self.sessions = set()
         self.process = psutil.Process()
-    
+
     # From Rapptz
     def cleanup_code(self, content):
         """Automatically removes code blocks from the code."""
@@ -102,7 +103,6 @@ class Utility:
 
         # remove `foo`
         return content.strip('` \n')
-
 
     @commands.command()
     async def ping(self, ctx):
@@ -116,7 +116,7 @@ class Utility:
         embed.title = 'Pong! :ping_pong:'
         embed.description = f'That took {ping}ms!'
         await ctx.send(embed=embed)
-    
+
     # From Rapptz
     @commands.command(pass_context=True, hidden=True, name='eval')
     @commands.is_owner()
@@ -168,7 +168,7 @@ class Utility:
                     await ctx.send(f"```py\n" + "*" * 59 + "```")
                 else:
                     await ctx.send(f'```py\n{value}{ret}\n```')
-    
+
     # From Rapptz
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -208,7 +208,7 @@ class Utility:
     @commands.group(case_insensitive=True, aliases=['stats'], invoke_without_command=True)
     async def info(self, ctx):
         """Shows information about this bot"""
-        
+
         # From Modelmat
         delta_uptime = datetime.utcnow() - self.bot.launch_time
         hours, remainder = divmod(int(delta_uptime.total_seconds()), 3600)
@@ -227,7 +227,7 @@ class Utility:
         links = (f'**[[Invite Bot]]({invite})** \n'
                  '**[[Fame Discord]](https://discord.gg/NY2MSA3)** \n'
                  '**[[Discord.py]](https://github.com/Rapptz/discord.py/tree/rewrite)**')
-        
+
         # From Modelmat
         cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
         ram_usage = self.process.memory_full_info().uss / 1024 ** 2
@@ -244,11 +244,12 @@ class Utility:
                         value=(f'**{len(self.bot.guilds)} guilds.**\n '
                                f'**{channels} channels.**\n'
                                f'**{users} users.** \n'
-                               f'**{self.bot.lines} lines** \n')
+                               f'**{self.bot.lines} lines**'), inline=False)
 
-        embed.add_field(name='Uptime ⏰', value=(
-            f'**{days} days.** \n **{hours} hours.** \n **{minutes} minutes.** \n **{seconds} seconds.**'
-        ), inline=True)
+        embed.add_field(name='Uptime ⏰', value=(f'**{days} days.** \n '
+                                                f'**{hours} hours.** \n '
+                                                f'**{minutes} minutes.** \n '
+                                                f'**{seconds} seconds.**'), inline=True)
 
         embed.add_field(name='Developer 🕵', value=author)
         embed.add_field(name='Resources 💻', value='`CPU:` {:.2f}% \n`RAM:` {:.2f}%'.format(cpu_usage, ram_usage))
@@ -334,7 +335,8 @@ class Utility:
 
         await ctx.send(embed=embed)
 
-    # Guild Info
+        # Guild Info
+
     @info.command(aliases=['guild'])
     @commands.guild_only()
     async def server(self, ctx):
@@ -362,7 +364,7 @@ class Utility:
         ), inline=True)
 
         embed.add_field(name='Channels 📺', value=str(channels), inline=True)
-        embed.add_field(name='Roles 📜', value=str(len(ctx.guild.role_hierarchy)), inline=True)
+        embed.add_field(name='Roles 📜', value=str(len(ctx.guild.roles)), inline=True)
         await ctx.send(embed=embed)
 
     # Urban Dictionary
