@@ -8,7 +8,7 @@ import discord
 from discord import Webhook, AsyncWebhookAdapter
 from discord.ext import commands
 
-
+# From Scragly
 class BotCommand:
     @classmethod
     async def convert(cls, ctx, arg):
@@ -73,7 +73,7 @@ class Developer:
         minutes, seconds = divmod(remainder, 60)
         days, hours = divmod(hours, 24)
 
-        embed = discord.Embed(color=0x0253561)
+        embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=self.bot.user, icon_url=self.bot.user.avatar_url)
         embed.description = f'Well that was a good {days}d {hours}h {minutes}m {seconds}s of activity.'
         await ctx.send(embed=embed)
@@ -116,7 +116,7 @@ class Developer:
         if not users:
             users = None
 
-        embed = discord.Embed(color=0x51619f)
+        embed = discord.Embed(color=0xba1c1c)
         embed.title = f'List of users with the #{str(discrim)} discriminator'
         embed.description = f'`{users}`'
         embed.set_footer(text=f'{len(user)} users found')
@@ -131,7 +131,7 @@ class Developer:
 
         try:
             user = ctx.guild.get_member(id)
-            embed = discord.Embed(color=0x51619f)
+            embed = discord.Embed(color=0xba1c1c)
             embed.set_author(name=user)
             embed.title = 'Discord ID'
             embed.description = id
@@ -142,7 +142,7 @@ class Developer:
             await ctx.send(embed=embed)
         except:
             user = await self.bot.get_user_info(id)
-            embed = discord.Embed(color=0x51619f)
+            embed = discord.Embed(color=0xba1c1c)
             embed.set_author(name=user)
             embed.title = 'Discord ID'
             embed.description = id
@@ -216,7 +216,8 @@ class Developer:
                 await m.delete()
 
         await ctx.send(f"Cleared `{amount}` messages!", delete_after=5)
-
+    
+    # From Scragly
     @commands.command(hidden=True)
     async def source(self, ctx, *, command: BotCommand):
         """Retrieves the source code of a command."""
@@ -227,7 +228,8 @@ class Developer:
 
         for p in paginator.pages:
             await ctx.send(p)
-
+    
+    # From Scragly
     @commands.command(hidden=True)
     @commands.is_owner()
     async def sudo(self, ctx, member: discord.Member, *, command):
