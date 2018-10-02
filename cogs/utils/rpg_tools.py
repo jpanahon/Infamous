@@ -131,10 +131,11 @@ async def lb_embed(ctx, pfp):
     mast = await ctx.bot.db.fetchrow("SELECT * FROM rpg_mastery WHERE id=$1",
                                      pfp[0])
     embed = discord.Embed(color=0xba1c1c)
-    embed.set_author(name=ctx.guild.get_member(pfp[0]).display_name)
+    member = ctx.get_user(pfp[0])
+    embed.set_author(name=member.name)
     embed.description = f"**Level:** {pfp[2]} \n" \
                         f"**Class:** {pfp[1]} \n" \
                         f"**Mastery Level:** {mast[1]}"
 
-    embed.set_thumbnail(url=ctx.guild.get_member(pfp[0]).avatar_url)
+    embed.set_thumbnail(url=member.avatar_url)
     return embed
