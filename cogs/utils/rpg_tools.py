@@ -1,18 +1,18 @@
 import discord
 from PIL import ImageDraw
 
-async def level(ctx, mon, xp, user):
-    person = ctx.bot.get_user(user).mention
-    lvl = await ctx.bot.db.fetchrow(
+
+async def lvl(ctx, mon, user, msg1, msg2):
+    lvl_ = await ctx.bot.db.fetchrow(
         "SELECT * FROM rpg_profile WHERE id=$1", user)
 
-    if lvl['xp'] > lvl['lvl'] * 100:
+    if lvl_['xp'] > lvl_['lvl'] * 100:
         await ctx.send(
-            f"{person} has leveled up and earned {mon}$"
+            msg1
         )
         await ctx.bot.db.execute(
             "UPDATE rpg_profile SET lvl = $1 WHERE id=$2",
-            lvl['lvl'] + 1, user
+            lvl_['lvl'] + 1, user
         )
 
         await ctx.bot.db.execute(
@@ -25,10 +25,10 @@ async def level(ctx, mon, xp, user):
             mon, user
         )
     else:
-        await ctx.send(f"{person} earned {xp}xp")
+        await ctx.send(msg2)
 
 
-async def levelm(ctx, mon, xp, user):
+async def mastery_lvl(ctx, mon, xp, user):
     person = ctx.bot.get_user(user).mention
     lvl = await ctx.bot.db.fetchrow(
         "SELECT * FROM rpg_profile WHERE id=$1", user)
@@ -62,34 +62,34 @@ async def add_xp(ctx, xp, user):
     )
 
 
-async def add_xpm(ctx, xp, user):
+async def add_mastery_xp(ctx, xp, user):
     await ctx.bot.db.execute(
         "UPDATE rpg_mastery SET xp = xp + $1 WHERE id = $2",
         xp, user
     )
 
 
-async def add_mon(ctx, mon, user):
+async def add_money(ctx, mon, user):
     await ctx.bot.db.execute(
         "UPDATE rpg_profile SET bal = bal + $1 WHERE id = $2",
         mon, user.id
     )
 
 
-async def fetch(ctx, user):
+async def fetch_user(ctx, user):
     p = await ctx.bot.db.fetchrow("SELECT * FROM rpg_profile WHERE id=$1",
                                   user)
     return p
 
 
-async def fetchm(ctx, user):
+async def fetch_mastery(ctx, user):
     p = await ctx.bot.db.fetchrow("SELECT * FROM rpg_mastery WHERE id=$1",
                                   user)
 
     return p
 
 
-async def item_(class_):
+async def item_class(class_):
     if class_ == "knight":
         return "Sword"
 
