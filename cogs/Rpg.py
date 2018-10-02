@@ -510,6 +510,52 @@ each item has different stats and can be used in duels.
         await add_money(ctx, money, user=ctx.author)
 
         await ctx.send(f"For your patience, you earned {money}$")
+    
+    @commands.command()
+    @registered()
+    @commands.cooldown(1, 600, BucketType.user)
+    async def blackjack(self, ctx, bet: int):
+        number = random.randint(1, 15)
+        number2 = random.randint(1, 15)
+        await ctx.send(f"**You:** {number} **Dealer:** {number2} \n"
+                       "Hit or Stand?")
+
+        def hit(m):
+            return m.author == ctx.author and m.content.capitalize() in ["Hit", "Stand"]
+
+        m_ = await ctx.bot.wait_for('message', check=hit)
+        m_ = m_.content
+        if m_ == "Hit":
+            number_ = random.randint(1, 6)
+            number2_ = random.randint(1, 6)
+            if number_ > number2_:
+                await add_money(ctx, bet * 2, ctx.author)
+                await ctx.send(f"You win! You earn {bet * 2}$! \n"
+                               f"Dealer: {number2_} \n"
+                               f"You: {number_}")
+            elif number2_ > number_:
+                await ctx.send(f"You just lost {bet}$!"
+                               f"Dealer: {number2_}"
+                               f"You: {number_}")
+                await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
+                                         bet, ctx.author.id)
+            else:
+                await ctx.send("It's a tie! You keep your money.")
+        else:
+            _number2 = random.randint(1, 6)
+            if number > _number2:
+                await add_money(ctx, bet * 2, ctx.author)
+                await ctx.send(f"You win! You earn {bet * 2}$! \n"
+                               f"Dealer: {_number2} \n"
+                               f"You: {number}")
+            elif _number2 > number:
+                await ctx.send(f"You just lost {bet}$!"
+                               f"Dealer: {_number2} \n"
+                               f"You: {number}")
+                await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
+                                         bet, ctx.author.id)
+            else:
+                await ctx.send("It's a tie! You keep your money.")
 
 
 def setup(bot):
