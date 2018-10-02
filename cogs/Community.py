@@ -496,7 +496,7 @@ class Community:
         if ctx.author == self.bot.user:
             return
 
-        question = await ctx.bot.db.fetch("SELECT * FROM trivia ORDER BY RANDOM() LIMIT 1")
+        question = await ctx.bot.db.fetchrow("SELECT * FROM trivia ORDER BY RANDOM() LIMIT 1")
         embed = discord.Embed(color=0xba1c1c)
         embed.title = 'Trivia Question'
         embed.description = question[0]
