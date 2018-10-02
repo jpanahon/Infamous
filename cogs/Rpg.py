@@ -54,7 +54,21 @@ def eweapon():
 
 
 class Rpg:
-    """Rpg related commands"""
+    """
+Rpg related commands:
+
+How to level up:
+Your level is determined by the xp you earn,
+to get to the next level your xp must be greater than or equal to your current level x 100
+
+Commands you can use to level up (as of 2/10/18)
+quest and duel
+
+What are items?:
+
+The items in the rpg can be bought if the player has the same class and mastery level as the item,
+each item has different stats and can be used in duels.
+"""
 
     def __init__(self, bot):
         self.bot = bot
