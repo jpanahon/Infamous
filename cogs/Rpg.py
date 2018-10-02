@@ -507,7 +507,7 @@ each item has different stats and can be used in duels.
     async def daily(self, ctx):
         """Grab your daily rewards."""
         money = random.randint(0, 1000)
-        await add_money(money, user=ctx.author)
+        await add_money(ctx, money, user=ctx.author)
 
         await ctx.send(f"For your patience, you earned {money}$")
 
