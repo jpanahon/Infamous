@@ -231,7 +231,19 @@ class Utility:
         # From Modelmat
         cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
         ram_usage = self.process.memory_full_info().uss / 1024 ** 2
+        
+        # From Rapptz
+        cmd = r'git show -s HEAD~3..HEAD --format="[{}](https://github.com/Rapptz/RoboDanny/commit/%H) %s (%cr)"'
+        if os.name == 'posix':
+            cmd = cmd.format(r'\`%h\`')
+        else:
+            cmd = cmd.format(r'`%h`')
 
+        try:
+            revision = os.popen(cmd).read().strip()
+        except OSError:
+            revision = 'Could not fetch due to memory error. Sorry.'
+            
         embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
         embed.description = 'A Community Bot for ★ Fame ★.'
@@ -254,7 +266,8 @@ class Utility:
         embed.add_field(name='Developer 🕵', value=author)
         embed.add_field(name='Resources 💻', value='`CPU:` {:.2f}% \n`RAM:` {:.2f}%'.format(cpu_usage, ram_usage))
         embed.add_field(name='Links 🔗', value=links, inline=True)
-        embed.add_field(name='Design', value='`Embed HEX:` 51619f')
+        embed.add_field(name='Design', value='`Embed HEX:` ba1c1c')
+        embed.add_field(name="Changelogs", value=revision)
         await ctx.send(embed=embed)
 
     # User Information
