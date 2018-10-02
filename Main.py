@@ -106,7 +106,7 @@ class Bot(commands.Bot):
             type = random.choice(['math', 'trivia', 'year', 'date'])
             async with self.session.get(f"http://numbersapi.com/random/{type}?json") as r:
                 resp = await r.json()
-            await channel.send(resp['text'])
+            await channel.send(f"**FOTD:** {resp['text']}")
             await asyncio.sleep(86400)
 
 loop = asyncio.get_event_loop()
