@@ -1,10 +1,8 @@
-import asyncio
 import random
 from io import BytesIO
 
 import aiohttp
-import discord
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageFont
 from discord.ext import commands
 from discord.ext.commands.cooldowns import BucketType
 
@@ -99,7 +97,7 @@ class Rpg:
     async def quest(self, ctx):
         """Quests for the brave"""
 
-        class_ = await fetch(ctx, user=ctx.author.id)
+        class_ = await fetch_user(ctx, user=ctx.author.id)
 
         q = await ctx.bot.db.fetchrow(
             "SELECT * FROM rpg_quests WHERE class = $1 ORDER BY RANDOM() LIMIT 1",
@@ -125,11 +123,15 @@ class Rpg:
             xp = random.randint(1, 50)
             mon = random.randint(1, 100)
             await add_xp(ctx, xp=xp, user=ctx.author.id)
-            await level(ctx, xp=xp, mon=mon, user=ctx.author.id)
+            await lvl(ctx, mon=mon, user=ctx.author.id,
+                      msg1=f"You completed the quest, leveled up and earned {mon}",
+                      msg2=f"You completed the quest and earned {xp}xp")
         else:
             mon = random.randint(1, 100)
             await add_xp(ctx, xp=10, user=ctx.author.id)
-            await level(ctx, xp=10, mon=mon, user=ctx.author.id)
+            await lvl(ctx, mon=mon, user=ctx.author.id,
+                      msg1=f"You failed to complete the quest, but you leveled up and earned {mon}",
+                      msg2=f"You failed to complete the quest and earned 10xp")
 
     @commands.group(case_insensitive=True, invoke_without_command=True)
     async def admin(self, ctx):
@@ -172,7 +174,7 @@ class Rpg:
                    ["knight", "hunter", "sorcerer", "sentinel"]
 
         m_ = await ctx.bot.wait_for('message', check=class_)
-        item = await item_(class_=m_.content.lower())
+        item = await item_class(class_=m_.content.lower())
         await ctx \
             .send(f"**Name:** {name} \n"
                   f"**Type:** {item} \n"
@@ -224,7 +226,7 @@ class Rpg:
     @registered()
     async def recommend(self, ctx):
         """Items you can buy."""
-        user = await fetch(ctx, user=ctx.author.id)
+        user = await fetch_user(ctx, user=ctx.author.id)
         data = await ctx.bot.db.fetch(
             "SELECT * FROM rpg_shop WHERE class = $1 ORDER BY price BETWEEN 0 AND $2",
             user[1], user[3]
@@ -248,12 +250,12 @@ class Rpg:
     @registered()
     async def buy(self, ctx, *, item):
         """Buy an item from shop"""
-        user = await fetch(ctx, user=ctx.author.id)
+        user = await fetch_user(ctx, user=ctx.author.id)
         s = await ctx.bot.db.fetchrow(
             "SELECT * FROM rpg_shop WHERE name=$1 AND class = $2",
             item.title(), user[1])
 
-        m = await fetchm(ctx, user=ctx.author.id)
+        m = await fetch_mastery(ctx, user=ctx.author.id)
         if s:
             if user[3] >= s[2] and m[1] >= s[6]:
                 await ctx.send(f"Are you sure you want to buy **{item}**? \n"
@@ -306,271 +308,112 @@ class Rpg:
     @commands.command()
     @registered()
     @eweapon()
-    @commands.cooldown(1, 300, BucketType.channel)
     async def duel(self, ctx, user: discord.Member):
-        """Duel other players"""
-        if user == ctx.author:
-            return await ctx.send("Don't even try.")
+        """Duel other players!"""
+        u = await fetch_user(ctx, user.id)
 
-        equip = await ctx.bot.db.fetchrow("SELECT * FROM rpg_profile WHERE id=$1", user.id)
+        if not u[5]:
+            return await ctx.send(f"{user.mention} needs to equip an item ({ctx.prefix}equip <item>)")
 
-        if equip[5] is None:
-            return await ctx.send(f"{user.mention} needs to equip an item to participate.")
+        if user.bot:
+            return await ctx.send("You can't duel the bot.")
 
-        await ctx.send(f"Do you accept this challenge **{user.display_name}** `Yes or No`")
+        await ctx.send(f"Do you {user.mention} accept this battle?")
 
-        def yon(m):
+        def accept(m):
             return m.author == user \
-                   and m.content.capitalize() in \
-                   ["Yes", "No"]
+                   and m.content.capitalize() in ["Yes", "No"]
 
-        try:
-            y = await ctx.bot.wait_for('message', check=yon, timeout=15)
-        except asyncio.TimeoutError:
-            await ctx.send("You ran out of time")
-        else:
-            if y.content == "Yes":
-                hp1 = 750
-                hp2 = 750
-                p1w = await fetch(ctx, user=ctx.author.id)
-                p2w = await fetch(ctx, user=user.id)
-                p1w = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                                p1w[5], ctx.author.id)
-                p2w = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                                p2w[5], user.id)
+        apt = await ctx.bot.wait_for('message', check=accept)
+        apt = apt.content
 
-                ult = {"Knight": "Bloodbath",
-                       "Hunter": "Death From Above",
-                       "Sorcerer": "Dark Magic",
-                       "Sentinel": "Heartbreaker"}
+        if apt == "Yes":
+            def control(m):
+                return m.author == ctx.author and m.content in ["1", "2"]
 
-                ultd1 = await fetchm(ctx, user=ctx.author.id)
-                ultd2 = await fetchm(ctx, user=user.id)
+            def control2(m):
+                return m.author == user and m.content in ["1", "2"]
 
-                await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
-                while hp1 or hp2 > 0:
-                    def move(m):
-                        return m.author == ctx.author \
-                               and m.content in ["1", "2"]
+            hp2 = 750
+            hp = 750
+            w = await fetch_user(ctx, ctx.author.id)
+            w2 = await fetch_user(ctx, user.id)
+            weapon = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                               w[5], ctx.author.id)
 
-                    m_ = await ctx.bot.wait_for('message', check=move)
-                    if m_.content == "1":
-                        dam = random.randint(1, p1w[2] / 2)
-                        hp2 = hp2 - dam
-                        await ctx.send(
-                            f"{ctx.author.mention}'s attack with **{p1w[0]}** dealt {dam}dmg to {user.mention} "
-                            f"\n {user.mention} has {hp2}hp",
-                            delete_after=20)
-                        await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage")
+            weapon2 = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                                w2[5], user.id)
 
-                    else:
-                        dam = random.randint(1, p1w[2] / 2)
-                        hp2 = hp2 - dam
-                        await ctx.send(
-                            f"{ctx.author.mention}'s barrage with **{p1w[0]}** dealt {dam}dmg to {user.mention} "
-                            f"\n {user.mention} has {hp2}hp",
-                            delete_after=20)
-                        await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage")
+            msg = await ctx.bot.wait_for('message', check=control)
+            msg2 = await ctx.bot.wait_for('message', check=control2)
 
-                    def move1(m):
-                        return m.author == user \
-                               and m.content in ["1", "2"]
+            await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage")
 
-                    m_ = await ctx.bot.wait_for('message', check=move1)
-                    if m_.content == "1":
-                        dam = random.randint(1, p2w[2] / 2)
-                        hp1 = hp1 - dam
-                        await ctx.send(
-                            f"{user.mention}'s attack with **{p2w[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                            f"\n {ctx.author.mention} has {hp1}hp",
-                            delete_after=20)
-                        await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage")
+            while hp2 or hp > 0:
+                if msg.content == "1":
+                    dam = random.randint(1, weapon[2] / 2)
+                    hp2 = hp2 - dam
+                    await ctx.send(
+                        f"{ctx.author.mention}'s attack with **{weapon[0]}** dealt {dam}dmg to {user.mention} "
+                        f"\n {user.mention} has {hp2}hp",
+                        delete_after=20)
+                    await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
 
-                    else:
-                        dam = random.randint(1, p2w[2] / 2)
-                        hp1 = hp1 - dam
-                        await ctx.send(
-                            f"{user.mention}'s barrage with **{p2w[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                            f"\n {ctx.author.mention} has {hp1}hp",
-                            delete_after=20)
-                        await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage")
+                else:
+                    dam = random.randint(1, weapon[2] / 2)
+                    hp2 = hp2 - dam
+                    await ctx.send(
+                        f"{ctx.author.mention}'s barrage with **{weapon[0]}** dealt {dam}dmg to {user.mention} "
+                        f"\n {user.mention} has {hp2}hp",
+                        delete_after=20)
+                    await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
 
-                    def move2(m):
-                        return m.author == ctx.author \
-                               and m.content in ["1", "2"]
+                if msg2.content == "1":
+                    dam = random.randint(1, weapon2[2] / 2)
+                    hp = hp - dam
+                    await ctx.send(
+                        f"{user.mention}'s attack with **{weapon[0]}** dealt {dam}dmg to {ctx.author.mention} "
+                        f"\n {ctx.author.mention} has {hp2}hp",
+                        delete_after=20)
+                    await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
 
-                    m_ = await ctx.bot.wait_for('message', check=move2)
-                    if m_.content == "1":
-                        dam = random.randint(1, p1w[2] / 2)
-                        hp2 = hp2 - dam
-                        await ctx.send(
-                            f"{ctx.author.mention}'s attack with **{p1w[0]}** dealt {dam}dmg to {user.mention} "
-                            f"\n {user.mention} has {hp2}hp",
-                            delete_after=20)
-                        await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage")
+                else:
+                    dam = random.randint(1, weapon[2] / 2)
+                    hp = hp - dam
+                    await ctx.send(
+                        f"{user.mention}'s barrage with **{weapon[0]}** dealt {dam}dmg to {ctx.author.mention} "
+                        f"\n {ctx.author.mention} has {hp2}hp",
+                        delete_after=20)
+                    await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
 
-                    else:
-                        dam = random.randint(1, p1w[2] / 2)
-                        hp2 = hp2 - dam
-                        await ctx.send(
-                            f"{ctx.author.mention}'s barrage with **{p1w[0]}** dealt {dam}dmg to {user.mention} "
-                            f"\n {user.mention} has {hp2}hp",
-                            delete_after=20)
-                        await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage")
-
-                    def move3(m):
-                        return m.author == user \
-                               and m.content in ["1", "2"]
-
-                    m_ = await ctx.bot.wait_for('message', check=move3)
-                    if m_.content == "1":
-                        dam = random.randint(1, p2w[2] / 2)
-                        hp1 = hp1 - dam
-                        await ctx.send(
-                            f"{user.mention}'s attack with **{p2w[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                            f"\n {ctx.author.mention} has {hp1}hp",
-                            delete_after=20)
-                        await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage")
-
-                    else:
-                        dam = random.randint(1, p2w[2] / 2)
-                        hp1 = hp1 - dam
-                        await ctx.send(
-                            f"{user.mention}'s barrage with **{p2w[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                            f"\n {ctx.author.mention} has {hp1}hp",
-                            delete_after=20)
-                        await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage")
-
-                    def move4(m):
-                        return m.author == ctx.author \
-                               and m.content in ["1", "2"]
-
-                    m_ = await ctx.bot.wait_for('message', check=move4)
-                    if m_.content == "1":
-                        dam = random.randint(1, p1w[2] / 2)
-                        hp2 = hp2 - dam
-                        await ctx.send(
-                            f"{ctx.author.mention}'s attack with **{p1w[0]}** dealt {dam}dmg to {user.mention} "
-                            f"\n {user.mention} has {hp2}hp",
-                            delete_after=20)
-                        await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage")
-
-                    else:
-                        dam = random.randint(1, p1w[2] / 2)
-                        hp2 = hp2 - dam
-                        await ctx.send(
-                            f"{ctx.author.mention}'s barrage with **{p1w[0]}** dealt {dam}dmg to {user.mention} "
-                            f"\n {user.mention} has {hp2}hp",
-                            delete_after=20)
-                        await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage")
-
-                    def move5(m):
-                        return m.author == user \
-                               and m.content in ["1", "2"]
-
-                    m_ = await ctx.bot.wait_for('message', check=move5)
-                    if m_.content == "1":
-                        dam = random.randint(1, p2w[2] / 2)
-                        hp1 = hp1 - dam
-                        await ctx.send(
-                            f"{user.mention}'s attack with **{p2w[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                            f"\n {ctx.author.mention} has {hp1}hp",
-                            delete_after=20)
-                        await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage, **3:** {ult[p1w[5]]}")
-
-                    else:
-                        dam = random.randint(1, p2w[2] / 2)
-                        hp1 = hp1 - dam
-                        await ctx.send(
-                            f"{user.mention}'s barrage with **{p2w[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                            f"\n {ctx.author.mention} has {hp1}hp",
-                            delete_after=20)
-                        await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage, **3:** {ult[p1w[5]]}")
-
-                    def ult1(m):
-                        return m.author == ctx.author \
-                               and m.content in ["1", "2", "3"]
-
-                    m_ = await ctx.bot.wait_for("message", check=ult1)
-                    if m_.content == "1":
-                        dam = random.randint(1, p1w[2] / 2)
-                        hp2 = hp2 - dam
-                        await ctx.send(
-                            f"{ctx.author.mention}'s attack with **{p1w[0]}** dealt {dam}dmg to {user.mention} "
-                            f"\n {user.mention} has {hp2}hp",
-                            delete_after=20)
-                        await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage, **3:** {ult[p2w[5]]}")
-
-                    if m_.content == "2":
-                        dam = random.randint(1, p1w[2] / 2)
-                        hp2 = hp2 - dam
-                        await ctx.send(
-                            f"{ctx.author.mention}'s barrage with **{p1w[0]}** dealt {dam}dmg to {user.mention} "
-                            f"\n {user.mention} has {hp2}hp",
-                            delete_after=20)
-                        await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage, **3:** {ult[p2w[5]]}")
-
-                    if m_.content == "3":
-                        dam = 100 * ultd1[1]
-                        hp2 = hp2 - dam
-                        await ctx.send(
-                            f"{ctx.author.mention}'s **{ult[p1w[5]]}** dealt {dam}dmg to {user.mention} "
-                            f"\n {user.mention} has {hp2}hp"
-                        )
-                        await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage, **3:** {ult[p2w[5]]}")
-
-                    def ult2(m):
-                        return m.author == user \
-                               and m.content in ["1", "2", "3"]
-
-                    m_ = await ctx.bot.wait_for('message', check=ult2)
-                    if m_.content == "1":
-                        dam = random.randint(1, p2w[2] / 2)
-                        hp1 = hp1 - dam
-                        await ctx.send(
-                            f"{user.mention}'s attack with **{p2w[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                            f"\n {ctx.author.mention} has {hp1}hp",
-                            delete_after=20)
-                        await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage")
-
-                    if m_.content == "2":
-                        dam = random.randint(1, p2w[2] / 2)
-                        hp1 = hp1 - dam
-                        await ctx.send(
-                            f"{user.mention}'s barrage with **{p2w[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                            f"\n {ctx.author.mention} has {hp1}hp",
-                            delete_after=20)
-                        await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage")
-
-                    if m_.content == "3":
-                        dam = 100 * ultd2[1]
-                        hp1 = hp1 - dam
-                        await ctx.send(
-                            f"{user.mention}'s barrage with **{p2w[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                            f"\n {ctx.author.mention} has {hp1}hp",
-                            delete_after=20)
-                        await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage")
-
-                    if hp2 <= 0:
-                        await ctx.send(f"{ctx.author.mention} won the battle.")
-                        await add_xp(ctx, xp=500, user=ctx.author.id)
-                        await level(ctx, mon=150, xp=500, user=ctx.author.id)
-                        break
-
-                    if hp1 <= 0:
-                        await ctx.send(f"{user.mention} won the battle.")
-                        await add_xp(ctx, xp=500, user=user.id)
-                        break
+                if hp <= 0:
+                    await add_xp(ctx, xp=200, user=user.id)
+                    await lvl(ctx, mon=200, user=user.id,
+                              msg1=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
+                                   f"they leveled up and earned 200$",
+                              msg2=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
+                                   f"they earned 200xp")
+                elif hp2 <= 0:
+                    await add_xp(ctx, xp=200, user=ctx.author.id)
+                    await lvl(ctx, mon=200, user=user.id,
+                              msg1=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
+                                   f"they leveled up and earned 200$",
+                              msg2=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
+                                   f"they earned 200xp")
+                else:
+                    await ctx.send("It's a tie! Since there are no winners, there is no rewards!")
 
     @commands.command()
     @registered()
     async def profile(self, ctx, user: discord.Member = None):
+        """Your current stats."""
+
         async with ctx.typing():
             if not user:
                 user = ctx.author
 
-            you = await fetch(ctx, user.id)
-            youm = await fetchm(ctx, user.id)
+            you = await fetch_user(ctx, user.id)
+            youm = await fetch_mastery(ctx, user.id)
             async with aiohttp.ClientSession() as s:
                 async with s.get(user.avatar_url_as(format="png", size=512)) as r:
                     pfp = await r.read()
@@ -595,7 +438,7 @@ class Rpg:
 
                 # Equipped
                 drawtext(388, 221, text=str(you[5]), font=font, image=image)
-                
+
                 image.paste(profile, (15, 50))
                 b = BytesIO()
                 b.seek(0)
@@ -610,29 +453,49 @@ class Rpg:
     @registered()
     @commands.cooldown(1, 1800, BucketType.user)
     async def master(self, ctx):
+        """Increase your mastery level"""
+
         chance = random.randint(1, 100)
 
         if chance > 50 < 75:
-            await add_xpm(ctx, 50, ctx.author.id)
-            await levelm(ctx, 100, 50, ctx.author.id)
+            await add_mastery_xp(ctx, 50, ctx.author.id)
+            await mastery_lvl(ctx, 100, ctx.author.id,
+                              msg1=f"You have done well and leveled up your mastery and earned 100$",
+                              msg2=f"You have done well, but you earned 50xp")
         elif chance < 50:
-            await add_xpm(ctx, 10, ctx.author.id)
-            await levelm(ctx, 25, 10, ctx.author.id)
+
+            await add_mastery_xp(ctx, 10, ctx.author.id)
+            await mastery_lvl(ctx, 10, ctx.author.id,
+                              msg1=f"You have done poorly, but you leveled up and earned 10$",
+                              msg2=f"You have done poorly, but you earned 10xp")
         else:
-            await add_xpm(ctx, 100, ctx.author.id)
-            await levelm(ctx, 25, 10, ctx.author.id)
+            await add_mastery_xp(ctx, 100, ctx.author.id)
+            await mastery_lvl(ctx, 250, ctx.author.id,
+                              msg1=f"You have done great and leveled up your mastery and earned 250$",
+                              msg2=f"You have done great, but you earned 100xp")
 
     @commands.command()
     @registered()
     async def bal(self, ctx, user: discord.Member = None):
+        """Show how much money you or other users have."""
         if not user:
             user = ctx.author
 
-        balance = await fetch(ctx, user.id)
+        balance = await fetch_user(ctx, user.id)
         embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=user.display_name, icon_url=user.avatar_url)
         embed.description = f"You have {balance[3]}$"
         await ctx.send(embed=embed)
+
+    @commands.command()
+    @commands.cooldown(1, 86400, BucketType.user)
+    @registered()
+    async def daily(self, ctx):
+        """Grab your daily rewards."""
+        money = random.randint(0, 1000)
+        await add_money(money, user=ctx.author)
+
+        await ctx.send(f"For your patience, you earned {money}$")
 
 
 def setup(bot):
