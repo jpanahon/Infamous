@@ -28,18 +28,17 @@ async def lvl(ctx, mon, user, msg1, msg2):
         await ctx.send(msg2)
 
 
-async def mastery_lvl(ctx, mon, xp, user):
-    person = ctx.bot.get_user(user).mention
-    lvl = await ctx.bot.db.fetchrow(
+async def mastery_lvl(ctx, mon, user, msg1, msg2):
+    lvl_ = await ctx.bot.db.fetchrow(
         "SELECT * FROM rpg_profile WHERE id=$1", user)
 
-    if lvl['xp'] > lvl['lvl'] * 100:
+    if lvl_['xp'] > lvl_['lvl'] * 100:
         await ctx.send(
-            f"{person} has leveled up and earned {mon}$"
+            msg1
         )
         await ctx.bot.db.execute(
             "UPDATE rpg_profile SET lvl = $1 WHERE id=$2",
-            lvl['lvl'] + 1, user
+            lvl_['lvl'] + 1, user
         )
 
         await ctx.bot.db.execute(
@@ -52,7 +51,7 @@ async def mastery_lvl(ctx, mon, xp, user):
             mon, user
         )
     else:
-        await ctx.send(f"{person} earned {xp}xp")
+        await ctx.send(msg2)
 
 
 async def add_xp(ctx, xp, user):
