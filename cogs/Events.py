@@ -154,6 +154,7 @@ class Events:
                 hours, remainder = divmod(int(cooldown.total_seconds()), 3600)
                 minutes, seconds = divmod(remainder, 60)
                 days, hours = divmod(hours, 24)
+                await ctx.send(f"You have to wait {days}d, {hours}h, {minutes}m, {seconds}s.")
             else:
                 seconds = error.retry_after
                 seconds = round(seconds, 2)
