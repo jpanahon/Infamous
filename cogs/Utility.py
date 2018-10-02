@@ -266,8 +266,7 @@ class Utility:
         embed.add_field(name='Developer 🕵', value=author)
         embed.add_field(name='Resources 💻', value='`CPU:` {:.2f}% \n`RAM:` {:.2f}%'.format(cpu_usage, ram_usage))
         embed.add_field(name='Links 🔗', value=links, inline=True)
-        embed.add_field(name='Design', value='`Embed HEX:` ba1c1c')
-        embed.add_field(name="Changelogs", value=revision)
+        embed.add_field(name="Changelogs", value=revision, inline=True)
         await ctx.send(embed=embed)
 
     # User Information
