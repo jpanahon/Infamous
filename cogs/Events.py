@@ -148,11 +148,19 @@ class Events:
             )
 
         elif isinstance(error, commands.CommandOnCooldown):
-            seconds = error.retry_after
-            seconds = round(seconds, 2)
-            hours, remainder = divmod(int(seconds), 3600)
-            minutes, seconds = divmod(remainder, 60)
-            await ctx.send(f"You have to wait {minutes}m and {seconds}s")
+            if ctx.command.name == "daily":
+                cooldown = error.retry_after
+                cooldown = round(cooldown, 2)
+                hours, remainder = divmod(int(cooldown.total_seconds()), 3600)
+                minutes, seconds = divmod(remainder, 60)
+                days, hours = divmod(hours, 24)
+            else:
+                seconds = error.retry_after
+                seconds = round(seconds, 2)
+                hours, remainder = divmod(int(seconds), 3600)
+                minutes, seconds = divmod(remainder, 60)
+                await ctx.send(f"You have to wait {minutes}m and {seconds}s")
+           
 
         elif isinstance(error, commands.NotOwner):
             await ctx.send(
