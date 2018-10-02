@@ -151,7 +151,7 @@ class Events:
             if ctx.command.name == "daily":
                 cooldown = error.retry_after
                 cooldown = round(cooldown, 2)
-                hours, remainder = divmod(int(cooldown.total_seconds()), 3600)
+                hours, remainder = divmod(int(cooldown), 3600)
                 minutes, seconds = divmod(remainder, 60)
                 days, hours = divmod(hours, 24)
                 await ctx.send(f"You have to wait {days}d, {hours}h, {minutes}m, {seconds}s.")
