@@ -101,9 +101,9 @@ class Bot(commands.Bot):
         await self.process_commands(message)
     
     async def fact_of_the_day(self):
-        channel = self.get_channel(414069942867197963)
         await self.wait_until_ready()
         while not self.is_closed():
+            channel = self.get_channel(414069942867197963)
             type = random.choice(['math', 'trivia', 'year', 'date'])
             async with self.session.get(f"http://numbersapi.com/random/{type}?json") as r:
                 resp = await r.json()
