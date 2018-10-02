@@ -9,6 +9,7 @@ from discord.ext import commands
 from discord.ext.commands.cooldowns import BucketType
 
 from cogs.utils.paginator import SimplePaginator
+from cogs.utils.rpg_tools import *
 
 
 class Error(commands.CheckFailure):
