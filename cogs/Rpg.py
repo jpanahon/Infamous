@@ -4,10 +4,11 @@ from io import BytesIO
 import aiohttp
 from PIL import Image, ImageFont
 from discord.ext import commands
-from discord.ext.commands.cooldowns import BucketType
+import logging
+from .utils.paginator import SimplePaginator
+from .utils.rpg_tools import *
 
-from cogs.utils.paginator import SimplePaginator
-from cogs.utils.rpg_tools import *
+logging.basicConfig(level=logging.INFO)
 
 
 class Error(commands.CheckFailure):
@@ -54,24 +55,13 @@ def eweapon():
 
 
 class Rpg:
-    """
-Rpg related commands:
-
-How to level up:
-Your level is determined by the xp you earn,
-to get to the next level your xp must be greater than or equal to your current level x 100
-
-Commands you can use to level up (as of 2/10/18)
-quest and duel
-
-What are items?:
-
-The items in the rpg can be bought if the player has the same class and mastery level as the item,
-each item has different stats and can be used in duels.
-"""
+    """Rpg related commands"""
 
     def __init__(self, bot):
         self.bot = bot
+
+    async def __local_check(self, ctx):
+        return ctx.guild is not None
 
     @commands.command()
     @unregistered()
@@ -107,22 +97,23 @@ each item has different stats and can be used in duels.
 
     @commands.command()
     @registered()
-    @commands.cooldown(1, 600, BucketType.user)
+    @commands.cooldown(1, 600, commands.BucketType.user)
     async def quest(self, ctx):
         """Quests for the brave"""
 
-        class_ = await fetch_user(ctx, user=ctx.author.id)
+        class_ = await fetch_user(ctx)
 
         q = await ctx.bot.db.fetchrow(
             "SELECT * FROM rpg_quests WHERE class = $1 ORDER BY RANDOM() LIMIT 1",
             class_[1]
         )
 
-        await ctx.send(f"**Quest:** {q[0]} \n"
-                       f"**Class:** {q[1]} \n"
-                       f"**Creator:** {ctx.bot.get_user(q[2]).display_name} \n"
-                       f"`Pick a number between 1-10`")
-
+        user = self.bot.get_user(q[2])
+        embed = discord.Embed(color=0xba1c1c)
+        embed.set_author(name=f"{user.name} sends you on a quest!", icon_url=user.avatar_url)
+        embed.description = q[0]
+        embed.set_footer(text="Type a number between 1-10")
+        await ctx.send(embed=embed)
         ans = random.randint(1, 10)
 
         def message(m):
@@ -136,15 +127,13 @@ each item has different stats and can be used in duels.
         if message_.content == ans:
             xp = random.randint(1, 50)
             mon = random.randint(1, 100)
-            await add_xp(ctx, xp=xp, user=ctx.author.id)
-            await lvl(ctx, mon=mon, user=ctx.author.id,
-                      msg1=f"You completed the quest, leveled up and earned {mon}",
+            await add_xp(ctx, xp=xp)
+            await lvl(ctx, mon=mon, msg1=f"You completed the quest, leveled up and earned {mon}",
                       msg2=f"You completed the quest and earned {xp}xp")
         else:
             mon = random.randint(1, 100)
-            await add_xp(ctx, xp=10, user=ctx.author.id)
-            await lvl(ctx, mon=mon, user=ctx.author.id,
-                      msg1=f"You failed to complete the quest, but you leveled up and earned {mon}",
+            await add_xp(ctx, xp=10)
+            await lvl(ctx, mon=mon, msg1=f"You failed to complete the quest, but you leveled up and earned {mon}",
                       msg2=f"You failed to complete the quest and earned 10xp")
 
     @commands.group(case_insensitive=True, invoke_without_command=True)
@@ -240,7 +229,7 @@ each item has different stats and can be used in duels.
     @registered()
     async def recommend(self, ctx):
         """Items you can buy."""
-        user = await fetch_user(ctx, user=ctx.author.id)
+        user = await fetch_user(ctx)
         data = await ctx.bot.db.fetch(
             "SELECT * FROM rpg_shop WHERE class = $1 ORDER BY price BETWEEN 0 AND $2",
             user[1], user[3]
@@ -264,12 +253,12 @@ each item has different stats and can be used in duels.
     @registered()
     async def buy(self, ctx, *, item):
         """Buy an item from shop"""
-        user = await fetch_user(ctx, user=ctx.author.id)
+        user = await fetch_user(ctx)
         s = await ctx.bot.db.fetchrow(
             "SELECT * FROM rpg_shop WHERE name=$1 AND class = $2",
             item.title(), user[1])
 
-        m = await fetch_mastery(ctx, user=ctx.author.id)
+        m = await fetch_mastery(ctx)
         if s:
             if user[3] >= s[2] and m[1] >= s[6]:
                 await ctx.send(f"Are you sure you want to buy **{item}**? \n"
@@ -350,14 +339,10 @@ each item has different stats and can be used in duels.
 
             hp2 = 750
             hp = 750
-            w = await fetch_user(ctx, ctx.author.id)
+            w = await fetch_user(ctx)
             w2 = await fetch_user(ctx, user.id)
-            weapon = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                               w[5], ctx.author.id)
-
-            weapon2 = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                                w2[5], user.id)
-
+            weapon = await fetch_item(ctx, w[5], w[1])
+            weapon2 = await fetch_item(ctx, w2[5], w[1], user.id)
             msg = await ctx.bot.wait_for('message', check=control)
             msg2 = await ctx.bot.wait_for('message', check=control2)
 
@@ -408,8 +393,8 @@ each item has different stats and can be used in duels.
                               msg2=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
                                    f"they earned 200xp")
                 elif hp2 <= 0:
-                    await add_xp(ctx, xp=200, user=ctx.author.id)
-                    await lvl(ctx, mon=200, user=user.id,
+                    await add_xp(ctx, xp=200)
+                    await lvl(ctx, mon=200,
                               msg1=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
                                    f"they leveled up and earned 200$",
                               msg2=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
@@ -465,27 +450,23 @@ each item has different stats and can be used in duels.
 
     @commands.command()
     @registered()
-    @commands.cooldown(1, 1800, BucketType.user)
+    @commands.cooldown(1, 1800, commands.BucketType.user)
     async def master(self, ctx):
         """Increase your mastery level"""
 
         chance = random.randint(1, 100)
 
         if chance > 50 < 75:
-            await add_mastery_xp(ctx, 50, ctx.author.id)
-            await mastery_lvl(ctx, 100, ctx.author.id,
-                              msg1=f"You have done well and leveled up your mastery and earned 100$",
+            await add_mastery_xp(ctx, 50)
+            await mastery_lvl(ctx, 100, msg1=f"You have done well and leveled up your mastery and earned 100$",
                               msg2=f"You have done well, but you earned 50xp")
         elif chance < 50:
-
-            await add_mastery_xp(ctx, 10, ctx.author.id)
-            await mastery_lvl(ctx, 10, ctx.author.id,
-                              msg1=f"You have done poorly, but you leveled up and earned 10$",
+            await add_mastery_xp(ctx, 10)
+            await mastery_lvl(ctx, 10, msg1=f"You have done poorly, but you leveled up and earned 10$",
                               msg2=f"You have done poorly, but you earned 10xp")
         else:
-            await add_mastery_xp(ctx, 100, ctx.author.id)
-            await mastery_lvl(ctx, 250, ctx.author.id,
-                              msg1=f"You have done great and leveled up your mastery and earned 250$",
+            await add_mastery_xp(ctx, 100)
+            await mastery_lvl(ctx, 250, msg1=f"You have done great and leveled up your mastery and earned 250$",
                               msg2=f"You have done great, but you earned 100xp")
 
     @commands.command()
@@ -502,18 +483,18 @@ each item has different stats and can be used in duels.
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.cooldown(1, 86400, BucketType.user)
+    @commands.cooldown(1, 86400, commands.BucketType.user)
     @registered()
     async def daily(self, ctx):
         """Grab your daily rewards."""
-        money = random.randint(0, 1000)
-        await add_money(ctx, money, user=ctx.author)
+        money = random.randint(100, 1000)
+        await add_money(ctx, money)
 
         await ctx.send(f"For your patience, you earned {money}$")
-    
+
     @commands.command()
     @registered()
-    @commands.cooldown(1, 600, BucketType.user)
+    @commands.cooldown(1, 600, commands.BucketType.user)
     async def blackjack(self, ctx, bet: int):
         n = random.randint(1, 15)
         n2 = random.randint(1, 15)
@@ -529,7 +510,7 @@ each item has different stats and can be used in duels.
             number = random.randint(1, 6)
             number2 = random.randint(1, 6)
             if number + n > number2 + n2:
-                await add_money(ctx, bet * 2, ctx.author)
+                await add_money(ctx, bet * 2)
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {number + n}")
@@ -544,7 +525,7 @@ each item has different stats and can be used in duels.
         else:
             number2 = random.randint(1, 6)
             if n > number2 + n2:
-                await add_money(ctx, bet * 2, ctx.author)
+                await add_money(ctx, bet * 2)
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
