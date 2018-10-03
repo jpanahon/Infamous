@@ -19,7 +19,8 @@ initial_extensions = (
     'cogs.Original',
     'cogs.Moderation',
     'cogs.Rpg',
-    'cogs.Imagem'
+    'cogs.Imagem',
+    'cogs.Settings'
 )
 
 
@@ -55,7 +56,13 @@ class Bot(commands.Bot):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_prefix_(self, bot, message):
-        prefix = ['*!']
+        pfx = await self.db.fetchrow("SELECT * FROM settings WHERE guild=$1",
+                                     message.guild.id)
+
+        if pfx[1]:
+            prefix = [pfx[1]]
+        else:
+            prefix = ['*!']
 
         return commands.when_mentioned_or(*prefix)(bot, message)
 
