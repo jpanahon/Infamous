@@ -30,7 +30,7 @@ class Settings:
         await ctx.send(f"Set the prefix to {prefix} for **{ctx.guild.name}**")
 
     @settings.command()
-    async def welcome(self, ctx, *, welcomemsg: str, channel: discord.channel.TextChannel=None):
+    async def welcome(self, ctx, welcomemsg: str, channel: discord.channel.TextChannel=None):
         if not channel:
             channel = ctx.channel
 
