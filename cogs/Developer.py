@@ -2,11 +2,14 @@ import copy
 import datetime
 import inspect
 import random
-
+import logging
 import aiohttp
 import discord
 from discord import Webhook, AsyncWebhookAdapter
 from discord.ext import commands
+
+logging.basicConfig(level=logging.INFO)
+
 
 # From Scragly
 class BotCommand:
