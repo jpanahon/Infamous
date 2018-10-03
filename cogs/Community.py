@@ -496,22 +496,31 @@ class Community:
         if ctx.author == self.bot.user:
             return
 
-        question = await ctx.bot.db.fetchrow("SELECT * FROM trivia ORDER BY RANDOM() LIMIT 1")
+        async with self.bot.session.get("http://jservice.io/api/random?json") as r:
+            question = await r.json()
+            question = question[0]
+
         embed = discord.Embed(color=0xba1c1c)
         embed.title = 'Trivia Question'
-        embed.description = question[0]
-        embed.set_image(url=question[2])
+        embed.description = question['question']
+        text = question['answer']
+        vowels = ('a', 'e', 'i', 'o', 'u')
+        for c in text:
+            if c in vowels:
+                text = text.replace(c, "-")
+
+        embed.set_footer(text=f'Clue: {text}')
         await ctx.send(embed=embed)
 
         def check(m):
-            return m.content == question[1] and m.channel == ctx.message.channel
+            return m.content.lower() == question['answer'].lower() and m.channel == ctx.message.channel
 
         try:
             right = await self.bot.wait_for('message', check=check, timeout=10)
         except asyncio.TimeoutError:
-            await ctx.send(f"Time's up! The answer was {question[1]}!")
+            await ctx.send(f"Time's up! The answer was {question['answer']}!")
         else:
-            await ctx.send(f'{right.author.mention} is correct! The answer was {question[1]}!')
+            await ctx.send(f"{right.author.mention} is correct! The answer was {question['answer']}!")
             command = self.bot.get_command('trivia')
             await ctx.invoke(command)
 
