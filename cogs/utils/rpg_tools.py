@@ -2,7 +2,10 @@ import discord
 from PIL import ImageDraw
 
 
-async def lvl(ctx, mon, user, msg1, msg2):
+async def lvl(ctx, mon, msg1, msg2, user=None):
+    if not user:
+        user = ctx.author.id
+
     lvl_ = await ctx.bot.db.fetchrow(
         "SELECT * FROM rpg_profile WHERE id=$1", user)
 
@@ -28,7 +31,10 @@ async def lvl(ctx, mon, user, msg1, msg2):
         await ctx.send(msg2)
 
 
-async def mastery_lvl(ctx, mon, user, msg1, msg2):
+async def mastery_lvl(ctx, mon, msg1, msg2, user=None):
+    if not user:
+        user = ctx.author.id
+
     lvl_ = await ctx.bot.db.fetchrow(
         "SELECT * FROM rpg_profile WHERE id=$1", user)
 
@@ -54,34 +60,49 @@ async def mastery_lvl(ctx, mon, user, msg1, msg2):
         await ctx.send(msg2)
 
 
-async def add_xp(ctx, xp, user):
+async def add_xp(ctx, xp, user=None):
+    if not user:
+        user = ctx.author.id
+        
     await ctx.bot.db.execute(
         "UPDATE rpg_profile SET xp = xp + $1 WHERE id = $2",
         xp, user
     )
 
 
-async def add_mastery_xp(ctx, xp, user):
+async def add_mastery_xp(ctx, xp, user=None):
+    if not user:
+        user = ctx.author.id
+
     await ctx.bot.db.execute(
         "UPDATE rpg_mastery SET xp = xp + $1 WHERE id = $2",
         xp, user
     )
 
 
-async def add_money(ctx, mon, user):
+async def add_money(ctx, mon, user=None):
+    if not user:
+        user = ctx.author
+
     await ctx.bot.db.execute(
         "UPDATE rpg_profile SET bal = bal + $1 WHERE id = $2",
         mon, user.id
     )
 
 
-async def fetch_user(ctx, user):
+async def fetch_user(ctx, user=None):
+    if not user:
+        user = ctx.author.id
+
     p = await ctx.bot.db.fetchrow("SELECT * FROM rpg_profile WHERE id=$1",
                                   user)
     return p
 
 
-async def fetch_mastery(ctx, user):
+async def fetch_mastery(ctx, user=None):
+    if not user:
+        user = ctx.author.id
+
     p = await ctx.bot.db.fetchrow("SELECT * FROM rpg_mastery WHERE id=$1",
                                   user)
 
@@ -131,7 +152,7 @@ async def lb_embed(ctx, pfp):
     mast = await ctx.bot.db.fetchrow("SELECT * FROM rpg_mastery WHERE id=$1",
                                      pfp[0])
     embed = discord.Embed(color=0xba1c1c)
-    member = ctx.get_user(pfp[0])
+    member = ctx.guild.get_member(pfp[0])
     embed.set_author(name=member.name)
     embed.description = f"**Level:** {pfp[2]} \n" \
                         f"**Class:** {pfp[1]} \n" \
@@ -139,3 +160,18 @@ async def lb_embed(ctx, pfp):
 
     embed.set_thumbnail(url=member.avatar_url)
     return embed
+
+
+async def fetch_item(ctx, name, class_, user=None, inv=None):
+    if not inv:
+        inv = "rpg_inventory"
+
+    if not user:
+        user = ctx.author.id
+
+    if inv == "rpg_shop":
+        item = await ctx.bot.db.fetchrow("SELECT * FROM rpg_shop WHERE name=$1 AND class=$2", name, class_)
+    else:
+        item = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2", name, user)
+
+    return item
