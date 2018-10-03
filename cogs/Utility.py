@@ -1,21 +1,17 @@
 import asyncio
 import io
-import json
 import logging
-import os
 import random
 import textwrap
 import time
 import traceback
 from contextlib import redirect_stdout
 from datetime import datetime
-
 import aiohttp
 import discord
 import psutil
 from discord.ext import commands
-from discord.ext.commands.cooldowns import BucketType
-from cogs.utils.paginator import HelpPaginator
+from .utils.paginator import HelpPaginator
 
 logging.basicConfig(level=logging.INFO)
 
@@ -231,7 +227,7 @@ class Utility:
         # From Modelmat
         cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
         ram_usage = self.process.memory_full_info().uss / 1024 ** 2
-          
+
         embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
         embed.description = 'A Community Bot for ★ Fame ★.'
@@ -254,6 +250,7 @@ class Utility:
         embed.add_field(name='Developer 🕵', value=author)
         embed.add_field(name='Resources 💻', value='`CPU:` {:.2f}% \n`RAM:` {:.2f}%'.format(cpu_usage, ram_usage))
         embed.add_field(name='Links 🔗', value=links, inline=True)
+
         await ctx.send(embed=embed)
 
     # User Information
@@ -410,7 +407,7 @@ class Utility:
         await ctx.send(embed=embed)
 
     @commands.command(aliases=['request'])
-    @commands.cooldown(1, 120, BucketType.user)
+    @commands.cooldown(1, 120, commands.BucketType.user)
     async def suggest(self, ctx, *, string):
         """Suggest what you want to be implemented into the bot."""
 
