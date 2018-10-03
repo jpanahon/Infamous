@@ -211,10 +211,10 @@ class Events:
     async def on_member_join(self, member):
         welcome = await self.bot.db.fetchrow("SELECT * FROM settings WHERE guild=$1", member.guild.id)
         if welcome:
-            if "[member]" in welcome[2]:
-                text = str(welcome[2]).replace("[member]", "{member.mention}")
+            if "[member]" in text:
+                text = str(welcome[2]).replace("[member]", "{}")
 
-            await self.bot.get_channel(welcome[3]).send(text)
+            await channel.send(text.format(member.mention))
         else:
             pass
 
