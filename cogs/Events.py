@@ -201,7 +201,22 @@ class Events:
                 await channel_.trigger_typing()
         else:
             pass
+    
+    async def on_guild_join(self, guild):
+        await self.bot.db.execute("INSERT INTO settings VALUES($1)", guild.id)
+        
+    async def on_guild_remove(self, guild):
+        await self.bot.db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
+    
+    async def on_member_join(self, member):
+        welcome = await self.bot.db.fetchrow("SELECT * FROM settings WHERE guild=$1", member.guild.id)
+        if welcome:
+            if "[member]" in welcome[2]:
+                text = str(welcome[2]).replace("[member]", "{member.mention}")
 
+            await self.bot.get_channel(welcome[3]).send(text)
+        else:
+            pass
 
 def setup(bot):
     bot.add_cog(Events(bot))
