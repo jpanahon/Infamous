@@ -39,7 +39,7 @@ def unregistered():
     return commands.check(predicate)
 
 
-def eweapon():
+def equipped():
     async def predicate(ctx):
         data = await ctx.bot.db.fetch(
             "SELECT equip FROM rpg_profile WHERE id=$1",
@@ -310,7 +310,7 @@ class Rpg:
 
     @commands.command()
     @registered()
-    @eweapon()
+    @equipped()
     async def duel(self, ctx, user: discord.Member):
         """Duel other players!"""
         u = await fetch_user(ctx, user.id)
