@@ -41,7 +41,7 @@ class Settings:
         await ctx.bot.db.execute("UPDATE settings SET welcomechannel = $1 WHERE guild=$2",
                                  channel.id, ctx.guild.id)
 
-        await ctx.send(f"The welcome message is {welcomemsg} and the channel is {channel}")
+        await ctx.send(f"The welcome message is {welcomemsg} and the channel is {channel.mention}")
 
     @settings.command()
     async def resetprefix(self, ctx):
