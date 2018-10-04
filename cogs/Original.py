@@ -111,7 +111,25 @@ class Original:
             await ctx.send(f'{member.author.mention} is right! This user is `{user}`')
             command = self.bot.get_command('guess')
             await ctx.invoke(command)
+    
+    @commands.command()
+    async def pickup(self, ctx):
+        """Pick up lines to help you get that girl!"""
+        async with self.bot.session.get("http://pebble-pickup.herokuapp.com/tweets/random") as r:
+            text = await r.json()
 
+        await ctx.send(text['tweet'])
 
+    @commands.command()
+    async def advice(self, ctx):
+        """Get advice"""
+
+        async with self.bot.session.get("http://api.adviceslip.com/advice?json") as r:
+            text = await r.json()
+            text = text['slip']
+
+        await ctx.send(text['advice'])
+
+        
 def setup(bot):
     bot.add_cog(Original(bot))
