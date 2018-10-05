@@ -50,6 +50,7 @@ class Bot(commands.Bot):
         self.loop.create_task(self.playing_status())
         self.loop.create_task(self.fact_of_the_day())
         self.remove_command("help")
+        self.path = os.path.dirname(os.path.realpath(__file__))
         self.launch_time = datetime.datetime.utcnow()
         self.db = kwargs.pop("db")
         self.lines = self.lines_of_code()
@@ -75,15 +76,19 @@ class Bot(commands.Bot):
             except Exception:
                 print(f'Failed to load extension {extension}.', file=sys.stderr)
                 traceback.print_exc()
-
+    
     def lines_of_code(self):
+        # From Scragly
+        count_dict = {}
         total_count = 0
-        for root, dirs, files in os.walk(os.path.dirname(os.path.realpath(__file__))):
+        for root, dirs, files in os.walk(os.path.join(self.path)):
             for file in files:
                 if file.endswith(".py"):
                     with open(os.path.join(root, file)) as f:
+                        file_name = f.name
                         for i, l in enumerate(f):
                             pass
+                    count_dict[file_name] = i + 1
                     total_count += i
 
         return total_count
