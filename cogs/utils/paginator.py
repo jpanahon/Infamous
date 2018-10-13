@@ -162,7 +162,7 @@ class Pages:
 
     async def stop_pages(self):
         """stops the interactive pagination session"""
-        await self.message.delete()
+        await self.message.clear_reactions()
         self.paginating = False
 
     def react_check(self, reaction, user):
@@ -193,7 +193,7 @@ class Pages:
             except asyncio.TimeoutError:
                 self.paginating = False
                 try:
-                    await self.message.delete()
+                    await self.message.clear_reactions()
                 except:
                     pass
                 finally:
@@ -301,184 +301,7 @@ class SimplePaginator:
 
     async def stop_controller(self, message):
         try:
-            await message.delete()
-        except discord.HTTPException:
-            pass
-
-        try:
-            self.controller.cancel()
-        except Exception:
-            pass
-
-    def formmater(self, chunk):
-        return '\n'.join(f'{self.prepend}{self.fmt}{value}{self.fmt[::-1]}{self.append}' for value in chunk)
-
-    def set_pages(self):
-        length = len(self.pages)
-
-        for index, embed in enumerate(self.pages):
-            embed.set_footer(text=f'Page {index + 1} of {length}')
-
-        for index, name in enumerate(self.names):
-            self.names[index] = f'{index + 1} - `{name}`'
-
-    async def del_msg(self, *args):
-        for msg in args:
-            try:
-                await msg.delete()
-            except discord.HTTPException:
-                return
-
-    async def wait_for(self, ctx):
-        def check(m):
-            return m.author == ctx.author
-
-        msg = await ctx.send("What page would you like to turn to?")
-
-        while True:
-            try:
-                resp = await ctx.bot.wait_for('message', check=check, timeout=60)
-            except asyncio.TimeoutError:
-                return await self.del_msg(msg)
-
-            try:
-                index = int(resp.content)
-            except ValueError:
-                await ctx.send('Invalid number, please enter a valid page number.', delete_after=10)
-                return await self.del_msg(resp)
-
-            if index > len(self.pages) or index < 1:
-                await ctx.send('Invalid number, please enter a valid page number.', delete_after=10)
-                return await self.del_msg(resp)
-            else:
-                await self.del_msg(msg, resp)
-                self.previous = self.current
-                self.current = index - 1
-                try:
-                    return await self.base.edit(embed=self.pages[self.current])
-                except KeyError:
-                    pass
-
-    async def paginate(self, ctx):
-        if self.extras:
-            self.pages = [p for p in self.extras if isinstance(p, discord.Embed)]
-
-        if self.entries:
-            chunks = [c async for c in pager(self.entries, self.length)]
-
-            for index, chunk in enumerate(chunks):
-                page = discord.Embed(title=f'{self.title} - {index + 1}/{len(chunks)}', color=self.colour)
-                page.description = self.formmater(chunk)
-
-                if self.footer:
-                    page.set_footer(text=self.footer)
-
-                self.pages.append(page)
-
-        if not self.pages:
-            raise await ctx.send('There must be enough data to create at least 1 page for pagination.')
-
-        self.eof = float(len(self.pages) - 1)
-        self.controls['⏭'] = self.eof
-        self.controller = ctx.bot.loop.create_task(self.reaction_controller(ctx))
-
-
-class CustomEmojiPaginator:
-    __slots__ = ('entries', 'extras', 'title', 'description', 'colour', 'footer', 'length', 'prepend', 'append',
-                 'fmt', 'timeout', 'ordered', 'controls', 'controller', 'pages', 'current', 'previous', 'eof', 'base',
-                 'names')
-
-    def __init__(self, **kwargs):
-        self.entries = kwargs.get('entries', None)
-        self.extras = kwargs.get('extras', None)
-
-        self.title = kwargs.get('title', None)
-        self.description = kwargs.get('description', None)
-        self.colour = kwargs.get('colour', 0xffd4d4)
-        self.footer = kwargs.get('footer', None)
-
-        self.length = kwargs.get('length', 10)
-        self.prepend = kwargs.get('prepend', '')
-        self.append = kwargs.get('append', '')
-        self.fmt = kwargs.get('fmt', '')
-        self.timeout = kwargs.get('timeout', 90)
-        self.ordered = kwargs.get('ordered', False)
-
-        self.controller = None
-        self.pages = []
-        self.names = []
-        self.base = None
-
-        self.current = 0
-        self.previous = 0
-        self.eof = 0
-
-        self.controls = {'⏮': 0.0, ':BlurpleCheck:452390337382449153': -1, ':BlurpleX:452390303698124800': +1,
-                         '⏭': None, '🔢': 'selector', '⏹': 'stop'}
-
-    async def indexer(self, ctx, ctrl):
-        if ctrl == 'stop':
-            ctx.bot.loop.create_task(self.stop_controller(self.base))
-        elif ctrl == 'selector':
-            ctx.bot.loop.create_task(self.wait_for(ctx))
-        elif isinstance(ctrl, int):
-            self.current += ctrl
-            if self.current > self.eof or self.current < 0:
-                self.current -= ctrl
-        else:
-            self.current = int(ctrl)
-
-    async def reaction_controller(self, ctx):
-        bot = ctx.bot
-        author = ctx.author
-
-        self.base = await ctx.send(embed=self.pages[0])
-
-        if len(self.pages) == 1:
-            await self.base.add_reaction('⏹')
-        else:
-            for reaction in self.controls:
-                try:
-                    await self.base.add_reaction(reaction)
-                except discord.HTTPException:
-                    return
-
-        def check(r, u):
-            if str(r) not in self.controls.keys():
-                return False
-            elif u.id == bot.user.id or r.message.id != self.base.id:
-                return False
-            elif u.id != author.id:
-                return False
-            return True
-
-        while True:
-            try:
-                react, user = await bot.wait_for('reaction_add', check=check, timeout=self.timeout)
-            except asyncio.TimeoutError:
-                return ctx.bot.loop.create_task(self.stop_controller(self.base))
-
-            control = self.controls.get(str(react))
-
-            try:
-                await self.base.remove_reaction(react, user)
-            except discord.HTTPException:
-                pass
-
-            self.previous = self.current
-            await self.indexer(ctx, control)
-
-            if self.previous == self.current:
-                continue
-
-            try:
-                await self.base.edit(embed=self.pages[self.current])
-            except KeyError:
-                pass
-
-    async def stop_controller(self, message):
-        try:
-            await message.delete()
+            await message.clear_reactions()
         except discord.HTTPException:
             pass
 
