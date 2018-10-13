@@ -101,11 +101,11 @@ class Rpg:
     async def quest(self, ctx):
         """Quests for the brave"""
 
-        class_ = await fetch_user(ctx)
+        class_ = (await fetch_user(ctx))[1]
 
         q = await ctx.bot.db.fetchrow(
             "SELECT * FROM rpg_quests WHERE class = $1 ORDER BY RANDOM() LIMIT 1",
-            class_[1]
+            class_
         )
 
         user = self.bot.get_user(q[2])
@@ -219,7 +219,6 @@ class Rpg:
                  "Staff": "http://cliparts.co/cliparts/Aib/jyM/AibjyMkeT.png",
                  "Crossbow": "http://img4.wikia.nocookie.net/__cb20130711033127/runescape/"
                              "images/2/20/Off-hand_Ascension_crossbow_detail.png"}
-
             for i in data:
                 p.append(item_embed(i, t[i[1]]))
 
@@ -254,51 +253,14 @@ class Rpg:
     async def buy(self, ctx, *, item):
         """Buy an item from shop"""
         user = await fetch_user(ctx)
-        s = await ctx.bot.db.fetchrow(
-            "SELECT * FROM rpg_shop WHERE name=$1 AND class = $2",
-            item.title(), user[1])
-
-        m = await fetch_mastery(ctx)
-        if s:
-            if user[3] >= s[2] and m[1] >= s[6]:
-                await ctx.send(f"Are you sure you want to buy **{item}**? \n"
-                               f"`Yes or No`")
-
-                def yon(m_):
-                    return m_.author == ctx.author \
-                           and m_.content.capitalize() in \
-                           ["Yes", "No"]
-
-                y = await ctx.bot.wait_for('message', check=yon)
-                if y.content == "Yes":
-                    await ctx.bot.db.execute(
-                        "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                        s[0], s[1],
-                        s[2], s[3],
-                        s[4], s[5],
-                        s[6], ctx.author.id,
-                        s[7])
-
-                    await ctx.bot.db.execute(
-                        "UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
-                        s[2], ctx.author.id
-                    )
-                    await ctx.send(f"You have successfully bought {item.title()}")
-                else:
-                    await ctx.send("Cancelled")
-            else:
-                await ctx.send(
-                    "Looks like you don't have enough money or have the right mastery level."
-                )
-        else:
-            await ctx.send("Looks like you don't have the right class.")
+        await purchase(ctx, item.title(), user[3], user[1])
 
     @commands.command()
     @registered()
     async def equip(self, ctx, *, item):
         """Equip an item to use in battle"""
-        i = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                      item.title(), ctx.author.id)
+        u = await fetch_user(ctx)
+        i = await fetch_item(ctx, item.title(), u[1])
 
         if i:
             await ctx.send(f"**{i[0]}** has been equipped and can be used for battle.")
@@ -313,9 +275,9 @@ class Rpg:
     @equipped()
     async def duel(self, ctx, user: discord.Member):
         """Duel other players!"""
-        u = await fetch_user(ctx, user.id)
+        u = (await fetch_user(ctx, user.id))[5]
 
-        if not u[5]:
+        if not u:
             return await ctx.send(f"{user.mention} needs to equip an item ({ctx.prefix}equip <item>)")
 
         if user.bot:
@@ -476,10 +438,10 @@ class Rpg:
         if not user:
             user = ctx.author
 
-        balance = await fetch_user(ctx, user.id)
+        balance = (await fetch_user(ctx, user.id))[3]
         embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=user.display_name, icon_url=user.avatar_url)
-        embed.description = f"You have {balance[3]}$"
+        embed.description = f"You have {balance}$"
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -537,6 +499,57 @@ class Rpg:
                                          bet, ctx.author.id)
             else:
                 await ctx.send("It's a tie! You keep your money.")
+
+    @commands.command()
+    @registered()
+    @commands.cooldown(1, 600, commands.BucketType.user)
+    async def upgrade(self, ctx, *, item):
+        """Upgrade the statistics of a weapon."""
+
+        c = (await fetch_user(ctx))[1]
+        i = await fetch_item(ctx, item, c)
+
+        await ctx.send(f"Are you sure you want to upgrade **{i[0]}?**  Yes or No?\n"
+                       f"Modified Statistics: **Price:** {i[2] * 2}, **Damage:** {i[3] * 2}, **Defense:** {i[4] * 2}")
+
+        def check(m):
+            return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
+
+        msg = await ctx.bot.wait_for('message', check=check)
+        msg = msg.content
+        if msg == "Yes":
+            if c[3] >= i[2] * 2:
+                await ctx.bot.db.execute(
+                    "UPDATE rpg_inventory SET price=$1, damage=$2, defense=$3 WHERE name=$4 AND owner=$5",
+                    i[2] * 2, i[3] * 2, i[4] * 2, i[0], i[7])
+                await ctx.send(f"Upgraded **{item.title()}**'s statistics.")
+            else:
+                return await ctx.send("You don't have enough to upgrade this item")
+        else:
+            await ctx.send("I guess you don't want to upgrade your item.")
+
+    @commands.command(aliases=['items', 'inv'])
+    @registered()
+    async def inventory(self, ctx, user=None):
+        if not user:
+            user = ctx.author
+
+        data = await ctx.bot.db.fetch(
+            "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price",
+            user.id)
+
+        t = {"Sword": "http://orig05.deviantart.net/092b/f/2010/302/e/3/ice_sword_by_myrdah-d31rxrg.jpg",
+             "Bow": "http://orig14.deviantart.net/e9ae/f/2015/073/1/f/bows"
+                    "___9___________2015__by_rittik_designs-d8lp1ay.jpg",
+             "Staff": "http://cliparts.co/cliparts/Aib/jyM/AibjyMkeT.png",
+             "Crossbow": "http://img4.wikia.nocookie.net/__cb20130711033127/runescape/"
+                         "images/2/20/Off-hand_Ascension_crossbow_detail.png"}
+
+        p = []
+        for i in data:
+            p.append(inventory_embed(ctx, i, t[i[1]]))
+
+        await SimplePaginator(extras=p).paginate(ctx)
 
 
 def setup(bot):
