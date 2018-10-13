@@ -63,7 +63,7 @@ async def mastery_lvl(ctx, mon, msg1, msg2, user=None):
 async def add_xp(ctx, xp, user=None):
     if not user:
         user = ctx.author.id
-        
+
     await ctx.bot.db.execute(
         "UPDATE rpg_profile SET xp = xp + $1 WHERE id = $2",
         xp, user
@@ -135,15 +135,14 @@ def drawtext(x, y, text, font, image):
 
 def item_embed(item, thumbnail):
     embed = discord.Embed(color=0xba1c1c)
-    embed.set_author(name=item[0])
+    embed.set_author(name=f"{item[0]} | Price {item[2]}$")
     embed.description = item[7]
-    embed.add_field(name="Type", value=item[1])
-    embed.add_field(name="Price", value=item[2])
-    embed.add_field(name="Damage", value=item[3])
-    embed.add_field(name="Defense", value=item[4])
-    embed.add_field(name="Class", value=item[5])
-    embed.add_field(name="Mastery Level", value=item[6])
-    embed.set_thumbnail(url=thumbnail)
+    embed.add_field(name="Performance Stats", value=f"**Damage:** {item[3]} \n"
+                                                    f"**Defense:** {item[4]}")
+    embed.add_field(name="Requirements", value=f"**Class:** {item[5]} \n"
+                                               f"**Mastery Level:** {item[6]}", inline=True)
+    embed.set_footer(text=f"Type: {item[1]}")
+    embed.set_image(url=thumbnail)
 
     return embed
 
@@ -175,3 +174,56 @@ async def fetch_item(ctx, name, class_, user=None, inv=None):
         item = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2", name, user)
 
     return item
+
+
+async def remove_money(ctx, bal, user=None):
+    if not user:
+        user = ctx.author.id
+
+    await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
+                             bal, user)
+
+
+async def purchase(ctx, item, money, class_, user=None):
+    if not user:
+        user = ctx.author.id
+
+    i = await fetch_item(ctx, item, class_, user, 'rpg_shop')
+    m = await fetch_mastery(ctx, user)
+    if i[2] >= money and i[5] == class_ and i[6] == m[1]:
+        await ctx.send(f"Do you really want to buy **{i[0]}** \n"
+                       f"Price: {i[2]}$, Yes or No?")
+
+        def check(m):
+            return m.author == user and m.content in ["Yes", "No"]
+
+        msg = await ctx.bot.wait_for('message', check=check)
+        msg = msg.content
+
+        if msg == "Yes":
+            await ctx.send(f"{i[0]} has been added to your inventory.")
+
+            await ctx.bot.db.execute(
+                "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                i[0], i[1],
+                i[2], i[3],
+                i[4], i[5],
+                i[6], user,
+                i[7])
+        else:
+            await ctx.send(f"Guess you don't want to spend **{i[2]}$**")
+    else:
+        return await ctx.send(f"Sorry you need {i[2] - money}$ more to purchase! "
+                              f"Or.. You don't have the right class or mastery level")
+
+
+def inventory_embed(ctx, info, thumbnail):
+    embed = discord.Embed(color=0xba1c1c)
+    embed.set_author(name=f"{ctx.bot.get_user(info[7]).name}'s inventory",
+                     icon_url=ctx.bot.get_user(info[7]).avatar_url)
+    embed.description = (f"**Name:** {info[0]} \n"
+                         f"**Price:** {info[2]} \n"
+                         f"**Damage:** {info[3]} \n"
+                         f"**Defense:** {info[4]}")
+    embed.set_image(url=thumbnail)
+    return embed
