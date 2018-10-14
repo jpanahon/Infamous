@@ -1,8 +1,6 @@
 import asyncio
 import logging
 import random
-
-import aiohttp
 import discord
 from discord.ext import commands
 
@@ -14,10 +12,10 @@ class Original:
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-     
+
     # Annoy
     @commands.command()
-    @commands.cooldown(2, 600, BucketType.user)
+    @commands.cooldown(2, 600, commands.BucketType.user)
     @commands.guild_only()
     async def annoy(self, ctx, *, string):
         """Direct Messages a random person, with the message of choice."""
@@ -49,7 +47,7 @@ class Original:
 
     # Random Nickname
     @commands.command()
-    @commands.cooldown(2, 600, BucketType.user)
+    @commands.cooldown(2, 600, commands.BucketType.user)
     @commands.bot_has_permissions(manage_nicknames=True)
     @commands.guild_only()
     async def nick(self, ctx, *, string):
@@ -109,7 +107,7 @@ class Original:
             await ctx.send(f'{member.author.mention} is right! This user is `{user}`')
             command = self.bot.get_command('guess')
             await ctx.invoke(command)
-    
+
     @commands.command()
     async def pickup(self, ctx):
         """Pick up lines to help you get that girl!"""
@@ -128,6 +126,6 @@ class Original:
 
         await ctx.send(text['advice'])
 
-        
+
 def setup(bot):
     bot.add_cog(Original(bot))
