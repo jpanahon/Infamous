@@ -516,7 +516,7 @@ class Community:
             return m.content.lower() == question['answer'].lower() and m.channel == ctx.message.channel
 
         try:
-            right = await self.bot.wait_for('message', check=check, timeout=10)
+            right = await self.bot.wait_for('message', check=check, timeout=60)
         except asyncio.TimeoutError:
             await ctx.send(f"Time's up! The answer was {question['answer']}!")
         else:
