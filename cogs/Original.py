@@ -14,8 +14,7 @@ class Original:
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.session = aiohttp.ClientSession(loop=bot.loop)
-
+     
     # Annoy
     @commands.command()
     @commands.cooldown(2, 600, BucketType.user)
