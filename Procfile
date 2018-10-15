@@ -1,1 +1,1 @@
-worker: python Main.py
+worker: python Infamous/Main.py
