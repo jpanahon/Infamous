@@ -199,7 +199,7 @@ def inventory_embed(ctx, info, thumbnail):
                          f"**Price:** {info[2]} \n"
                          f"**Damage:** {info[3]} \n"
                          f"**Defense:** {info[4]} \n"
-                         f"**Skill:** {info[6]}")
+                         f"**Skill:** {info[5]}")
     embed.set_image(url=thumbnail)
     return embed
 
@@ -212,6 +212,6 @@ async def fetch_skills(ctx, user=None):
 
     p = []
     for i in skills:
-        p.append(i[0])
+        p.append(i[1])
 
     return p
