@@ -1,8 +1,4 @@
 import random
-from io import BytesIO
-
-import aiohttp
-from PIL import Image, ImageFont
 from discord.ext import commands
 import logging
 from .utils.paginator import SimplePaginator
@@ -17,14 +13,13 @@ class Error(commands.CheckFailure):
 
 def registered():
     async def predicate(ctx):
-        data = await ctx.bot.db.fetch(
+        data = await ctx.bot.db.fetchrow(
             "SELECT * FROM rpg_profile WHERE id=$1",
             ctx.author.id
         )
-        if data is None:
+        if not data:
             raise Error(f"Looks like you're not registered, type {ctx.prefix}register.")
         return True
-
     return commands.check(predicate)
 
 
@@ -67,26 +62,37 @@ class Rpg:
     @unregistered()
     async def register(self, ctx):
         """Register for the rpg."""
-        await ctx.send("Choose a class: **Knight, Hunter, Sorcerer and Sentinel**")
+        await ctx.send("Choose a class! (You can pick any it doesn't matter)")
 
         def class_(m):
-            return m.author == ctx.author \
-                   and m.content.lower() in \
-                   ["knight", "hunter", "sorcerer", "sentinel"]
+            return m.author == ctx.author and m.channel == ctx.channel
 
         m_ = await ctx.bot.wait_for('message', check=class_)
-        await ctx.bot.db.execute("INSERT INTO rpg_profile VALUES($1, $2, $3, $4, $5)",
-                                 ctx.author.id, m_.content.capitalize(), 1, 100, 0)
+        await ctx.send("Great! Now choose a skill for your character. (You can add other skills later) \n"
+                       "**Marksmanship, Swordsmanship, Necromancy, Clairvoyance, Pyromania, Permafrost, "
+                       "Insight, Sorcery, Telekinesis and Swiftness**")
 
-        await ctx.bot.db.execute("INSERT INTO rpg_mastery VALUES($1, $2, $3)",
-                                 ctx.author.id, 1, 0)
+        def skills_(m):
+            return m.author == ctx.author \
+                   and m.content.capitalize() in \
+                   ["Marksmanship", "Swordsmanship", "Necromancy",
+                    "Clairvoyance", "Pyromania", "Permafrost",
+                    "Insight", "Sorcery", "Telekinesis", "Swiftness"]
+
+        s_ = await ctx.bot.wait_for('message', check=skills_)
+        skill = s_.content.capitalize()
+        await ctx.bot.db.execute("INSERT INTO rpg_profile VALUES($1, $2, $3, $4, $5, $6)",
+                                 ctx.author.id, m_.content.capitalize(), 1, 0, 100, skill)
+
+        await ctx.bot.db.execute("INSERT INTO rpg_mastery VALUES($1, $2, $3, $4)",
+                                 ctx.author.id, skill, 1, 0)
         await ctx.send(f"You have successfully registered, type {ctx.prefix}help Rpg for commands.")
 
     @commands.command()
     async def top(self, ctx):
         """The Top Players of the RPG."""
         data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_profile ORDER BY lvl"
+            "SELECT * FROM rpg_profile ORDER BY level ASC"
         )
 
         p = []
@@ -101,16 +107,12 @@ class Rpg:
     async def quest(self, ctx):
         """Quests for the brave"""
 
-        class_ = (await fetch_user(ctx))[1]
-
         q = await ctx.bot.db.fetchrow(
-            "SELECT * FROM rpg_quests WHERE class = $1 ORDER BY RANDOM() LIMIT 1",
-            class_
+            "SELECT * FROM rpg_quests ORDER BY RANDOM() LIMIT 1",
         )
 
-        user = self.bot.get_user(q[2])
         embed = discord.Embed(color=0xba1c1c)
-        embed.set_author(name=f"{user.name} sends you on a quest!", icon_url=user.avatar_url)
+        embed.set_author(name=f"You have been sent on a quest!")
         embed.description = q[0]
         embed.set_footer(text="Type a number between 1-10")
         await ctx.send(embed=embed)
@@ -144,49 +146,63 @@ class Rpg:
 
     @admin.command(name="add-quest")
     @registered()
-    @commands.has_any_role("Peacemakers ☮", "Test Puppets")
+    @commands.has_permissions(manage_messages=True)
     async def add_quest(self, ctx, *, quest):
         """Adds a quest"""
-        await ctx.send("What class is this quest for? \n"
-                       "**Knight, Hunter, Sorcerer and Sentinel**")
 
-        def class_(m):
-            return m.author == ctx.author \
-                   and m.content.lower() in \
-                   ["knight", "hunter", "sorcerer", "sentinel"]
-
-        m_ = await ctx.bot.wait_for('message', check=class_)
-        await ctx.send(f"**{quest.title()}** is a quest for **{m_.content.capitalize()}s**")
-        await ctx.bot.db.execute("INSERT INTO rpg_quests VALUES($1, $2, $3)",
-                                 quest.title(), m_.content.capitalize(), ctx.author.id)
+        await ctx.bot.db.execute("INSERT INTO rpg_quests VALUES($1)", quest.title())
+        await ctx.send(f"Added {quest.title()}")
 
     @admin.command(name="add-item")
-    @commands.has_any_role("Peacemakers ☮", "Test Puppets")
+    @registered()
+    @commands.has_permissions(manage_messages=True)
     async def add_item(self, ctx, name: str, price: int,
                        damage: int, defense: int,
-                       mastery: int, description: str):
-        """Add's an item"""
+                       description: str):
+        """Add's an item to the shop
+
+**Example:** \*!admin add-item 'Example Sword' 10 20 15 'This is an Example'"""
         await ctx.send(
-            "What class is this item for? \n"
-            "**Knight, Hunter, Sorcerer and Sentinel**"
+            "What skill is required to purchase this item? \n"
+            "**Marksmanship, Swordsmanship, Necromancy, Clairvoyance, Pyromania, Permafrost, "
+            "Insight, Sorcery, Telekinesis and Swiftness**"
         )
 
-        def class_(m):
+        def skills_(m):
             return m.author == ctx.author \
-                   and m.content.lower() in \
-                   ["knight", "hunter", "sorcerer", "sentinel"]
+                   and m.content.capitalize() in \
+                   ["Marksmanship", "Swordsmanship", "Necromancy",
+                    "Clairvoyance", "Pyromania", "Permafrost",
+                    "Insight", "Sorcery", "Telekinesis", "Swiftness"]
 
-        m_ = await ctx.bot.wait_for('message', check=class_)
-        item = await item_class(class_=m_.content.lower())
+        skills = (await ctx.bot.wait_for('message', check=skills_)).content.capitalize()
+
+        await ctx.send(f"What level of **{skills}** is required to buy {name.title()}?")
+
+        def lvl(m):
+            return m.author == ctx.author and m.content.isdigit() <= 200
+
+        req = int((await ctx.bot.wait_for('message', check=lvl)).content)
+
+        await ctx.send("What type of item is this? \n"
+                       "**Sword, Bow, Spear, Dagger, Staff, Shield, Scroll, Ring, Hammer**")
+
+        def type_(m):
+            return m.author == ctx.author \
+                   and m.content.capitalize() in \
+                   ["Sword", "Bow", "Spear", "Dagger",
+                    "Staff", "Shield", "Scroll", "Ring", "Hammer"]
+
+        type_ = (await ctx.bot.wait_for('message', check=type_)).content.capitalize()
+
         await ctx \
             .send(f"**Name:** {name} \n"
-                  f"**Type:** {item} \n"
+                  f"**Type:** {type_} \n"
                   f"**Price:** {price} \n"
                   f"**Damage:** {damage} \n"
                   f"**Defense:** {defense} \n"
-                  f"**Class:** {m_.content.capitalize()} \n"
-                  f"**Mastery Level:** {mastery} \n"
-                  f"**Description:** {description.title()} \n"
+                  f"**Skills:** {skills} Level {req} \n"
+                  f"**Description:** {description} \n"
                   f"`Do you approve? Yes or No?`")
 
         def yon(m):
@@ -198,9 +214,9 @@ class Rpg:
         if y.content == "Yes":
             await ctx.bot.db.execute(
                 "INSERT INTO rpg_shop VALUES($1, $2, $3, $4, $5, $6, $7, $8)",
-                name.title(), item, price, damage, defense, m_.content.capitalize(), mastery, description.title())
+                name.title(), type_, price, damage, defense, skills, description.title(), req)
 
-            await ctx.send(f"{name.title()} has been created for class {m_.content.capitalize()}")
+            await ctx.send(f"**{name.title()}** has been created!")
         else:
             await ctx.send("Cancelled")
 
@@ -213,12 +229,16 @@ class Rpg:
 
         if data:
             p = []
-            t = {"Sword": "http://orig05.deviantart.net/092b/f/2010/302/e/3/ice_sword_by_myrdah-d31rxrg.jpg",
-                 "Bow": "http://orig14.deviantart.net/e9ae/f/2015/073/1/f/bows"
-                        "___9___________2015__by_rittik_designs-d8lp1ay.jpg",
-                 "Staff": "http://cliparts.co/cliparts/Aib/jyM/AibjyMkeT.png",
-                 "Crossbow": "http://img4.wikia.nocookie.net/__cb20130711033127/runescape/"
-                             "images/2/20/Off-hand_Ascension_crossbow_detail.png"}
+            t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
+                 "Bow": "https://cdn.discordapp.com/attachments/389275624163770378/502087339854659604/bow.png",
+                 "Spear": "https://cdn.discordapp.com/attachments/389275624163770378/502088345661341696/spear.png",
+                 "Dagger": "https://cdn.discordapp.com/attachments/389275624163770378/502089390747549696/dagger.png",
+                 "Staff": "https://cdn.discordapp.com/attachments/389275624163770378/502088392872558612/staff.png",
+                 "Shield": "https://cdn.discordapp.com/attachments/389275624163770378/502083911388626974/shield.png",
+                 "Scroll": "https://cdn.discordapp.com/attachments/389275624163770378/502082224900800513/scroll.png",
+                 "Ring": "https://cdn.discordapp.com/attachments/389275624163770378/502086417048928266/ring.png",
+                 "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
+                 }
             for i in data:
                 p.append(item_embed(i, t[i[1]]))
 
@@ -236,12 +256,16 @@ class Rpg:
 
         if data:
             p = []
-            t = {"Sword": "http://orig05.deviantart.net/092b/f/2010/302/e/3/ice_sword_by_myrdah-d31rxrg.jpg",
-                 "Bow": "http://orig14.deviantart.net/e9ae/f/2015/073/1/f/bows"
-                        "___9___________2015__by_rittik_designs-d8lp1ay.jpg",
-                 "Staff": "http://cliparts.co/cliparts/Aib/jyM/AibjyMkeT.png",
-                 "Crossbow": "http://img4.wikia.nocookie.net/__cb20130711033127/runescape/"
-                             "images/2/20/Off-hand_Ascension_crossbow_detail.png"}
+            t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
+                 "Bow": "https://cdn.discordapp.com/attachments/389275624163770378/502087339854659604/bow.png",
+                 "Spear": "https://cdn.discordapp.com/attachments/389275624163770378/502088345661341696/spear.png",
+                 "Dagger": "https://cdn.discordapp.com/attachments/389275624163770378/502089390747549696/dagger.png",
+                 "Staff": "https://cdn.discordapp.com/attachments/389275624163770378/502088392872558612/staff.png",
+                 "Shield": "https://cdn.discordapp.com/attachments/389275624163770378/502083911388626974/shield.png",
+                 "Scroll": "https://cdn.discordapp.com/attachments/389275624163770378/502082224900800513/scroll.png",
+                 "Ring": "https://cdn.discordapp.com/attachments/389275624163770378/502086417048928266/ring.png",
+                 "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
+                 }
 
             for i in data:
                 p.append(item_embed(i, t[i[1]]))
@@ -253,7 +277,10 @@ class Rpg:
     async def buy(self, ctx, *, item):
         """Buy an item from shop"""
         user = await fetch_user(ctx)
-        await purchase(ctx, item.title(), user[3], user[1])
+        skills = await fetch_skills(ctx)
+        item_ = await fetch_item(ctx, item.title(), user=None, inv='rpg_shop')
+        if item_[5] in skills:
+            await purchase(ctx, item.title(), user[3], item_[5])
 
     @commands.command()
     @registered()
@@ -354,6 +381,19 @@ class Rpg:
                                    f"they leveled up and earned 200$",
                               msg2=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
                                    f"they earned 200xp")
+                    lb = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", user.id)
+                    if lb:
+                        await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", user.id)
+                    else:
+                        await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
+                                                 user.id, 1, 0)
+
+                    lb2 = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", ctx.author.id)
+                    if lb2:
+                        await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", ctx.author.id)
+                    else:
+                        await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
+                                                 ctx.author.id, 0, 1)
                 elif hp2 <= 0:
                     await add_xp(ctx, xp=200)
                     await lvl(ctx, mon=200,
@@ -361,6 +401,19 @@ class Rpg:
                                    f"they leveled up and earned 200$",
                               msg2=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
                                    f"they earned 200xp")
+                    lb = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", ctx.author.id)
+                    if lb:
+                        await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", ctx.author.id)
+                    else:
+                        await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
+                                                 ctx.author.id, 1, 0)
+
+                    lb2 = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", user.id)
+                    if lb2:
+                        await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", user.id)
+                    else:
+                        await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
+                                                 user.id, 0, 1)
                 else:
                     await ctx.send("It's a tie! Since there are no winners, there is no rewards!")
 
@@ -368,47 +421,37 @@ class Rpg:
     @registered()
     async def profile(self, ctx, user: discord.Member = None):
         """Your current stats."""
+        if not user:
+            user = ctx.author
 
-        async with ctx.typing():
-            if not user:
-                user = ctx.author
+        stats = await fetch_user(ctx, user.id)
+        embed = discord.Embed(color=0xba1c1c)
+        embed.description = f"**Level:** {stats[2]} \n **XP:** {stats[3]}"
+        embed.set_author(name=user.name, icon_url=user.avatar_url)
+        embed.add_field(name="Statistics", value=f"**Class:** {stats[1]} \n"
+                                                 f"**Balance:** {stats[4]} \n"
+                                                 f"**Equipped Weapon:** {stats[6]} \n"
+                                                 f"**Main Skill:** {stats[5]}", inline=True)
 
-            you = await fetch_user(ctx, user.id)
-            youm = await fetch_mastery(ctx, user.id)
-            async with aiohttp.ClientSession() as s:
-                async with s.get(user.avatar_url_as(format="png", size=512)) as r:
-                    pfp = await r.read()
+        skills = await ctx.bot.db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
 
-            font = ImageFont.truetype("fonts/gothic.ttf", 18)
+        p = []
+        for i in skills:
+            p.append(f"**{i[1]}** - Level {i[2]} \n")
 
-            def text():
-                image = Image.open("img/rpgp.png")
-                profile = Image.open(BytesIO(pfp))
-                profile = profile.resize((188, 188))
-                # Class
-                drawtext(278, 49, text=you[1], font=font, image=image)
+        embed.add_field(name="Skills", value=''.join(p), inline=True)
 
-                # Level
-                drawtext(280, 91, text=str(you[2]), font=font, image=image)
+        iv = await ctx.bot.db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", user.id)
+        if iv:
+            inv = []
+            for i in iv:
+                inv.append(f"{i[0]} \n")
 
-                # Experience Points
-                drawtext(385, 134, text=str(you[4]), font=font, image=image)
+            embed.add_field(name="Inventory", value=''.join(inv), inline=False)
+        else:
+            embed.add_field(name="Inventory", value="None", inline=False)
 
-                # Mastery Level
-                drawtext(352, 178, text=str(youm[1]), font=font, image=image)
-
-                # Equipped
-                drawtext(388, 221, text=str(you[5]), font=font, image=image)
-
-                image.paste(profile, (15, 50))
-                b = BytesIO()
-                b.seek(0)
-                image.save(b, "png")
-                return b.getvalue()
-
-            fp = await ctx.bot.loop.run_in_executor(None, text)
-            file = discord.File(filename="profile.png", fp=fp)
-            await ctx.send(file=file)
+        await ctx.send(embed=embed)
 
     @commands.command()
     @registered()
@@ -417,18 +460,36 @@ class Rpg:
         """Increase your mastery level"""
 
         chance = random.randint(1, 100)
+        await ctx.send("Which skill do you want to master? **Marksmanship, Swordsmanship, Necromancy, Clairvoyance, "
+                       "Pyromania, Permafrost, Insight, Sorcery, Telekinesis, Swiftness**")
+
+        def skills_(m):
+            return m.author == ctx.author \
+                   and m.content.capitalize() in \
+                   ["Marksmanship", "Swordsmanship", "Necromancy",
+                    "Clairvoyance", "Pyromania", "Permafrost",
+                    "Insight", "Sorcery", "Telekinesis", "Swiftness"]
+
+        skill = (await ctx.bot.wait_for('message', check=skills_)).content.capitalize()
+
+        u = await fetch_mastery(ctx, skill)
+        if u:
+            pass
+        else:
+            await ctx.bot.db.execute("INSERT INTO rpg_mastery VALUES($1, $2, $3, $4)",
+                                     ctx.author.id, skill, 1, 0)
 
         if chance > 50 < 75:
             await add_mastery_xp(ctx, 50)
-            await mastery_lvl(ctx, 100, msg1=f"You have done well and leveled up your mastery and earned 100$",
+            await mastery_lvl(ctx, 100, skill, msg1=f"You have done well and leveled up your mastery and earned 100$",
                               msg2=f"You have done well, but you earned 50xp")
         elif chance < 50:
             await add_mastery_xp(ctx, 10)
-            await mastery_lvl(ctx, 10, msg1=f"You have done poorly, but you leveled up and earned 10$",
+            await mastery_lvl(ctx, 10, skill, msg1=f"You have done poorly, but you leveled up and earned 10$",
                               msg2=f"You have done poorly, but you earned 10xp")
         else:
             await add_mastery_xp(ctx, 100)
-            await mastery_lvl(ctx, 250, msg1=f"You have done great and leveled up your mastery and earned 250$",
+            await mastery_lvl(ctx, 250, skill, msg1=f"You have done great and leveled up your mastery and earned 250$",
                               msg2=f"You have done great, but you earned 100xp")
 
     @commands.command()
@@ -438,7 +499,7 @@ class Rpg:
         if not user:
             user = ctx.author
 
-        balance = (await fetch_user(ctx, user.id))[3]
+        balance = (await fetch_user(ctx, user.id))[4]
         embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=user.display_name, icon_url=user.avatar_url)
         embed.description = f"You have {balance}$"
@@ -538,18 +599,105 @@ class Rpg:
             "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price",
             user.id)
 
-        t = {"Sword": "http://orig05.deviantart.net/092b/f/2010/302/e/3/ice_sword_by_myrdah-d31rxrg.jpg",
-             "Bow": "http://orig14.deviantart.net/e9ae/f/2015/073/1/f/bows"
-                    "___9___________2015__by_rittik_designs-d8lp1ay.jpg",
-             "Staff": "http://cliparts.co/cliparts/Aib/jyM/AibjyMkeT.png",
-             "Crossbow": "http://img4.wikia.nocookie.net/__cb20130711033127/runescape/"
-                         "images/2/20/Off-hand_Ascension_crossbow_detail.png"}
+        t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
+             "Bow": "https://cdn.discordapp.com/attachments/389275624163770378/502087339854659604/bow.png",
+             "Spear": "https://cdn.discordapp.com/attachments/389275624163770378/502088345661341696/spear.png",
+             "Dagger": "https://cdn.discordapp.com/attachments/389275624163770378/502089390747549696/dagger.png",
+             "Staff": "https://cdn.discordapp.com/attachments/389275624163770378/502088392872558612/staff.png",
+             "Shield": "https://cdn.discordapp.com/attachments/389275624163770378/502083911388626974/shield.png",
+             "Scroll": "https://cdn.discordapp.com/attachments/389275624163770378/502082224900800513/scroll.png",
+             "Ring": "https://cdn.discordapp.com/attachments/389275624163770378/502086417048928266/ring.png",
+             "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
+             }
 
         p = []
         for i in data:
             p.append(inventory_embed(ctx, i, t[i[1]]))
 
         await SimplePaginator(extras=p).paginate(ctx)
+
+    @commands.command()
+    @registered()
+    async def skills(self, ctx, user: discord.Member=None):
+        if not user:
+            user = ctx.author
+
+        skills = await ctx.bot.db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
+
+        p = []
+        for i in skills:
+            p.append(f"**{i[1]}** - Level {i[2]} \n")
+
+        embed=discord.Embed(color=0xba1c1c)
+        embed.set_author(name=f"{user.name}'s skills", icon_url=user.avatar_url)
+        embed.description = ''.join(p)
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    @registered()
+    async def drink(self, ctx, user: discord.Member):
+        if user.bot or user == ctx.author:
+            return await ctx.send("Must not be a bot or yourself.")
+
+        await ctx.send(f"{user.mention} do you accept {ctx.author.mention}'s challenge? \n"
+                       f"Yes or No?")
+
+        def check(m):
+            return m.author == user and m.content.capitalize() in ["Yes", "No"]
+
+        yon = (await ctx.bot.wait_for('message', check=check)).content
+
+        if yon == "Yes":
+            choice = random.choice([ctx.author.name, user.name])
+            if choice == ctx.author.name:
+                xp = random.randint(10, 100)
+                mon = random.randint(10, 100)
+                await add_xp(ctx, xp)
+                await lvl(ctx, mon,
+                          msg1=f"{ctx.author.mention} won the drinking contest, leveled up, and earned {mon}$",
+                          msg2=f"{ctx.author.mention} won the drinking contest, and earned {xp}xp")
+            else:
+                xp = random.randint(10, 100)
+                mon = random.randint(10, 100)
+                await add_xp(ctx, xp)
+                await lvl(ctx, mon,
+                          msg1=f"{user.mention} won the drinking contest, leveled up, and earned {mon}$",
+                          msg2=f"{user.mention} won the drinking contest, and earned {xp}xp", user=user.id)
+        else:
+            await ctx.send("I guess they didn't want to get drunk tonight.")
+
+    @commands.command()
+    @registered()
+    @commands.cooldown(2, 600, commands.BucketType.user)
+    async def coinflip(self, ctx, *, choice):
+        choice = choice.capitalize()
+        if choice not in ["Heads", "Tails"]:
+            return await ctx.send(f"Please type `Heads` or `Tails` instead of `{choice}`")
+
+        if choice == "Heads":
+            c = random.choice(["Heads", "Tails"])
+            if c == "Heads":
+                await add_xp(ctx, 100)
+                await lvl(ctx, 200,
+                          msg1=f"{ctx.author.mention} It was **Heads!** You leveled up and earned 200$",
+                          msg2=f"{ctx.author.mention} It was **Heads!** You earned 100xp")
+            else:
+                await add_xp(ctx, 50)
+                await lvl(ctx, 100,
+                          msg1=f"{ctx.author.mention} Sorry it was **Tails!** You leveled up and earned 100$",
+                          msg2=f"{ctx.author.mention} Sorry it was **Tails!** You earned 50xp")
+        elif choice == "Tails":
+            c = random.choice(["Tails", "Heads"])
+            if c == "Tails":
+                await add_xp(ctx, 100)
+                await lvl(ctx, 200,
+                          msg1=f"{ctx.author.mention} It was **Tails!** You leveled up and earned 200$",
+                          msg2=f"{ctx.author.mention} It was **Tails!** You earned 100xp")
+            else:
+                await add_xp(ctx, 50)
+                await lvl(ctx, 100,
+                          msg1=f"{ctx.author.mention} Sorry it was **Head!s** You leveled up and earned 100$",
+                          msg2=f"{ctx.author.mention} Sorry it was **Heads!** You earned 50xp")
 
 
 def setup(bot):
