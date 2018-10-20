@@ -37,11 +37,11 @@ def unregistered():
 def equipped():
     async def predicate(ctx):
         data = await ctx.bot.db.fetch(
-            "SELECT equipped FROM rpg_profile WHERE id=$1",
+            "SELECT equip FROM rpg_profile WHERE id=$1",
             ctx.author.id
         )
 
-        if not data:
+        if data is None:
             raise Error(f"You need to have an item equipped `{ctx.prefix}equip <item>`")
 
         return True
@@ -593,8 +593,8 @@ class Rpg:
     async def upgrade(self, ctx, *, item):
         """Upgrade the statistics of a weapon."""
 
-        c = (await fetch_user(ctx))[1]
-        i = await fetch_item(ctx, item, c)
+        c = await fetch_user(ctx)
+        i = await fetch_item(ctx, item.title())
 
         await ctx.send(f"Are you sure you want to upgrade **{i[0]}?**  Yes or No?\n"
                        f"Modified Statistics: **Price:** {i[2] * 2}, **Damage:** {i[3] * 2}, **Defense:** {i[4] * 2}")
@@ -603,11 +603,12 @@ class Rpg:
             return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
 
         msg = await ctx.bot.wait_for('message', check=check)
-        msg = msg.content
+        msg = msg.content.capitalize()
         if msg == "Yes":
-            if c[3] >= i[2] * 2:
+            if c[4] >= i[2] * 2:
                 await ctx.bot.db.execute(
-                    "UPDATE rpg_inventory SET price=$1, damage=$2, defense=$3 WHERE name=$4 AND owner=$5",
+                    "UPDATE rpg_inventory SET price=$1, damage=$2, defense=$3, upgrades = upgrades + 1 "
+                    "WHERE name=$4 AND owner=$5",
                     i[2] * 2, i[3] * 2, i[4] * 2, i[0], i[7])
                 await ctx.send(f"Upgraded **{item.title()}**'s statistics.")
             else:
@@ -624,17 +625,6 @@ class Rpg:
         data = await ctx.bot.db.fetch(
             "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price",
             user.id)
-
-        t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
-             "Bow": "https://cdn.discordapp.com/attachments/389275624163770378/502087339854659604/bow.png",
-             "Spear": "https://cdn.discordapp.com/attachments/389275624163770378/502088345661341696/spear.png",
-             "Dagger": "https://cdn.discordapp.com/attachments/389275624163770378/502089390747549696/dagger.png",
-             "Staff": "https://cdn.discordapp.com/attachments/389275624163770378/502088392872558612/staff.png",
-             "Shield": "https://cdn.discordapp.com/attachments/389275624163770378/502083911388626974/shield.png",
-             "Scroll": "https://cdn.discordapp.com/attachments/389275624163770378/502082224900800513/scroll.png",
-             "Ring": "https://cdn.discordapp.com/attachments/389275624163770378/502086417048928266/ring.png",
-             "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
-             }
 
         p = []
         for i in data:
@@ -724,6 +714,23 @@ class Rpg:
                 await lvl(ctx, 100,
                           msg1=f"{ctx.author.mention} Sorry it was **Head!s** You leveled up and earned 100$",
                           msg2=f"{ctx.author.mention} Sorry it was **Heads!** You earned 50xp")
+
+    @commands.command()
+    @registered()
+    async def item(self, ctx, *, choice):
+        t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
+             "Bow": "https://cdn.discordapp.com/attachments/389275624163770378/502087339854659604/bow.png",
+             "Spear": "https://cdn.discordapp.com/attachments/389275624163770378/502088345661341696/spear.png",
+             "Dagger": "https://cdn.discordapp.com/attachments/389275624163770378/502089390747549696/dagger.png",
+             "Staff": "https://cdn.discordapp.com/attachments/389275624163770378/502088392872558612/staff.png",
+             "Shield": "https://cdn.discordapp.com/attachments/389275624163770378/502083911388626974/shield.png",
+             "Scroll": "https://cdn.discordapp.com/attachments/389275624163770378/502082224900800513/scroll.png",
+             "Ring": "https://cdn.discordapp.com/attachments/389275624163770378/502086417048928266/ring.png",
+             "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
+             }
+
+        item = await fetch_item(ctx, choice.capitalize(), None, 'rpg_shop')
+        await ctx.send(embed=item_embed(item, t[item[1]]))
 
 
 def setup(bot):
