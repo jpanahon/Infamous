@@ -37,11 +37,11 @@ def unregistered():
 def equipped():
     async def predicate(ctx):
         data = await ctx.bot.db.fetch(
-            "SELECT equip FROM rpg_profile WHERE id=$1",
+            "SELECT equipped FROM rpg_profile WHERE id=$1",
             ctx.author.id
         )
 
-        if data is None:
+        if not data:
             raise Error(f"You need to have an item equipped `{ctx.prefix}equip <item>`")
 
         return True
@@ -314,13 +314,11 @@ class Rpg:
     @registered()
     async def equip(self, ctx, *, item):
         """Equip an item to use in battle"""
-        u = await fetch_user(ctx)
-        i = await fetch_item(ctx, item.title(), u[1])
-
+        i = await fetch_item(ctx, item.title())
         if i:
             await ctx.send(f"**{i[0]}** has been equipped and can be used for battle.")
             await ctx.bot.db \
-                .execute("UPDATE rpg_profile SET equip = $1 WHERE id=$2",
+                .execute("UPDATE rpg_profile SET equipped = $1 WHERE id=$2",
                          i[0], ctx.author.id)
         else:
             await ctx.send("You don't have this item.")
