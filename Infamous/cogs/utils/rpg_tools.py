@@ -160,37 +160,7 @@ async def remove_money(ctx, bal, user=None):
     await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
                              bal, user)
 
-
-async def purchase(ctx, item, money, skill, user=None):
-    if not user:
-        user = ctx.author.id
-
-    i = await fetch_item(ctx, item, user, inv='rpg_shop')
-    mast = (await fetch_mastery(ctx, skill=i[5]))[2]
-    if i[2] >= money and i[5] == skill and i[7] == mast:
-        await ctx.send(f"Do you really want to buy **{i[0]}** \n"
-                       f"Price: {i[2]}$, Yes or No?")
-
-        def check(m):
-            return m.author == user and m.content in ["Yes", "No"]
-
-        msg = await ctx.bot.wait_for('message', check=check)
-        msg = msg.content
-
-        if msg == "Yes":
-            await ctx.send(f"{i[0]} has been added to your inventory.")
-
-            await ctx.bot.db.execute(
-                "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                i[0], i[1], i[2], i[3], i[4], i[5], i[6], user, 0
-            )
-        else:
-            await ctx.send(f"Guess you don't want to spend **{i[2]}$**")
-    else:
-        return await ctx.send(f"Sorry you need {i[2] - money}$ more to purchase! "
-                              f"Or.. You don't have the right skill or skill level.")
-
-
+    
 def inventory_embed(ctx, info, thumbnail):
     embed = discord.Embed(color=0xba1c1c)
     embed.set_author(name=f"{ctx.bot.get_user(info[7]).name}'s inventory",
