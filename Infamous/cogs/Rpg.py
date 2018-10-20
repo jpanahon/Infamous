@@ -625,7 +625,18 @@ class Rpg:
         data = await ctx.bot.db.fetch(
             "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price",
             user.id)
-
+        
+        t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
+             "Bow": "https://cdn.discordapp.com/attachments/389275624163770378/502087339854659604/bow.png",
+             "Spear": "https://cdn.discordapp.com/attachments/389275624163770378/502088345661341696/spear.png",
+             "Dagger": "https://cdn.discordapp.com/attachments/389275624163770378/502089390747549696/dagger.png",
+             "Staff": "https://cdn.discordapp.com/attachments/389275624163770378/502088392872558612/staff.png",
+             "Shield": "https://cdn.discordapp.com/attachments/389275624163770378/502083911388626974/shield.png",
+             "Scroll": "https://cdn.discordapp.com/attachments/389275624163770378/502082224900800513/scroll.png",
+             "Ring": "https://cdn.discordapp.com/attachments/389275624163770378/502086417048928266/ring.png",
+             "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
+             }
+        
         p = []
         for i in data:
             p.append(inventory_embed(ctx, i, t[i[1]]))
