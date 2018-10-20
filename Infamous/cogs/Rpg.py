@@ -92,7 +92,7 @@ class Rpg:
     async def top(self, ctx):
         """The Top Players of the RPG."""
         data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_profile ORDER BY level ASC"
+            "SELECT * FROM rpg_profile ORDER BY level DESC"
         )
 
         p = []
@@ -224,7 +224,7 @@ class Rpg:
     async def shop(self, ctx):
         """Items that are available"""
         data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_shop ORDER BY price"
+            "SELECT * FROM rpg_shop ORDER BY price DESC"
         )
 
         if data:
@@ -250,7 +250,7 @@ class Rpg:
         """Items you can buy."""
         user = await fetch_user(ctx)
         data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_shop WHERE class = $1 ORDER BY price BETWEEN 0 AND $2",
+            "SELECT * FROM rpg_shop WHERE class = $1 ORDER BY price BETWEEN 0 AND $2 DESC",
             user[1], user[3]
         )
 
@@ -278,9 +278,37 @@ class Rpg:
         """Buy an item from shop"""
         user = await fetch_user(ctx)
         skills = await fetch_skills(ctx)
-        item_ = await fetch_item(ctx, item.title(), user=None, inv='rpg_shop')
-        if item_[5] in skills:
-            await purchase(ctx, item.title(), user[3], item_[5])
+        print(skills)
+        i = await fetch_item(ctx, item.title(), None, 'rpg_shop')
+        skill = None
+        if i[5] in skills:
+            skill = i[5]
+
+        mast = (await fetch_mastery(ctx, skill=i[5], user=ctx.author.id))[2]
+        if user[4] >= i[2]:
+            if i[5] == skill and i[7] == mast:
+                await ctx.send(f"Do you really want to buy **{i[0]}** \n"
+                               f"Price: {i[2]}$, Yes or No?")
+
+                def check(m):
+                    return m.author == ctx.author and m.content in ["Yes", "No"]
+
+                msg = await ctx.bot.wait_for('message', check=check)
+                msg = msg.content
+
+                if msg == "Yes":
+                    await ctx.send(f"{i[0]} has been added to your inventory.")
+
+                    await ctx.bot.db.execute(
+                        "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                        i[0], i[1], i[2], i[3], i[4], i[5], i[6], user[0], 0
+                    )
+                else:
+                    await ctx.send(f"Guess you don't want to spend **{i[2]}$**")
+            else:
+                return await ctx.send("You don't have the right skill or skill level.")
+        else:
+            return await ctx.send(f"Sorry you need {i[2] - user[2]}$ more to purchase!")
 
     @commands.command()
     @registered()
