@@ -182,7 +182,7 @@ async def purchase(ctx, item, money, skill, user=None):
 
             await ctx.bot.db.execute(
                 "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-
+                i[0], i[1], i[2], i[3], i[4], i[5], i[6], user, 0
             )
         else:
             await ctx.send(f"Guess you don't want to spend **{i[2]}$**")
