@@ -1,5 +1,4 @@
 import discord
-from PIL import ImageDraw
 
 
 async def lvl(ctx, mon, msg1, msg2, user=None):
@@ -9,13 +8,13 @@ async def lvl(ctx, mon, msg1, msg2, user=None):
     lvl_ = await ctx.bot.db.fetchrow(
         "SELECT * FROM rpg_profile WHERE id=$1", user)
 
-    if lvl_['xp'] > lvl_['lvl'] * 100:
+    if lvl_['xp'] >= lvl_['level'] * 50:
         await ctx.send(
             msg1
         )
         await ctx.bot.db.execute(
-            "UPDATE rpg_profile SET lvl = $1 WHERE id=$2",
-            lvl_['lvl'] + 1, user
+            "UPDATE rpg_profile SET level = $1 WHERE id=$2",
+            lvl_['level'] + 1, user
         )
 
         await ctx.bot.db.execute(
@@ -31,25 +30,25 @@ async def lvl(ctx, mon, msg1, msg2, user=None):
         await ctx.send(msg2)
 
 
-async def mastery_lvl(ctx, mon, msg1, msg2, user=None):
+async def mastery_lvl(ctx, mon, skill, msg1, msg2, user=None):
     if not user:
         user = ctx.author.id
 
     lvl_ = await ctx.bot.db.fetchrow(
-        "SELECT * FROM rpg_profile WHERE id=$1", user)
+        "SELECT * FROM rpg_mastery WHERE id=$1 AND skill=$2", user, skill)
 
-    if lvl_['xp'] > lvl_['lvl'] * 100:
+    if lvl_['xp'] >= lvl_['level'] * 50:
         await ctx.send(
             msg1
         )
         await ctx.bot.db.execute(
-            "UPDATE rpg_profile SET lvl = $1 WHERE id=$2",
-            lvl_['lvl'] + 1, user
+            "UPDATE rpg_mastery SET level = $1 WHERE id=$2 AND skill=$3",
+            lvl_['level'] + 1, user, skill
         )
 
         await ctx.bot.db.execute(
-            "UPDATE rpg_profile SET xp = 0 WHERE id=$1",
-            user
+            "UPDATE rpg_mastery SET xp = 0 WHERE id=$1 AND skill=$2",
+            user, skill
         )
 
         await ctx.bot.db.execute(
@@ -99,48 +98,23 @@ async def fetch_user(ctx, user=None):
     return p
 
 
-async def fetch_mastery(ctx, user=None):
+async def fetch_mastery(ctx, skill, user=None):
     if not user:
         user = ctx.author.id
 
-    p = await ctx.bot.db.fetchrow("SELECT * FROM rpg_mastery WHERE id=$1",
-                                  user)
+    p = await ctx.bot.db.fetchrow("SELECT * FROM rpg_mastery WHERE id=$1 AND skill=$2",
+                                  user, skill)
 
     return p
-
-
-async def item_class(class_):
-    if class_ == "knight":
-        return "Sword"
-
-    if class_ == "hunter":
-        return "Bow"
-
-    if class_ == "sorcerer":
-        return "Staff"
-
-    if class_ == "sentinel":
-        return "Crossbow"
-
-
-def drawtext(x, y, text, font, image):
-    draw = ImageDraw.Draw(image)
-    draw.text((x + 2, y), text, fill='black', font=font)
-    draw.text((x - 2, y), text, fill='black', font=font)
-    draw.text((x, y + 2), text, fill='black', font=font)
-    draw.text((x, y - 2), text, fill='black', font=font)
-    draw.text((x, y), text, fill='white', font=font)
-    return draw
 
 
 def item_embed(item, thumbnail):
     embed = discord.Embed(color=0xba1c1c)
     embed.set_author(name=f"{item[0]} | Price {item[2]}$")
-    embed.description = item[7]
+    embed.description = item[6]
     embed.add_field(name="Performance Stats", value=f"**Damage:** {item[3]} \n"
                                                     f"**Defense:** {item[4]}")
-    embed.add_field(name="Requirements", value=f"**Class:** {item[5]} \n"
-                                               f"**Mastery Level:** {item[6]}", inline=True)
+    embed.add_field(name="Requirements", value=f"**Required Skill:** {item[5]} Level {item[7]}", inline=True)
     embed.set_footer(text=f"Type: {item[1]}")
     embed.set_image(url=thumbnail)
 
@@ -148,20 +122,23 @@ def item_embed(item, thumbnail):
 
 
 async def lb_embed(ctx, pfp):
-    mast = await ctx.bot.db.fetchrow("SELECT * FROM rpg_mastery WHERE id=$1",
-                                     pfp[0])
     embed = discord.Embed(color=0xba1c1c)
-    member = ctx.guild.get_member(pfp[0])
+    member = ctx.bot.get_user(pfp[0])
     embed.set_author(name=member.name)
     embed.description = f"**Level:** {pfp[2]} \n" \
                         f"**Class:** {pfp[1]} \n" \
-                        f"**Mastery Level:** {mast[1]}"
-
-    embed.set_thumbnail(url=member.avatar_url)
+                        f"**Main Skill:** {pfp[5]}"
+    duels = await ctx.bot.db.fetchrow("SELECT * FROM rpg_duels WHERE id=$1", member.id)
+    if duels:
+        embed.add_field(name="Fighting Statistics", value=f"**Wins:** {duels[1]} \n"
+                                                          f"**Losses:** {duels[2]}", inline=True)
+    else:
+        embed.add_field(name="Fighting Statistics", value="User has not participated in duels")
+    embed.set_image(url=member.avatar_url_as(format='png', size=1024))
     return embed
 
 
-async def fetch_item(ctx, name, class_, user=None, inv=None):
+async def fetch_item(ctx, name, user=None, inv=None):
     if not inv:
         inv = "rpg_inventory"
 
@@ -169,7 +146,7 @@ async def fetch_item(ctx, name, class_, user=None, inv=None):
         user = ctx.author.id
 
     if inv == "rpg_shop":
-        item = await ctx.bot.db.fetchrow("SELECT * FROM rpg_shop WHERE name=$1 AND class=$2", name, class_)
+        item = await ctx.bot.db.fetchrow("SELECT * FROM rpg_shop WHERE name=$1", name)
     else:
         item = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2", name, user)
 
@@ -184,13 +161,13 @@ async def remove_money(ctx, bal, user=None):
                              bal, user)
 
 
-async def purchase(ctx, item, money, class_, user=None):
+async def purchase(ctx, item, money, skill, user=None):
     if not user:
         user = ctx.author.id
 
-    i = await fetch_item(ctx, item, class_, user, 'rpg_shop')
-    m = await fetch_mastery(ctx, user)
-    if i[2] >= money and i[5] == class_ and i[6] == m[1]:
+    i = await fetch_item(ctx, item, user, inv='rpg_shop')
+    mast = (await fetch_mastery(ctx, skill=i[5]))[2]
+    if i[2] >= money and i[5] == skill and i[7] == mast:
         await ctx.send(f"Do you really want to buy **{i[0]}** \n"
                        f"Price: {i[2]}$, Yes or No?")
 
@@ -205,16 +182,13 @@ async def purchase(ctx, item, money, class_, user=None):
 
             await ctx.bot.db.execute(
                 "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                i[0], i[1],
-                i[2], i[3],
-                i[4], i[5],
-                i[6], user,
-                i[7])
+
+            )
         else:
             await ctx.send(f"Guess you don't want to spend **{i[2]}$**")
     else:
         return await ctx.send(f"Sorry you need {i[2] - money}$ more to purchase! "
-                              f"Or.. You don't have the right class or mastery level")
+                              f"Or.. You don't have the right skill or skill level.")
 
 
 def inventory_embed(ctx, info, thumbnail):
@@ -224,6 +198,20 @@ def inventory_embed(ctx, info, thumbnail):
     embed.description = (f"**Name:** {info[0]} \n"
                          f"**Price:** {info[2]} \n"
                          f"**Damage:** {info[3]} \n"
-                         f"**Defense:** {info[4]}")
+                         f"**Defense:** {info[4]} \n"
+                         f"**Skill:** {info[6]}")
     embed.set_image(url=thumbnail)
     return embed
+
+
+async def fetch_skills(ctx, user=None):
+    if not user:
+        user = ctx.author
+
+    skills = await ctx.bot.db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
+
+    p = []
+    for i in skills:
+        p.append(i[0])
+
+    return p
