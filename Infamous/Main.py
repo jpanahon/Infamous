@@ -48,7 +48,6 @@ class Bot(commands.Bot):
         self.app_info = None
         self.loop.create_task(self.load_all_extensions())
         self.loop.create_task(self.playing_status())
-        self.loop.create_task(self.fact_of_the_day())
         self.remove_command("help")
         self.path = os.path.dirname(os.path.realpath(__file__))
         self.launch_time = datetime.datetime.utcnow()
@@ -112,15 +111,6 @@ class Bot(commands.Bot):
             return
         await self.process_commands(message)
     
-    async def fact_of_the_day(self):
-        await self.wait_until_ready()
-        while not self.is_closed():
-            channel = self.get_channel(414069942867197963)
-            type = random.choice(['math', 'trivia', 'year', 'date'])
-            async with self.session.get(f"http://numbersapi.com/random/{type}?json") as r:
-                resp = await r.json()
-            await channel.send(f"**FOTD:** {resp['text']}")
-            await asyncio.sleep(86400)
-
+  
 loop = asyncio.get_event_loop()
 loop.run_until_complete(run())
