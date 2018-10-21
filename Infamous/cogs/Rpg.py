@@ -281,13 +281,14 @@ class Rpg:
         skills = await fetch_skills(ctx)
         print(skills)
         i = await fetch_item(ctx, item.title(), None, 'rpg_shop')
-        skill = None
         if i[5] in skills:
             skill = i[5]
+        else:
+            return await ctx.send("You don't have the right skill")
 
         mast = (await fetch_mastery(ctx, skill=i[5], user=ctx.author.id))[2]
         if user[4] >= i[2]:
-            if i[5] == skill and i[7] == mast:
+            if i[5] == skill and mast >= i[7]:
                 await ctx.send(f"Do you really want to buy **{i[0]}** \n"
                                f"Price: {i[2]}$, Yes or No?")
 
@@ -536,37 +537,44 @@ class Rpg:
     @registered()
     async def daily(self, ctx):
         """Grab your daily rewards."""
-        money = random.randint(100, 1000)
-        await add_money(ctx, money)
+        try:
+            money = random.randint(100, 1000)
+            await add_money(ctx, money)
 
-        skills = await fetch_skills(ctx)
-        skills = random.choice(skills)
-        items = await ctx.bot.db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", ctx.author.id)
-        p = []
-        for i in items:
-            p.append(i[0])
-        item = await ctx.bot.db.fetchrow("SELECT * FROM rpg_shop WHERE level < 3 ORDER BY RANDOM() LIMIT 1",
-                                         skills)
-        if item[0] in p:
-            skills_ = await fetch_skills(ctx)
-            skills_ = random.choice(skills_)
-            item_ = await ctx.bot.db.fetchrow(
-                "SELECT * FROM rpg_shop WHERE skill=$1, level < 3 AND name != $1 ORDER BY RANDOM() LIMIT 1",
-                skills_)
+            skills = await fetch_skills(ctx)
+            skills = random.choice(skills)
+            items = await ctx.bot.db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", ctx.author.id)
+            p = []
+            for i in items:
+                p.append(i[0])
+            item = await ctx.bot.db.fetchrow(
+                "SELECT * FROM rpg_shop WHERE skill=$1 AND level < 3 ORDER BY RANDOM() LIMIT 1",
+                skills)
+            if item[0] in p:
+                skills_ = await fetch_skills(ctx)
+                skills_ = random.choice(skills_)
+                item_ = await ctx.bot.db.fetchrow(
+                    "SELECT * FROM rpg_shop WHERE skill=$1, level < 3 AND name != $1 ORDER BY RANDOM() LIMIT 1",
+                    skills_)
 
-            await ctx.bot.db.execute(
-                "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                item_[0], item_[1], item_[2], item_[3], item_[4], item_[5], item_[6], ctx.author.id, 0
-            )
+                await ctx.bot.db.execute(
+                    "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                    item_[0], item_[1], item_[2], item_[3], item_[4], item_[5], item_[6], ctx.author.id, 0
+                )
 
-            await ctx.send(f"For your patience, you earned {money}$ and **{item_[0]}**")
-        else:
-            await ctx.bot.db.execute(
-                "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                item[0], item[1], item[2], item[3], item[4], item[5], item[6], ctx.author.id, 0
-            )
+                await ctx.send(f"For your patience, you earned {money}$ and **{item_[0]}**")
+            else:
+                await ctx.bot.db.execute(
+                    "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                    item[0], item[1], item[2], item[3], item[4], item[5], item[6], ctx.author.id, 0
+                )
 
-            await ctx.send(f"For your patience, you earned {money}$ and **{item[0]}**")
+                await ctx.send(f"For your patience, you earned {money}$ and **{item[0]}**")
+        except Exception as e:
+            print(e)
+            money = random.randint(100, 1000)
+            await ctx.send(f"There was no item for you but you still earned {money}$")
+            await add_money(ctx, money)
 
     @commands.command()
     @registered()
@@ -855,9 +863,9 @@ be found in {ctx.prefix}help Rpg**
                                      item1.title(), ctx.author.id)
             await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
                                      item2.title(), ctx.author.id)
-            await ctx.bot.db.execute("INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6 $7, $8, $9",
-                                     merge(item1.title(), item2.title()), merge(i1[1], i2[1]), i1[2] + i2[2],
-                                     i1[3] + i2[3], i1[4] + i2[4], merge(i1[5], i2[5]), merge(i1[6], i2[6]),
+            await ctx.bot.db.execute("INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                                     merge(item1.title(), item2.title()), i1[1], i1[2] + i2[2],
+                                     i1[3] + i2[3], i1[4] + i2[4], i1[5], merge(i1[6], i2[6]),
                                      ctx.author.id, 0
                                      )
             await remove_money(ctx, i1[2] + i2[2])
