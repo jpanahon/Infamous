@@ -538,15 +538,19 @@ class Rpg:
         """Grab your daily rewards."""
         money = random.randint(100, 1000)
         await add_money(ctx, money)
+
+        skills = await fetch_skills(ctx)
+        skills = random.choice(skills)
         items = await ctx.bot.db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", ctx.author.id)
         p = []
         for i in items:
             p.append(i[0])
-        item = await ctx.bot.db.execute("SELECT * FROM rpg_shop WHERE level < 3 ORDER BY RANDOM() LIMIT 1")
+        item = await ctx.bot.db.fetchrow("SELECT * FROM rpg_shop WHERE level < 3 ORDER BY RANDOM() LIMIT 1",
+                                         skills)
         if item[0] in p:
             skills_ = await fetch_skills(ctx)
             skills_ = random.choice(skills_)
-            item_ = await ctx.bot.db.execute(
+            item_ = await ctx.bot.db.fetchrow(
                 "SELECT * FROM rpg_shop WHERE skill=$1, level < 3 AND name != $1 ORDER BY RANDOM() LIMIT 1",
                 skills_)
 
@@ -654,7 +658,7 @@ class Rpg:
             user = ctx.author
 
         data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price",
+            "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price ASC",
             user.id)
         if data:
             t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
