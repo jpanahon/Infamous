@@ -536,7 +536,10 @@ class Rpg:
     @commands.cooldown(1, 86400, commands.BucketType.user)
     @registered()
     async def daily(self, ctx):
-        """Grab your daily rewards."""
+        """Grab your daily rewards.
+
+**Items are randomly chosen based on skills that were randomly chosen**
+        """
         try:
             money = random.randint(100, 1000)
             await add_money(ctx, money)
@@ -666,7 +669,7 @@ class Rpg:
             user = ctx.author
 
         data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price ASC",
+            "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price DESC",
             user.id)
         if data:
             t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
@@ -858,14 +861,14 @@ be found in {ctx.prefix}help Rpg**
 
         yon = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
         if yon == "Yes":
-            await ctx.send(f"**{merge(item1.title(), item2.title())}** has been created!")
+            await ctx.send(f"**{merge(item1.title(), item2.title()).title()}** has been created!")
             await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
                                      item1.title(), ctx.author.id)
             await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
                                      item2.title(), ctx.author.id)
             await ctx.bot.db.execute("INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                                     merge(item1.title(), item2.title()), i1[1], i1[2] + i2[2],
-                                     i1[3] + i2[3], i1[4] + i2[4], i1[5], merge(i1[6], i2[6]),
+                                     merge(item1.title(), item2.title()).title(), i1[1], i1[2] + i2[2],
+                                     i1[3] + i2[3], i1[4] + i2[4], i1[5], merge(i1[6], i2[6]).title(),
                                      ctx.author.id, 0
                                      )
             await remove_money(ctx, i1[2] + i2[2])
