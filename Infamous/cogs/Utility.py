@@ -450,7 +450,8 @@ class Utility:
                 e.add_field(name='Suggestion', value=string, inline=False)
                 e.add_field(name='Status', value='Denied')
                 await ctx.author.send(embed=e)
-
+    
+    # From Rapptz
     @commands.command(name="help")
     async def _help(self, ctx, *, command: str = None):
         """Shows help about a command or the bot"""
