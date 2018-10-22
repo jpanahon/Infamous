@@ -209,12 +209,7 @@ class Rpg:
                   f"**Description:** {description} \n"
                   f"`Do you approve? Yes or No?`")
 
-        def yon(m):
-            return m.author == ctx.author \
-                   and m.content.capitalize() in \
-                   ["Yes", "No"]
-
-        y = (await ctx.bot.wait_for('message', check=yon)).content.capitalize()
+        y = await rpg.yon(ctx)
         if y == "Yes":
             await ctx.bot.db.execute(
                 "INSERT INTO rpg_shop VALUES($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -225,6 +220,7 @@ class Rpg:
             await ctx.send("Cancelled")
 
     @commands.group(case_insensitive=True, invoke_without_command=True)
+    @registered()
     async def shop(self, ctx):
         """Items that are available"""
         data = await ctx.bot.db.fetch(
@@ -298,12 +294,7 @@ class Rpg:
             if i[5] == skill and mast >= i[7]:
                 await ctx.send(f"Do you really want to buy **{i[0]}** \n"
                                f"Price: {i[2]}$, Yes or No?")
-
-                def check(m):
-                    return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
-
-                msg = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
-
+                msg = await rpg.yon(ctx)
                 if msg == "Yes":
                     await ctx.send(f"{i[0]} has been added to your inventory.")
 
@@ -346,13 +337,7 @@ class Rpg:
 
         await ctx.send(f"Do you {user.mention} accept this battle?")
 
-        def accept(m):
-            return m.author == user \
-                   and m.content.capitalize() in ["Yes", "No"]
-
-        apt = await ctx.bot.wait_for('message', check=accept)
-        apt = apt.content.capitalize()
-
+        apt = await rpg.yon(ctx)
         if apt == "Yes":
             def control(m):
                 return m.author == ctx.author and m.content in ["1", "2"]
@@ -459,33 +444,36 @@ class Rpg:
             user = ctx.author
 
         stats = await rpg.fetch_user(ctx, user.id)
-        embed = discord.Embed(color=0xba1c1c)
-        embed.description = f"**Level:** {stats[2]} \n **XP:** {stats[3]}"
-        embed.set_author(name=user.name, icon_url=user.avatar_url)
-        embed.add_field(name="Statistics", value=f"**Class:** {stats[1]} \n"
-                                                 f"**Balance:** {stats[4]} \n"
-                                                 f"**Equipped Weapon:** {stats[6]} \n"
-                                                 f"**Main Skill:** {stats[5]}", inline=True)
+        if stats:
+            embed = discord.Embed(color=0xba1c1c)
+            embed.description = f"**Level:** {stats[2]} \n **XP:** {stats[3]}"
+            embed.set_author(name=user.name, icon_url=user.avatar_url)
+            embed.add_field(name="Statistics", value=f"**Class:** {stats[1]} \n"
+                                                     f"**Balance:** {stats[4]} \n"
+                                                     f"**Equipped Weapon:** {stats[6]} \n"
+                                                     f"**Main Skill:** {stats[5]}", inline=True)
 
-        skills = await ctx.bot.db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
+            skills = await ctx.bot.db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
 
-        p = []
-        for i in skills:
-            p.append(f"**{i[1]}** - Level {i[2]} \n")
+            p = []
+            for i in skills:
+                p.append(f"**{i[1]}** - Level {i[2]} \n")
 
-        embed.add_field(name="Skills", value=''.join(p), inline=True)
+            embed.add_field(name="Skills", value=''.join(p), inline=True)
 
-        iv = await ctx.bot.db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", user.id)
-        if iv:
-            inv = []
-            for i in iv:
-                inv.append(f"{i[0]} \n")
+            iv = await ctx.bot.db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", user.id)
+            if iv:
+                inv = []
+                for i in iv:
+                    inv.append(f"{i[0]} \n")
 
-            embed.add_field(name="Inventory", value=''.join(inv), inline=False)
+                embed.add_field(name="Inventory", value=''.join(inv), inline=False)
+            else:
+                embed.add_field(name="Inventory", value="None", inline=False)
+
+            await ctx.send(embed=embed)
         else:
-            embed.add_field(name="Inventory", value="None", inline=False)
-
-        await ctx.send(embed=embed)
+            return await ctx.send("This user isn't registered.")
 
     @commands.command()
     @registered()
@@ -655,11 +643,7 @@ class Rpg:
                            f"Modified Statistics: **Price:** {i[2] * 2}, **Damage:** {i[3] * 2}, "
                            f"**Defense:** {i[4] * 2}")
 
-            def check(m):
-                return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
-
-            msg = await ctx.bot.wait_for('message', check=check)
-            msg = msg.content.capitalize()
+            msg = await rpg.yon(ctx)
             if msg == "Yes":
                 if c[4] >= i[2] * 2:
                     await ctx.bot.db.execute(
@@ -734,11 +718,7 @@ class Rpg:
         await ctx.send(f"{user.mention} do you accept {ctx.author.mention}'s challenge? \n"
                        f"Yes or No?")
 
-        def check(m):
-            return m.author == user and m.content.capitalize() in ["Yes", "No"]
-
-        yon = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
-
+        yon = await rpg.yon(ctx, user)
         if yon == "Yes":
             choice = random.choice([ctx.author.name, user.name])
             if choice == ctx.author.name:
@@ -875,10 +855,7 @@ be found in {ctx.prefix}help Rpg**
                            f"**Modified Statistics:** Price: {i1[2] + i2[2]}, Damage: {i1[3] + i2[3]}, Defense: "
                            f"{i1[4] + i2[4]}. `Yes` or `No`?")
 
-            def check(m):
-                return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
-
-            yon = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
+            yon = await rpg.yon(ctx)
             if yon == "Yes":
                 await ctx.send(f"**{rpg.merge(item1.title(), item2.title()).title()}** has been created!")
                 await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
@@ -906,10 +883,7 @@ be found in {ctx.prefix}help Rpg**
             await ctx.send(f"Are you sure you want to sell {item[0]}? \n"
                            f"`Yes` or `No`")
 
-            def check(m):
-                return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
-
-            yon = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
+            yon = await rpg.yon(ctx)
             if yon == "Yes":
                 await ctx.send(f"You have received **{item_[2]}$** for selling **{item_[0]}**")
                 await rpg.add_money(ctx, item_[2])
@@ -919,6 +893,26 @@ be found in {ctx.prefix}help Rpg**
                 return await ctx.send(f"I guess you don't want to sell {item.title()}")
         else:
             return await ctx.send("You don't have that item")
+
+    @commands.command()
+    @registered()
+    async def rename(self, ctx, item: str, name: str):
+        """Renames an item"""
+        i = await rpg.fetch_item(ctx, item.title())
+        if i:
+            await ctx.send(f"Are you sure you want to rename **{item.title()}** to {name.capitalize()}? It will cost"
+                           f"**{i[2]}$** \n `Yes` or `No`")
+
+            yon = await rpg.yon(ctx)
+            if yon == "Yes":
+                await ctx.send(f"Renamed {item.title()} to {name.title()}")
+                await ctx.bot.db.execute("UPDATE rpg_inventory SET name=$1 WHERE name=$2 AND owner=$3", name.title(),
+                                         item.title(), ctx.author.id)
+                await rpg.remove_money(ctx, i[2])
+            else:
+                return await ctx.send(f"I guess you don't want to rename **{item.title()}**.")
+        else:
+            return await ctx.send(f"You don't have **{item.title()}**")
 
 
 def setup(bot):
