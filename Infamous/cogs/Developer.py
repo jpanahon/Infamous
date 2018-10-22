@@ -1,24 +1,16 @@
 import copy
 import datetime
 import inspect
-import random
 import logging
+import os
+import random
+
 import aiohttp
 import discord
 from discord import Webhook, AsyncWebhookAdapter
 from discord.ext import commands
 
 logging.basicConfig(level=logging.INFO)
-
-
-# From Scragly
-class BotCommand:
-    @classmethod
-    async def convert(cls, ctx, arg):
-        cmd = ctx.bot.get_command(arg)
-        if cmd is None:
-            raise commands.BadArgument(f"Command not found.")
-        return cmd
 
 
 class Developer:
@@ -219,20 +211,32 @@ class Developer:
                 await m.delete()
 
         await ctx.send(f"Cleared `{amount}` messages!", delete_after=5)
-    
-    # From Scragly
-    @commands.command(hidden=True)
-    async def source(self, ctx, *, command: BotCommand):
-        """Retrieves the source code of a command."""
 
-        paginator = commands.Paginator(prefix='```py')
-        for line in inspect.getsourcelines(command.callback)[0]:
-            paginator.add_line(line.rstrip().replace('`', '\u200b`'))
+    # Originally from Rapptz
+    @commands.command()
+    async def source(self, ctx, *, command: str = None):
+        """Shows source code for each command """
 
-        for p in paginator.pages:
-            await ctx.send(p)
-    
-    # From Scragly
+        source_url = 'https://github.com/OneEyedKnight/Infamous'
+        if command is None:
+            return await ctx.send(source_url)
+
+        obj = self.bot.get_command(command.replace('.', ' '))
+        if obj is None:
+            return await ctx.send('Could not find command.')
+
+        src = obj.callback.__code__
+        lines, firstlineno = inspect.getsourcelines(src)
+        if not obj.callback.__module__.startswith('discord'):
+            location = os.path.relpath(src.co_filename).replace('\\', '/')
+        else:
+            location = obj.callback.__module__.replace('.', '/') + '.py'
+            source_url = 'https://github.com/Rapptz/discord.py'
+
+        final_url = f'{source_url}/blob/master/Infamous/{location}#L{firstlineno}-L{firstlineno + len(lines) - 1}'
+
+        await ctx.send(final_url)
+
     @commands.command(hidden=True)
     @commands.is_owner()
     async def sudo(self, ctx, member: discord.Member, *, command):
@@ -241,6 +245,15 @@ class Developer:
         fake_msg.author = member
         new_ctx = await ctx.bot.get_context(fake_msg)
         await ctx.bot.invoke(new_ctx)
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def test(self, ctx):
+        for i in self.bot.commands:
+            try:
+                await ctx.invoke(i)
+            except:
+                pass
 
 
 def setup(bot):
