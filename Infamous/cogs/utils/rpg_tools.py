@@ -190,3 +190,14 @@ async def fetch_skills(ctx, user=None):
 # Courtesy of MIkusaba
 def merge(s1, s2):
     return s1[:len(s1) // 2] + s2[len(s2) // 2:]
+
+
+async def yon(ctx, user=None):
+    if not user:
+        user = ctx.author
+
+    def check(m):
+        return m.author == user and m.content.capitalize() in ["Yes", "No"]
+
+    check_ = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
+    return check_
