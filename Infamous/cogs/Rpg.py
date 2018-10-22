@@ -1,8 +1,11 @@
-import random
-from discord.ext import commands
 import logging
+import random
+
+import discord
+from discord.ext import commands
+
 from .utils.paginator import SimplePaginator
-from .utils.rpg_tools import *
+from .utils import rpg_tools as rpg
 
 logging.basicConfig(level=logging.INFO)
 
@@ -13,7 +16,7 @@ class Error(commands.CheckFailure):
 
 def registered():
     async def predicate(ctx):
-        data = await ctx.bot.db.fetchrow(
+        data = await ctx.bot.db.fetch(
             "SELECT * FROM rpg_profile WHERE id=$1",
             ctx.author.id
         )
@@ -42,7 +45,7 @@ def equipped():
             ctx.author.id
         )
 
-        if data is None:
+        if not data:
             raise Error(f"You need to have an item equipped `{ctx.prefix}equip <item>`")
 
         return True
@@ -87,7 +90,7 @@ class Rpg:
 
         await ctx.bot.db.execute("INSERT INTO rpg_mastery VALUES($1, $2, $3, $4)",
                                  ctx.author.id, skill, 1, 0)
-        await ctx.send(f"You have successfully registered, type {ctx.prefix}help Rpg for commands.")
+        await ctx.send(f"You have successfully registered, type {ctx.prefix}guide for help.")
 
     @commands.command()
     async def top(self, ctx):
@@ -98,7 +101,7 @@ class Rpg:
 
         p = []
         for i in data:
-            p.append(await lb_embed(ctx, i))
+            p.append(await rpg.lb_embed(ctx, i))
 
         await SimplePaginator(extras=p).paginate(ctx)
 
@@ -130,14 +133,14 @@ class Rpg:
         if message_.content == ans:
             xp = random.randint(1, 50)
             mon = random.randint(1, 100)
-            await add_xp(ctx, xp=xp)
-            await lvl(ctx, mon=mon, msg1=f"You completed the quest, leveled up and earned {mon}",
-                      msg2=f"You completed the quest and earned {xp}xp")
+            await rpg.add_xp(ctx, xp=xp)
+            await rpg.lvl(ctx, mon=mon, msg1=f"You completed the quest, leveled up and earned {mon}",
+                          msg2=f"You completed the quest and earned {xp}xp")
         else:
             mon = random.randint(1, 100)
-            await add_xp(ctx, xp=10)
-            await lvl(ctx, mon=mon, msg1=f"You failed to complete the quest, but you leveled up and earned {mon}",
-                      msg2=f"You failed to complete the quest and earned 10xp")
+            await rpg.add_xp(ctx, xp=10)
+            await rpg.lvl(ctx, mon=mon, msg1=f"You failed to complete the quest, but you leveled up and earned {mon}",
+                          msg2=f"You failed to complete the quest and earned 10xp")
 
     @commands.group(case_insensitive=True, invoke_without_command=True)
     async def admin(self, ctx):
@@ -241,7 +244,7 @@ class Rpg:
                  "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
                  }
             for i in data:
-                p.append(item_embed(i, t[i[1]]))
+                p.append(rpg.item_embed(i, t[i[1]]))
 
             await SimplePaginator(extras=p).paginate(ctx)
 
@@ -249,7 +252,7 @@ class Rpg:
     @registered()
     async def recommend(self, ctx):
         """Items you can buy."""
-        user = await fetch_user(ctx)
+        user = await rpg.fetch_user(ctx)
         data = await ctx.bot.db.fetch(
             "SELECT * FROM rpg_shop WHERE class = $1 ORDER BY price BETWEEN 0 AND $2 DESC",
             user[1], user[3]
@@ -269,7 +272,7 @@ class Rpg:
                  }
 
             for i in data:
-                p.append(item_embed(i, t[i[1]]))
+                p.append(rpg.item_embed(i, t[i[1]]))
 
             await SimplePaginator(extras=p).paginate(ctx)
 
@@ -277,16 +280,20 @@ class Rpg:
     @registered()
     async def buy(self, ctx, *, item):
         """Buy an item from shop"""
-        user = await fetch_user(ctx)
-        skills = await fetch_skills(ctx)
-        print(skills)
-        i = await fetch_item(ctx, item.title(), None, 'rpg_shop')
+        user = await rpg.fetch_user(ctx)
+        skills = await rpg.fetch_skills(ctx)
+        i = await rpg.fetch_item(ctx, item.title(), None, 'rpg_shop')
         if i[5] in skills:
             skill = i[5]
         else:
             return await ctx.send("You don't have the right skill")
 
-        mast = (await fetch_mastery(ctx, skill=i[5], user=ctx.author.id))[2]
+        mast = (await rpg.fetch_mastery(ctx, skill=i[5], user=ctx.author.id))[2]
+        inv = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                        item.title(), ctx.author.id)
+        if inv:
+            return await ctx.send("You already have this item!")
+
         if user[4] >= i[2]:
             if i[5] == skill and mast >= i[7]:
                 await ctx.send(f"Do you really want to buy **{i[0]}** \n"
@@ -315,7 +322,7 @@ class Rpg:
     @registered()
     async def equip(self, ctx, *, item):
         """Equip an item to use in battle"""
-        i = await fetch_item(ctx, item.title())
+        i = await rpg.fetch_item(ctx, item.title())
         if i:
             await ctx.send(f"**{i[0]}** has been equipped and can be used for battle.")
             await ctx.bot.db \
@@ -329,7 +336,7 @@ class Rpg:
     @equipped()
     async def duel(self, ctx, user: discord.Member):
         """Duel other players!"""
-        u = (await fetch_user(ctx, user.id))[5]
+        u = (await rpg.fetch_user(ctx, user.id))[5]
 
         if not u:
             return await ctx.send(f"{user.mention} needs to equip an item ({ctx.prefix}equip <item>)")
@@ -355,10 +362,10 @@ class Rpg:
 
             hp2 = 750
             hp = 750
-            w = await fetch_user(ctx)
-            w2 = await fetch_user(ctx, user.id)
-            weapon = await fetch_item(ctx, w[5])
-            weapon2 = await fetch_item(ctx, w2[5], user.id)
+            w = await rpg.fetch_user(ctx)
+            w2 = await rpg.fetch_user(ctx, user.id)
+            weapon = await rpg.fetch_item(ctx, w[5])
+            weapon2 = await rpg.fetch_item(ctx, w2[5], user.id)
             msg = await ctx.bot.wait_for('message', check=control)
             msg2 = await ctx.bot.wait_for('message', check=control2)
 
@@ -402,12 +409,12 @@ class Rpg:
                     await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
 
                 if hp <= 0:
-                    await add_xp(ctx, xp=200, user=user.id)
-                    await lvl(ctx, mon=200, user=user.id,
-                              msg1=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
-                                   f"they leveled up and earned 200$",
-                              msg2=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
-                                   f"they earned 200xp")
+                    await rpg.add_xp(ctx, xp=200, user=user.id)
+                    await rpg.lvl(ctx, mon=200, user=user.id,
+                                  msg1=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
+                                       f"they leveled up and earned 200$",
+                                  msg2=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
+                                       f"they earned 200xp")
                     lb = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", user.id)
                     if lb:
                         await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", user.id)
@@ -422,12 +429,12 @@ class Rpg:
                         await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
                                                  ctx.author.id, 0, 1)
                 elif hp2 <= 0:
-                    await add_xp(ctx, xp=200)
-                    await lvl(ctx, mon=200,
-                              msg1=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
-                                   f"they leveled up and earned 200$",
-                              msg2=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
-                                   f"they earned 200xp")
+                    await rpg.add_xp(ctx, xp=200)
+                    await rpg.lvl(ctx, mon=200,
+                                  msg1=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
+                                       f"they leveled up and earned 200$",
+                                  msg2=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
+                                       f"they earned 200xp")
                     lb = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", ctx.author.id)
                     if lb:
                         await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", ctx.author.id)
@@ -451,7 +458,7 @@ class Rpg:
         if not user:
             user = ctx.author
 
-        stats = await fetch_user(ctx, user.id)
+        stats = await rpg.fetch_user(ctx, user.id)
         embed = discord.Embed(color=0xba1c1c)
         embed.description = f"**Level:** {stats[2]} \n **XP:** {stats[3]}"
         embed.set_author(name=user.name, icon_url=user.avatar_url)
@@ -499,7 +506,7 @@ class Rpg:
 
         skill = (await ctx.bot.wait_for('message', check=skills_)).content.capitalize()
 
-        u = await fetch_mastery(ctx, skill)
+        u = await rpg.fetch_mastery(ctx, skill)
         if u:
             pass
         else:
@@ -507,17 +514,20 @@ class Rpg:
                                      ctx.author.id, skill, 1, 0)
 
         if chance > 50 < 75:
-            await add_mastery_xp(ctx, 50)
-            await mastery_lvl(ctx, 100, skill, msg1=f"You have done well and leveled up your mastery and earned 100$",
-                              msg2=f"You have done well, but you earned 50xp")
+            await rpg.add_mastery_xp(ctx, 50)
+            await rpg.mastery_lvl(ctx, 100, skill,
+                                  msg1=f"You have done well and leveled up your mastery and earned 100$",
+                                  msg2=f"You have done well, but you earned 50xp")
         elif chance < 50:
-            await add_mastery_xp(ctx, 10)
-            await mastery_lvl(ctx, 10, skill, msg1=f"You have done poorly, but you leveled up and earned 10$",
-                              msg2=f"You have done poorly, but you earned 10xp")
+            await rpg.add_mastery_xp(ctx, 10)
+            await rpg.mastery_lvl(ctx, 10, skill,
+                                  msg1=f"You have done poorly, but you leveled up and earned 10$",
+                                  msg2=f"You have done poorly, but you earned 10xp")
         else:
-            await add_mastery_xp(ctx, 100)
-            await mastery_lvl(ctx, 250, skill, msg1=f"You have done great and leveled up your mastery and earned 250$",
-                              msg2=f"You have done great, but you earned 100xp")
+            await rpg.add_mastery_xp(ctx, 100)
+            await rpg.mastery_lvl(ctx, 250, skill,
+                                  msg1=f"You have done great and leveled up your mastery and earned 250$",
+                                  msg2=f"You have done great, but you earned 100xp")
 
     @commands.command()
     @registered()
@@ -526,7 +536,7 @@ class Rpg:
         if not user:
             user = ctx.author
 
-        balance = (await fetch_user(ctx, user.id))[4]
+        balance = (await rpg.fetch_user(ctx, user.id))[4]
         embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=user.display_name, icon_url=user.avatar_url)
         embed.description = f"You have {balance}$"
@@ -542,9 +552,9 @@ class Rpg:
         """
         try:
             money = random.randint(100, 1000)
-            await add_money(ctx, money)
+            await rpg.add_money(ctx, money)
 
-            skills = await fetch_skills(ctx)
+            skills = await rpg.fetch_skills(ctx)
             skills = random.choice(skills)
             items = await ctx.bot.db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", ctx.author.id)
             p = []
@@ -554,7 +564,7 @@ class Rpg:
                 "SELECT * FROM rpg_shop WHERE skill=$1 AND level < 3 ORDER BY RANDOM() LIMIT 1",
                 skills)
             if item[0] in p:
-                skills_ = await fetch_skills(ctx)
+                skills_ = await rpg.fetch_skills(ctx)
                 skills_ = random.choice(skills_)
                 item_ = await ctx.bot.db.fetchrow(
                     "SELECT * FROM rpg_shop WHERE skill=$1, level < 3 AND name != $1 ORDER BY RANDOM() LIMIT 1",
@@ -577,13 +587,17 @@ class Rpg:
             print(e)
             money = random.randint(100, 1000)
             await ctx.send(f"There was no item for you but you still earned {money}$")
-            await add_money(ctx, money)
+            await rpg.add_money(ctx, money)
 
     @commands.command()
     @registered()
     @commands.cooldown(1, 600, commands.BucketType.user)
-    async def blackjack(self, ctx, bet: int):
+    async def blackjack(self, ctx, bet: int = None):
         """Play blackjack"""
+
+        if not bet:
+            user = (await rpg.fetch_user(ctx))[4]
+            bet = random.randint(100, user)
 
         n = random.randint(1, 15)
         n2 = random.randint(1, 15)
@@ -599,7 +613,7 @@ class Rpg:
             number = random.randint(1, 15)
             number2 = random.randint(1, 15)
             if number + n > number2 + n2:
-                await add_money(ctx, bet * 2)
+                await rpg.add_money(ctx, bet * 2)
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {number + n}")
@@ -614,7 +628,7 @@ class Rpg:
         else:
             number2 = random.randint(1, 6)
             if n > number2 + n2:
-                await add_money(ctx, bet * 2)
+                await rpg.add_money(ctx, bet * 2)
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
@@ -633,8 +647,8 @@ class Rpg:
     async def upgrade(self, ctx, *, item):
         """Upgrade the statistics of a weapon."""
 
-        c = await fetch_user(ctx)
-        i = await fetch_item(ctx, item.title())
+        c = await rpg.fetch_user(ctx)
+        i = await rpg.fetch_item(ctx, item.title())
 
         if i:
             await ctx.send(f"Are you sure you want to upgrade **{i[0]}?**  Yes or No?\n"
@@ -653,7 +667,7 @@ class Rpg:
                         "WHERE name=$4 AND owner=$5",
                         i[2] * 2, i[3] * 2, i[4] * 2, i[0], i[7])
                     await ctx.send(f"Upgraded **{item.title()}**'s statistics.")
-                    await remove_money(ctx, i[2] * 2)
+                    await rpg.remove_money(ctx, i[2] * 2)
                 else:
                     return await ctx.send("You don't have enough to upgrade this item")
             else:
@@ -685,7 +699,7 @@ class Rpg:
 
             p = []
             for i in data:
-                p.append(inventory_embed(ctx, i, t[i[1]]))
+                p.append(rpg.inventory_embed(ctx, i, t[i[1]]))
 
             await SimplePaginator(extras=p).paginate(ctx)
         else:
@@ -730,25 +744,27 @@ class Rpg:
             if choice == ctx.author.name:
                 xp = random.randint(10, 100)
                 mon = random.randint(10, 100)
-                await add_xp(ctx, xp)
-                await lvl(ctx, mon,
-                          msg1=f"{ctx.author.mention} won the drinking contest, leveled up, and earned {mon}$",
-                          msg2=f"{ctx.author.mention} won the drinking contest, and earned {xp}xp")
+                await rpg.add_xp(ctx, xp)
+                await rpg.lvl(ctx, mon,
+                              msg1=f"{ctx.author.mention} won the drinking contest, leveled up, and earned {mon}$",
+                              msg2=f"{ctx.author.mention} won the drinking contest, and earned {xp}xp")
             else:
                 xp = random.randint(10, 100)
                 mon = random.randint(10, 100)
-                await add_xp(ctx, xp)
-                await lvl(ctx, mon,
-                          msg1=f"{user.mention} won the drinking contest, leveled up, and earned {mon}$",
-                          msg2=f"{user.mention} won the drinking contest, and earned {xp}xp", user=user.id)
+                await rpg.add_xp(ctx, xp)
+                await rpg.lvl(ctx, mon,
+                              msg1=f"{user.mention} won the drinking contest, leveled up, and earned {mon}$",
+                              msg2=f"{user.mention} won the drinking contest, and earned {xp}xp", user=user.id)
         else:
             await ctx.send("I guess they didn't want to get drunk tonight.")
 
     @commands.command()
     @registered()
     @commands.cooldown(2, 600, commands.BucketType.user)
-    async def coinflip(self, ctx, *, choice):
+    async def coinflip(self, ctx, *, choice=None):
         """Heads or Tails?"""
+        if not choice:
+            choice = random.choice(["Heads", "Tails"])
 
         choice = choice.capitalize()
         if choice not in ["Heads", "Tails"]:
@@ -757,27 +773,27 @@ class Rpg:
         if choice == "Heads":
             c = random.choice(["Heads", "Tails"])
             if c == "Heads":
-                await add_xp(ctx, 100)
-                await lvl(ctx, 200,
-                          msg1=f"{ctx.author.mention} It was **Heads!** You leveled up and earned 200$",
-                          msg2=f"{ctx.author.mention} It was **Heads!** You earned 100xp")
+                await rpg.add_xp(ctx, 100)
+                await rpg.lvl(ctx, 200,
+                              msg1=f"{ctx.author.mention} It was **Heads!** You leveled up and earned 200$",
+                              msg2=f"{ctx.author.mention} It was **Heads!** You earned 100xp")
             else:
-                await add_xp(ctx, 50)
-                await lvl(ctx, 100,
-                          msg1=f"{ctx.author.mention} Sorry it was **Tails!** You leveled up and earned 100$",
-                          msg2=f"{ctx.author.mention} Sorry it was **Tails!** You earned 50xp")
+                await rpg.add_xp(ctx, 50)
+                await rpg.lvl(ctx, 100,
+                              msg1=f"{ctx.author.mention} Sorry it was **Tails!** You leveled up and earned 100$",
+                              msg2=f"{ctx.author.mention} Sorry it was **Tails!** You earned 50xp")
         elif choice == "Tails":
             c = random.choice(["Tails", "Heads"])
             if c == "Tails":
-                await add_xp(ctx, 100)
-                await lvl(ctx, 200,
-                          msg1=f"{ctx.author.mention} It was **Tails!** You leveled up and earned 200$",
-                          msg2=f"{ctx.author.mention} It was **Tails!** You earned 100xp")
+                await rpg.add_xp(ctx, 100)
+                await rpg.lvl(ctx, 200,
+                              msg1=f"{ctx.author.mention} It was **Tails!** You leveled up and earned 200$",
+                              msg2=f"{ctx.author.mention} It was **Tails!** You earned 100xp")
             else:
-                await add_xp(ctx, 50)
-                await lvl(ctx, 100,
-                          msg1=f"{ctx.author.mention} Sorry it was **Head!s** You leveled up and earned 100$",
-                          msg2=f"{ctx.author.mention} Sorry it was **Heads!** You earned 50xp")
+                await rpg.add_xp(ctx, 50)
+                await rpg.lvl(ctx, 100,
+                              msg1=f"{ctx.author.mention} Sorry it was **Head!s** You leveled up and earned 100$",
+                              msg2=f"{ctx.author.mention} Sorry it was **Heads!** You earned 50xp")
 
     @commands.command()
     @registered()
@@ -793,9 +809,9 @@ class Rpg:
              "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
              }
 
-        item = await fetch_item(ctx, choice.capitalize(), None, 'rpg_shop')
+        item = await rpg.fetch_item(ctx, choice.capitalize(), None, 'rpg_shop')
         if item:
-            await ctx.send(embed=item_embed(item, t[item[1]]))
+            await ctx.send(embed=rpg.item_embed(item, t[item[1]]))
         else:
             return await ctx.send(f"There is no item named **{choice.title()}**")
 
@@ -849,51 +865,60 @@ be found in {ctx.prefix}help Rpg**
 **Example:** *!merge 'Item One' 'Item Two'
 """
 
-        i1 = await fetch_item(ctx, item1.title())
-        i2 = await fetch_item(ctx, item2.title())
+        i1 = await rpg.fetch_item(ctx, item1.title())
+        i2 = await rpg.fetch_item(ctx, item2.title())
+        if item1.title() == item2.title() or item2.title() == item1.title():
+            return await ctx.send("You can't merge the same item together.")
 
-        await ctx.send(f"Are you sure you want to merge **{i1[0]}** and **{i2[0]}** together? \n"
-                       f"**Modified Statistics:** Price: {i1[2] + i2[2]}, Damage: {i1[3] + i2[3]}, Defense: "
-                       f"{i1[4] + i2[4]}. `Yes` or `No`?")
+        if i1 and i2:
+            await ctx.send(f"Are you sure you want to merge **{i1[0]}** and **{i2[0]}** together? \n"
+                           f"**Modified Statistics:** Price: {i1[2] + i2[2]}, Damage: {i1[3] + i2[3]}, Defense: "
+                           f"{i1[4] + i2[4]}. `Yes` or `No`?")
 
-        def check(m):
-            return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
+            def check(m):
+                return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
 
-        yon = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
-        if yon == "Yes":
-            await ctx.send(f"**{merge(item1.title(), item2.title()).title()}** has been created!")
-            await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                     item1.title(), ctx.author.id)
-            await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                     item2.title(), ctx.author.id)
-            await ctx.bot.db.execute("INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                                     merge(item1.title(), item2.title()).title(), i1[1], i1[2] + i2[2],
-                                     i1[3] + i2[3], i1[4] + i2[4], i1[5], merge(i1[6], i2[6]).title(),
-                                     ctx.author.id, 0
-                                     )
-            await remove_money(ctx, i1[2] + i2[2])
+            yon = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
+            if yon == "Yes":
+                await ctx.send(f"**{rpg.merge(item1.title(), item2.title()).title()}** has been created!")
+                await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                         item1.title(), ctx.author.id)
+                await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                         item2.title(), ctx.author.id)
+                await ctx.bot.db.execute("INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                                         rpg.merge(item1.title(), item2.title()).title(), i1[1], i1[2] + i2[2],
+                                         i1[3] + i2[3], i1[4] + i2[4], i1[5], rpg.merge(i1[6], i2[6]).title(),
+                                         ctx.author.id, 0
+                                         )
+                await rpg.remove_money(ctx, i1[2] + i2[2])
+            else:
+                return await ctx.send("I guess you don't want to merge your items.")
         else:
-            return await ctx.send("I guess you don't want to merge your items.")
+            return await ctx.send("You must not have one of the items, or you misspelled one of the names.")
 
     @commands.command()
     @registered()
     async def sell(self, ctx, *, item):
         """Sell your items for cash"""
 
-        item_ = await fetch_item(ctx, item)
-        await ctx.send(f"Are you sure you want to sell {item[0]}? \n"
-                       f"`Yes` or `No`")
+        item_ = await rpg.fetch_item(ctx, item)
+        if item_:
+            await ctx.send(f"Are you sure you want to sell {item[0]}? \n"
+                           f"`Yes` or `No`")
 
-        def check(m):
-            return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
+            def check(m):
+                return m.author == ctx.author and m.content.capitalize() in ["Yes", "No"]
 
-        yon = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
-        if yon == "Yes":
-            await ctx.send(f"You have received **{item_[2]}$** for selling **{item_[0]}**")
-            await remove_money(ctx, item_[2])
-            await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2", item_[0], ctx.author.id)
+            yon = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
+            if yon == "Yes":
+                await ctx.send(f"You have received **{item_[2]}$** for selling **{item_[0]}**")
+                await rpg.add_money(ctx, item_[2])
+                await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                         item_[0], ctx.author.id)
+            else:
+                return await ctx.send(f"I guess you don't want to sell {item.title()}")
         else:
-            return ctx.send(f"I guess you don't want to sell {item.title()}")
+            return await ctx.send("You don't have that item")
 
 
 def setup(bot):
