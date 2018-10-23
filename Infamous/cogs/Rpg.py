@@ -250,8 +250,8 @@ class Rpg:
         """Items you can buy."""
         user = await rpg.fetch_user(ctx)
         data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_shop WHERE class = $1 ORDER BY price BETWEEN 0 AND $2 DESC",
-            user[1], user[3]
+            "SELECT * FROM rpg_shop ORDER BY price BETWEEN 0 AND $2 DESC",
+            user[4]
         )
 
         if data:
