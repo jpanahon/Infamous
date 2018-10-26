@@ -184,7 +184,6 @@ class Pages:
         if not self.paginating:
             await first_page
         else:
-            # allow us to react to reactions right away if we're paginating
             self.bot.loop.create_task(first_page)
 
         while self.paginating:
@@ -202,7 +201,7 @@ class Pages:
             try:
                 await self.message.remove_reaction(reaction, user)
             except:
-                pass  # can't remove it so don't bother doing so
+                pass
             await self.match()
 
 
@@ -403,9 +402,6 @@ async def _can_run(cmd, ctx):
 
 
 def _command_signature(cmd):
-    # this is modified from discord.py source
-    # which I wrote myself lmao
-
     result = [cmd.qualified_name]
     if cmd.usage:
         result.append(cmd.usage)
@@ -417,8 +413,6 @@ def _command_signature(cmd):
 
     for name, param in params.items():
         if param.default is not param.empty:
-            # We don't want None or '' to trigger the [name=value] case and instead it should
-            # do [name] since [name=None] or [name=] are not exactly useful for the user.
             should_print = param.default if isinstance(param.default, str) else param.default is not None
             if should_print:
                 result.append(f'[{name}={param.default!r}]')
@@ -441,10 +435,8 @@ class HelpPaginator(Pages):
     async def from_cog(cls, ctx, cog):
         cog_name = cog.__class__.__name__
 
-        # get the commands
         entries = sorted(ctx.bot.get_cog_commands(cog_name), key=lambda c: c.name)
 
-        # remove the ones we can't run
         entries = [cmd for cmd in entries if (await _can_run(cmd, ctx)) and not cmd.hidden]
 
         self = cls(ctx, entries)
@@ -483,10 +475,6 @@ class HelpPaginator(Pages):
         nested_pages = []
         per_page = 5
 
-        # 0: (cog, desc, commands) (max len == 9)
-        # 1: (cog, desc, commands) (max len == 9)
-        # ...
-
         for cog, commands in itertools.groupby(entries, key=key):
             plausible = [cmd for cmd in commands if (await _can_run(cmd, ctx)) and not cmd.hidden]
             if len(plausible) == 0:
@@ -501,21 +489,17 @@ class HelpPaginator(Pages):
             nested_pages.extend(
                 (cog, description, plausible[i:i + per_page]) for i in range(0, len(plausible), per_page))
 
-        self = cls(ctx, nested_pages, per_page=1)  # this forces the pagination session
+        self = cls(ctx, nested_pages, per_page=1)
         self.prefix = cleanup_prefix(ctx.bot, ctx.prefix)
 
-        # swap the get_page implementation with one that supports our style of pagination
         self.get_page = self.get_bot_page
         self._is_bot = True
 
-        # replace the actual total
         self.total = sum(len(o) for _, _, o in nested_pages)
         return self
 
     def get_bot_page(self, page):
         cog, description, commands = self.entries[page - 1]
-        self.title = "Category"
-        self.description = cog
         return commands
 
     async def show_page(self, page, *, first=False):
@@ -523,8 +507,6 @@ class HelpPaginator(Pages):
         entries = self.get_page(page)
 
         self.embed.clear_fields()
-        self.embed.title = self.title
-        self.embed.description = self.description
 
         self.embed.set_footer(text=f'Use the reactions to navigate | Page {page} of {self.maximum_pages}')
 
@@ -550,26 +532,6 @@ class HelpPaginator(Pages):
         self.message = await self.channel.send(embed=self.embed)
         for (reaction, _) in self.reaction_emojis:
             if self.maximum_pages == 2 and reaction in ('\u23ed', '\u23ee'):
-                # no |<< or >>| buttons if we only have two pages
-                # we can't forbid it if someone ends up using it but remove
-                # it from the default set
                 continue
 
             await self.message.add_reaction(reaction)
-
-    async def show_help(self):
-        """shows this message"""
-
-        self.embed.title = 'What is this?'
-        self.embed.description = 'Help for navigating the help page.'
-
-        messages = [f'{emoji} {func.__doc__}' for emoji, func in self.reaction_emojis]
-        self.embed.clear_fields()
-        self.embed.add_field(name='Usage for each reaction.', value='\n'.join(messages), inline=False)
-        await self.message.edit(embed=self.embed)
-
-        async def go_back_to_current_page():
-            await asyncio.sleep(30.0)
-            await self.show_current_page()
-
-        self.bot.loop.create_task(go_back_to_current_page())
