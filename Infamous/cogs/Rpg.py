@@ -4,7 +4,7 @@ import random
 import discord
 from discord.ext import commands
 
-from .utils.paginator import SimplePaginator
+from .utils.paginator import SimplePaginator as paginator
 from .utils import rpg_tools as rpg
 
 logging.basicConfig(level=logging.INFO)
@@ -16,10 +16,7 @@ class Error(commands.CheckFailure):
 
 def registered():
     async def predicate(ctx):
-        data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_profile WHERE id=$1",
-            ctx.author.id
-        )
+        data = await rpg.fetch_user(ctx)
         if not data:
             raise Error(f"Looks like you're not registered, type {ctx.prefix}register.")
         return True
@@ -29,12 +26,10 @@ def registered():
 
 def unregistered():
     async def predicate(ctx):
-        data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_profile WHERE id=$1",
-            ctx.author.id
-        )
-        return not bool(data)
-
+        data = await rpg.fetch_user(ctx)
+        if data:
+            raise Error("You are already registered, you can't make a second account.")
+        return False
     return commands.check(predicate)
 
 
@@ -49,12 +44,11 @@ def equipped():
             raise Error(f"You need to have an item equipped `{ctx.prefix}equip <item>`")
 
         return True
-
     return commands.check(predicate)
 
 
 class Rpg:
-    """Rpg related commands"""
+    """Infamous RPG commands."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -76,15 +70,10 @@ class Rpg:
                        "**Marksmanship, Swordsmanship, Necromancy, Clairvoyance, Pyromania, Permafrost, "
                        "Insight, Sorcery, Telekinesis and Swiftness**")
 
-        def skills_(m):
-            return m.author == ctx.author \
-                   and m.content.capitalize() in \
-                   ["Marksmanship", "Swordsmanship", "Necromancy",
-                    "Clairvoyance", "Pyromania", "Permafrost",
-                    "Insight", "Sorcery", "Telekinesis", "Swiftness"]
+        skills = ["Marksmanship", "Swordsmanship", "Necromancy", "Clairvoyance", "Pyromania", "Permafrost",
+                  "Insight", "Sorcery", "Telekinesis", "Swiftness"]
 
-        s_ = await ctx.bot.wait_for('message', check=skills_)
-        skill = s_.content.capitalize()
+        skill = await rpg.choose(ctx, skills)
         await ctx.bot.db.execute("INSERT INTO rpg_profile VALUES($1, $2, $3, $4, $5, $6)",
                                  ctx.author.id, m_.content.capitalize(), 1, 0, 100, skill)
 
@@ -100,10 +89,12 @@ class Rpg:
         )
 
         p = []
+        number = 0
         for i in data:
-            p.append(await rpg.lb_embed(ctx, i))
+            number = number + 1
+            p.append(await rpg.lb_embed(ctx, i, number, len(data)))
 
-        await SimplePaginator(extras=p).paginate(ctx)
+        await paginator(extras=p).paginate(ctx)
 
     @commands.command()
     @registered()
@@ -239,10 +230,12 @@ class Rpg:
                  "Ring": "https://cdn.discordapp.com/attachments/389275624163770378/502086417048928266/ring.png",
                  "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
                  }
+            number = 0
             for i in data:
-                p.append(rpg.item_embed(i, t[i[1]]))
+                number += 1
+                p.append(rpg.item_embed(i, t[i[1]], number, len(data)))
 
-            await SimplePaginator(extras=p).paginate(ctx)
+            await paginator(extras=p).paginate(ctx)
 
     @shop.command()
     @registered()
@@ -250,8 +243,8 @@ class Rpg:
         """Items you can buy."""
         user = await rpg.fetch_user(ctx)
         data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_shop ORDER BY price BETWEEN 0 AND $2 DESC",
-            user[4]
+            "SELECT * FROM rpg_shop WHERE class = $1 ORDER BY price BETWEEN 0 AND $2 DESC",
+            user[1], user[3]
         )
 
         if data:
@@ -267,10 +260,12 @@ class Rpg:
                  "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
                  }
 
+            number = 0
             for i in data:
-                p.append(rpg.item_embed(i, t[i[1]]))
+                number += 1
+                p.append(rpg.item_embed(i, t[i[1]], number, len(data)))
 
-            await SimplePaginator(extras=p).paginate(ctx)
+            await paginator(extras=p).paginate(ctx)
 
     @commands.command()
     @registered()
@@ -682,10 +677,12 @@ class Rpg:
                  }
 
             p = []
+            number = 0
             for i in data:
-                p.append(rpg.inventory_embed(ctx, i, t[i[1]]))
+                number += 1
+                p.append(rpg.inventory_embed(ctx, i, t[i[1]], number, len(data)))
 
-            await SimplePaginator(extras=p).paginate(ctx)
+            await paginator(extras=p).paginate(ctx)
         else:
             return await ctx.send("This person does not have any items.")
 
@@ -790,8 +787,10 @@ class Rpg:
              }
 
         item = await rpg.fetch_item(ctx, choice.capitalize(), None, 'rpg_shop')
+        number = 0
         if item:
-            await ctx.send(embed=rpg.item_embed(item, t[item[1]]))
+            number += 1
+            await ctx.send(embed=rpg.item_embed(item, t[item[1]], number, len(item)))
         else:
             return await ctx.send(f"There is no item named **{choice.title()}**")
 
@@ -900,7 +899,7 @@ be found in {ctx.prefix}help Rpg**
         """Renames an item"""
         i = await rpg.fetch_item(ctx, item.title())
         if i:
-            await ctx.send(f"Are you sure you want to rename **{item.title()}** to {name.capitalize()}? It will cost"
+            await ctx.send(f"Are you sure you want to rename **{item.title()}** to {name.title()}? It will cost"
                            f"**{i[2]}$** \n `Yes` or `No`")
 
             yon = await rpg.yon(ctx)
