@@ -1,4 +1,5 @@
 import discord
+import asyncio
 
 
 async def lvl(ctx, mon, msg1, msg2, user=None):
@@ -108,20 +109,20 @@ async def fetch_mastery(ctx, skill, user=None):
     return p
 
 
-def item_embed(item, thumbnail):
+def item_embed(item, thumbnail, current, max_):
     embed = discord.Embed(color=0xba1c1c)
-    embed.set_author(name=f"{item[0]} | Price {item[2]}$")
+    embed.set_author(name=f"{item[0]} | Price {item[2]}$" + f"Page {current} of {max_}".rjust(73))
     embed.description = item[6]
     embed.add_field(name="Performance Stats", value=f"**Damage:** {item[3]} \n"
                                                     f"**Defense:** {item[4]}")
     embed.add_field(name="Requirements", value=f"**Required Skill:** {item[5]} Level {item[7]}", inline=True)
-    embed.set_footer(text=f"Type: {item[1]}")
     embed.set_image(url=thumbnail)
+    embed.set_footer(text=f"Type: {item[1]}")
 
     return embed
 
 
-async def lb_embed(ctx, pfp):
+async def lb_embed(ctx, pfp, current, max_):
     embed = discord.Embed(color=0xba1c1c)
     member = ctx.bot.get_user(pfp[0])
     embed.set_author(name=member.name)
@@ -135,6 +136,7 @@ async def lb_embed(ctx, pfp):
     else:
         embed.add_field(name="Fighting Statistics", value="User has not participated in duels")
     embed.set_image(url=member.avatar_url_as(format='png', size=1024))
+    embed.set_footer(text=f"Page {current} of {max_}")
     return embed
 
 
@@ -161,9 +163,9 @@ async def remove_money(ctx, bal, user=None):
                              bal, user)
 
 
-def inventory_embed(ctx, info, thumbnail):
+def inventory_embed(ctx, info, thumbnail, current, max_):
     embed = discord.Embed(color=0xba1c1c)
-    embed.set_author(name=f"{ctx.bot.get_user(info[7]).name}'s inventory",
+    embed.set_author(name=f"{ctx.bot.get_user(info[7]).name}'s inventory" + f"Page {current} of {max_}".rjust(20),
                      icon_url=ctx.bot.get_user(info[7]).avatar_url)
     embed.description = (f"**Name:** {info[0]} \n"
                          f"**Price:** {info[2]} \n"
@@ -171,6 +173,7 @@ def inventory_embed(ctx, info, thumbnail):
                          f"**Defense:** {info[4]} \n"
                          f"**Skill:** {info[5]}")
     embed.set_image(url=thumbnail)
+    embed.set_footer(text=f"Type: {info[1]}")
     return embed
 
 
@@ -199,5 +202,22 @@ async def yon(ctx, user=None):
     def check(m):
         return m.author == user and m.content.capitalize() in ["Yes", "No"]
 
-    check_ = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
-    return check_
+    try:
+        check_ = (await ctx.bot.wait_for('message', check=check, timeout=30)).content.capitalize()
+        return check_
+    except asyncio.TimeoutError:
+        pass
+
+
+async def choose(ctx, choice: list, user=None):
+    if not user:
+        user = ctx.author
+
+    def check(m):
+        return m.author == user and m.content.capitalize() in choice
+
+    try:
+        check_ = (await ctx.bot.wait_for('message', check=check, timeout=30)).content.capitalize()
+        return check_
+    except asyncio.TimeoutError:
+        pass
