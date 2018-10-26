@@ -1,10 +1,9 @@
 import copy
 import datetime
-import inspect
 import logging
 import os
 import random
-
+import inspect
 import aiohttp
 import discord
 from discord import Webhook, AsyncWebhookAdapter
@@ -14,10 +13,11 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Developer:
-    """Developer Commands"""
+    """Hidden Commands"""
 
     def __init__(self, bot):
         self.bot = bot
+
 
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -32,7 +32,7 @@ class Developer:
         await ctx.message.add_reaction(':BlurpleCheck:452390337382449153')
         await ctx.message.delete()
 
-    @commands.command(aliases=['r'], hidden=True)
+    @commands.command(hidden=True, aliases=['r'])
     @commands.is_owner()
     async def reload(self, ctx, *, module):
         """Reloads a cog."""
@@ -75,7 +75,7 @@ class Developer:
         await self.bot.db.close()
         await self.bot.logout()
 
-    @commands.command(aliases=['rs'], hidden=True)
+    @commands.command(hidden=True, aliases=['rs'])
     @commands.is_owner()
     async def restart(self, ctx):
         """Restart all cogs."""
@@ -89,7 +89,7 @@ class Developer:
 
         await ctx.message.add_reaction(':BlurpleCheck:452390337382449153')
 
-    @commands.group(case_insensitive=True, invoke_without_command=True, hidden=True)
+    @commands.group(hidden=True, case_insensitive=True, invoke_without_command=True)
     async def find(self, ctx, discrim: str):
         """Find people with the same discriminator."""
 
@@ -117,7 +117,7 @@ class Developer:
         embed.set_footer(text=f'{len(user)} users found')
         await ctx.send(embed=embed)
 
-    @find.command()
+    @find.command(hidden=True)
     async def user(self, ctx, id: int):
         """Shows who the user id belongs to."""
 
@@ -174,7 +174,7 @@ class Developer:
             webhook = Webhook.from_url(url, adapter=AsyncWebhookAdapter(session))
             await webhook.send(text, username=str(user.display_name), avatar_url=user.avatar_url)
 
-    @imitate.command(hidden=True)
+    @imitate.command()
     @commands.is_owner()
     async def random(self, ctx, *, text):
         """Imitate a random person."""
@@ -188,7 +188,7 @@ class Developer:
             webhook = Webhook.from_url(url, adapter=AsyncWebhookAdapter(session))
             await webhook.send(text, username=user.display_name, avatar_url=user.avatar_url)
 
-    @imitate.command()
+    @imitate.command(hidden=True)
     @commands.is_owner()
     async def custom(self, ctx, user: int, *, text):
         """Imitate a person outside the server"""
@@ -213,7 +213,7 @@ class Developer:
         await ctx.send(f"Cleared `{amount}` messages!", delete_after=5)
 
     # Originally from Rapptz
-    @commands.command()
+    @commands.command(hidden=True)
     async def source(self, ctx, *, command: str = None):
         """Shows source code for each command """
 
