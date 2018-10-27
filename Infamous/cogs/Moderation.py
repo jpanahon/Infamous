@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Moderation:
-    """Moderation Commands"""
+    """Commands to get your users in place."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -183,6 +183,28 @@ class Moderation:
 
         await ctx.channel.purge(limit=amount)
         await ctx.send(f'Deleted {amount} messages.', delete_after=5)
+
+    @commands.command()
+    @commands.has_permissions(manage_messages=True)
+    async def forcequit(self, ctx):
+        """Force quits the bot if it spam; or does something when the developer is offline."""
+
+        await ctx.send('Are you sure you want the bot to go offline? The only person who can boot it is '
+                       '<@!299879858572492802> \n'
+                       'Type ``I understand`` in chat **__EXACTLY__** as it is shown in the box.')
+
+        def check(m):
+            return m.author == ctx.author and m.content == 'I understand'
+
+        try:
+            await self.bot.wait_for('message', check=check, timeout=15)
+        except asyncio.TimeoutError:
+            await ctx.send('Command aborted')
+        else:
+            await ctx.send(f'Access granted. Identified as a {ctx.author.top_role.name} who is {ctx.author}. \n'
+                           'Bot will be shutting down soon.')
+
+            await self.bot.logout()
 
 
 def setup(bot):
