@@ -2,7 +2,6 @@ import datetime
 import logging
 import sys
 import traceback
-
 import discord
 from discord.ext import commands
 
@@ -21,7 +20,7 @@ class Events:
             if message.author.id == 299879858572492802:
                 channel_ = self.bot.get_channel(258801388836880385)
                 await channel_.send(message.content)
-    
+
     # Concept inspired by Rapptz
     async def on_reaction_add(self, reaction, user):
         if reaction.message.guild.id != 258801388836880385:
@@ -126,9 +125,7 @@ class Events:
                 )
 
             else:
-                await ctx.send(
-                    f'**Error:** {str(error.original).title()}'
-                )
+                await ctx.send(f"**Error:** {str(error.original).title()}")
 
                 print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
                 traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
@@ -161,7 +158,6 @@ class Events:
                 hours, remainder = divmod(int(seconds), 3600)
                 minutes, seconds = divmod(remainder, 60)
                 await ctx.send(f"You have to wait {minutes}m and {seconds}s")
-           
 
         elif isinstance(error, commands.NotOwner):
             await ctx.send(
@@ -201,22 +197,22 @@ class Events:
                 await channel_.trigger_typing()
         else:
             pass
-    
+
     async def on_guild_join(self, guild):
         await self.bot.db.execute("INSERT INTO settings VALUES($1)", guild.id)
-        
-    async def on_guild_remove(self, guild):
-        await self.bot.db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
-    
+
     async def on_member_join(self, member):
         welcome = await self.bot.db.fetchrow("SELECT * FROM settings WHERE guild=$1", member.guild.id)
-        if welcome:
+        if welcome[2]:
+            text = welcome[2]
+            channel = self.bot.get_channel(welcome[3])
             if "[member]" in text:
                 text = str(welcome[2]).replace("[member]", "{}")
 
             await channel.send(text.format(member.mention))
         else:
             pass
+
 
 def setup(bot):
     bot.add_cog(Events(bot))
