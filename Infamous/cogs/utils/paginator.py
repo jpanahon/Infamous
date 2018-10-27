@@ -500,6 +500,8 @@ class HelpPaginator(Pages):
 
     def get_bot_page(self, page):
         cog, description, commands = self.entries[page - 1]
+        self.title = f"__**{cog}**__"
+        self.description = f"*{description.title()}*"
         return commands
 
     async def show_page(self, page, *, first=False):
@@ -507,7 +509,8 @@ class HelpPaginator(Pages):
         entries = self.get_page(page)
 
         self.embed.clear_fields()
-
+        self.embed.title = self.title
+        self.embed.description = self.description
         self.embed.set_footer(text=f'Use the reactions to navigate | Page {page} of {self.maximum_pages}')
 
         signature = _command_signature
@@ -517,7 +520,7 @@ class HelpPaginator(Pages):
 
         if self.maximum_pages:
             self.embed.set_author(
-                name='Infamous',
+                name=f'Infamous | Page {page} of {self.maximum_pages}',
                 icon_url=
                 "https://cdn.discordapp.com/avatars/347205176903335937/ed455d734107fff84666695399d08683.png?size=1024"
             )
