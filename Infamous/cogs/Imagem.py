@@ -11,7 +11,7 @@ from discord.ext import commands
 
 
 class Imagem:
-    """Image Manipulation Cog"""
+    """Like Photoshop, but easier."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -64,6 +64,8 @@ class Imagem:
     async def scape(self, ctx, *, text):
         """Make ScapeX say anything you want."""
 
+        await ctx.message.delete()
+
         if len(text) >= 75:
             return await ctx.send("75 characters only.")
 
@@ -91,3 +93,4 @@ class Imagem:
 
 def setup(bot: commands.Bot):
     bot.add_cog(Imagem(bot))
+
