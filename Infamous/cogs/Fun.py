@@ -8,13 +8,13 @@ from discord.ext import commands
 
 logging.basicConfig(level=logging.INFO)
 
-# From MIkusaba
+
 def _splice(s1, s2):
     return s1[:len(s1) // 2] + s2[len(s2) // 2:]
 
 
 class Fun:
-    """Fun Commands."""
+    """Fun commands to play with."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -60,8 +60,6 @@ class Fun:
 
         await ctx.bot.db.execute("INSERT INTO questions VALUES($1)", string)
         await ctx.author.add_reaction('👌')
-        channel = self.bot.get_channel(389755120306618379)
-        await channel.send(f'{ctx.author} has input: {string}')
 
     # Ask a Question That Gets Answered by a Randomly Picked User
     @commands.command()
