@@ -1,5 +1,6 @@
 import datetime
 import discord
+import re
 
 
 def time_(time):
@@ -52,10 +53,12 @@ def activity(activity_):
 
 def ud_embed(definition_, current, max_):
     embed = discord.Embed(color=0xba1c1c)
-
     embed.set_author(name=definition_['word'], url=definition_['permalink'])
-    embed.description = definition_['definition']
-    embed.add_field(name="Example:", value=definition_['example'])
+    embed.description = ((definition_['definition'])[:2046] + '..') if len(definition_['definition']) > 2048 \
+        else definition_['definition']
+    embed.add_field(name="Example:",
+                    value=((definition_['example'])[:1022] + '..') if len(definition_['example']) > 1024
+                    else definition_['example'])
     embed.set_footer(text=f"Written by: {definition_['author']} | Entry {current} of {max_}")
 
     embed.set_thumbnail(
@@ -63,4 +66,3 @@ def ud_embed(definition_, current, max_):
         "http://a2.mzstatic.com/us/r30/Purple/v4/dd/ef/75/ddef75c7-d26c-ce82-4e3c-9b07ff0871a5/mzl.yvlduoxl.png"
     )
     return embed
-
