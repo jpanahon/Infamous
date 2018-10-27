@@ -30,6 +30,7 @@ def unregistered():
         if data:
             raise Error("You are already registered, you can't make a second account.")
         return False
+
     return commands.check(predicate)
 
 
@@ -44,6 +45,7 @@ def equipped():
             raise Error(f"You need to have an item equipped `{ctx.prefix}equip <item>`")
 
         return True
+
     return commands.check(predicate)
 
 
@@ -154,9 +156,8 @@ class Rpg:
     async def add_item(self, ctx, name: str, price: int,
                        damage: int, defense: int,
                        description: str):
-        """Add's an item to the shop
-
-**Example:** \*!admin add-item 'Example Sword' 10 20 15 'This is an Example'"""
+        """Add's an item to the shop \n**Example:** \*!admin add-item 'Example Sword' 10 20 15 'This is an Example'
+       """
         await ctx.send(
             "What skill is required to purchase this item? \n"
             "**Marksmanship, Swordsmanship, Necromancy, Clairvoyance, Pyromania, Permafrost, "
@@ -529,10 +530,7 @@ class Rpg:
     @commands.cooldown(1, 86400, commands.BucketType.user)
     @registered()
     async def daily(self, ctx):
-        """Grab your daily rewards.
-
-**Items are randomly chosen based on skills that were randomly chosen**
-        """
+        """Grab your daily rewards. \n**Items are randomly chosen based on skills that were randomly chosen**"""
         try:
             money = random.randint(100, 1000)
             await rpg.add_money(ctx, money)
@@ -775,6 +773,8 @@ class Rpg:
     @commands.command()
     @registered()
     async def item(self, ctx, *, choice):
+        """Show information about an item in the shop"""
+
         t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
              "Bow": "https://cdn.discordapp.com/attachments/389275624163770378/502087339854659604/bow.png",
              "Spear": "https://cdn.discordapp.com/attachments/389275624163770378/502088345661341696/spear.png",
@@ -796,44 +796,46 @@ class Rpg:
 
     @commands.command()
     async def guide(self, ctx):
+        """Shows how to play the RPG"""
         embed = discord.Embed(color=0xba1c1c)
-        embed.description = f"""
-Welcome to the Infamous RPG where you
-can become the most powerful warrior
-there ever was. You can go on quests
-earn money and fight other players
-who challenge you.
+        embed.description = \
+            "Welcome to the Infamous RPG where you can become the most powerful warrior there ever was. You can go on" \
+            " quests to earn money and forge a weapon to finish those who challenge you."
 
-**Leveling/Acquiring Money:**
-{ctx.prefix}quest 
-{ctx.prefix}coinflip
-{ctx.prefix}duel
-{ctx.prefix}drink
-{ctx.prefix}blackjack
-{ctx.prefix}daily
-{ctx.prefix}sell
+        embed.add_field(
+            name="Leveling/Acquiring Money",
+            value=f"{ctx.prefix}quest \n"
+                  f"{ctx.prefix}coinflip \n"
+                  f"{ctx.prefix}duel \n"
+                  f"{ctx.prefix}drink \n"
+                  f"{ctx.prefix}blackjack \n"
+                  f"{ctx.prefix}daily \n"
+                  f"{ctx.prefix}sell")
 
-**Achieving/Modifying Items:**
-{ctx.prefix}shop
-{ctx.prefix}buy
-{ctx.prefix}upgrade
-{ctx.prefix}merge
-{ctx.prefix}daily
+        embed.add_field(
+            name="Achieving/Modifying Items",
+            value=f"{ctx.prefix}shop \n"
+                  f"{ctx.prefix}buy \n"
+                  f"{ctx.prefix}upgrade \n"
+                  f"{ctx.prefix}merge \n"
+                  f"{ctx.prefix}daily \n"
+                  f"{ctx.prefix}rename")
 
-**Player Statistics:**
-{ctx.prefix}profile
-{ctx.prefix}bal
-{ctx.prefix}top
-{ctx.prefix}inv
-{ctx.prefix}skills
+        embed.add_field(
+            name="Player Statistics",
+            value=f"{ctx.prefix}profile \n"
+                  f"{ctx.prefix}bal \n"
+                  f"{ctx.prefix}top \n"
+                  f"{ctx.prefix}inv \n"
+                  f"{ctx.prefix}skills")
 
-**Administrator:**
-{ctx.prefix}admin add-quest
-{ctx.prefix}admin add-item
+        embed.add_field(
+            name="Administrator",
+            value=f"{ctx.prefix}admin add-quest \n"
+                  f"{ctx.prefix}admin add-item")
 
-**More info on each command can
-be found in {ctx.prefix}help Rpg**
-        """
+        embed.add_field(name="\u200b", value=f"**More info on each command can be found in {ctx.prefix}help Rpg**")
+
         embed.set_author(name="Instructions", icon_url=(await ctx.bot.application_info()).owner.avatar_url)
         await ctx.send(embed=embed)
 
