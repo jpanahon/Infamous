@@ -6,13 +6,13 @@ import aiohttp
 import discord
 from discord.ext import commands
 
-from cogs.utils.paginator import Pages
+from .utils.paginator import Pages
 
 logging.basicConfig(level=logging.INFO)
 
 
 class Community:
-    """Community Commands."""
+    """Community related commands."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -516,7 +516,7 @@ class Community:
             return m.content.lower() == question['answer'].lower() and m.channel == ctx.message.channel
 
         try:
-            right = await self.bot.wait_for('message', check=check, timeout=60)
+            right = await self.bot.wait_for('message', check=check, timeout=30)
         except asyncio.TimeoutError:
             await ctx.send(f"Time's up! The answer was {question['answer']}!")
         else:
@@ -527,3 +527,4 @@ class Community:
 
 def setup(bot):
     bot.add_cog(Community(bot))
+
