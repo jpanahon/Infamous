@@ -11,7 +11,9 @@ import aiohttp
 import discord
 import psutil
 from discord.ext import commands
-from .utils.paginator import HelpPaginator
+from .utils.paginator import HelpPaginator, SimplePaginator
+from .utils import functions as func
+from dateutil.relativedelta import relativedelta
 
 logging.basicConfig(level=logging.INFO)
 
@@ -82,7 +84,7 @@ class TabularData:
 
 
 class Utility:
-    """Utility Commands."""
+    """Commands that have Utility"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -205,12 +207,7 @@ class Utility:
     async def info(self, ctx):
         """Shows information about this bot"""
 
-        # From Modelmat
-        delta_uptime = datetime.utcnow() - self.bot.launch_time
-        hours, remainder = divmod(int(delta_uptime.total_seconds()), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        days, hours = divmod(hours, 24)
-
+        uptime = func.time_(self.bot.launch_time)
         users = sum(1 for _ in self.bot.get_all_members())
         channels = sum(1 for _ in self.bot.get_all_channels())
 
@@ -242,13 +239,13 @@ class Utility:
                                f'**{users} users.** \n'
                                f'**{self.bot.lines} lines**'), inline=True)
 
-        embed.add_field(name='Uptime ⏰', value=(f'**{days} days.** \n '
-                                                f'**{hours} hours.** \n '
-                                                f'**{minutes} minutes.** \n '
-                                                f'**{seconds} seconds.**'), inline=True)
+        embed.add_field(name='Uptime ⏰', value=(f'**{uptime[0]} days.** \n '
+                                                f'**{uptime[1]} hours.** \n '
+                                                f'**{uptime[2]} minutes.** \n '
+                                                f'**{uptime[3]} seconds.**'), inline=True)
 
         embed.add_field(name='Developer 🕵', value=author)
-        embed.add_field(name='Resources 💻', value='`CPU:` {:.2f}% \n`RAM:` {:.2f}%'.format(cpu_usage, ram_usage))
+        embed.add_field(name='Resources 💻', value='`CPU:` {:.2f}% \n`MEM:` {:.2f}'.format(cpu_usage, ram_usage))
         embed.add_field(name='Links 🔗', value=links, inline=True)
 
         await ctx.send(embed=embed)
@@ -262,33 +259,14 @@ class Utility:
         if user is None:
             user = ctx.author
 
-        days = datetime.utcnow() - user.created_at
-
-        days2 = datetime.utcnow() - user.joined_at
-
         registered = user.created_at.strftime('%a %b %d %Y at %I:%M %p')
-
         joined = user.joined_at.strftime('%a %b %d %Y at %I:%M %p')
-
+        days = datetime.strptime(registered, '%a %b %d %Y at %I:%M %p')
+        days2 = datetime.strptime(joined, '%a %b %d %Y at %I:%M %p')
+        diff1 = relativedelta(days, datetime.utcnow())
+        diff2 = relativedelta(days2, datetime.utcnow())
         status = user.status.name
-
-        activity = user.activity
-
-        if status == 'online':
-            status = 'Online'
-            se = '<:online:435402249448062977> '
-
-        elif status == 'offline':
-            status = 'Offline'
-            se = '<:offline:435402248282046464>'
-
-        elif status == 'away':
-            status = 'Away'
-            se = '<:away:435402245144576000> '
-
-        elif status == 'dnd':
-            status = 'Do Not Disturb'
-            se = '<:dnd:435402246738673675>'
+        status = func.status__(status)
 
         d_pos = [name for name, has in ctx.guild.default_role.permissions if has]
         pos = ", ".join([name for name, has in user.top_role.permissions if name in d_pos or has])
@@ -298,32 +276,24 @@ class Utility:
         embed.set_author(name=f"Name: {user.name}")
         embed.add_field(name="Nick", value=user.nick, inline=True)
         embed.add_field(name=":id:", value=user.id, inline=True)
-        embed.add_field(name=f"Status {se}", value=status, inline=True)
-
-        if activity:
-            if activity.type.name == "playing":
-                activity_status = "Playing <:controller:444678089415458828>"
-
-            elif activity.type.name == "watching":
-                activity_status = "Watching <:YouTube:444677705254961152>"
-
-            elif activity.type.name == "listening":
-                activity_status = "Listening <:SpotifyLogo:444677360395223043>"
-
-            elif activity.type.name == "streaming":
-                activity_status = "Streaming <:twitchlogo:444676989681532929>"
-
-            embed.add_field(name=f'{activity_status}', value=activity.name, inline=True)
+        embed.add_field(name=f"Status {status[1]}", value=status[0], inline=True)
+        activity_ = func.activity(user.activity)
+        if activity_:
+            embed.add_field(name=f'{activity_[0]} {activity_[1]}', value=user.activity.name, inline=True)
         else:
             embed.add_field(name='Playing', value='Nothing...', inline=True)
 
         embed.add_field(name="Roles 📜", value=user.top_role.mention, inline=True)
 
         embed.add_field(name="Joined at", value=(f'{joined} \n'
-                                                 f'That\'s {days2.days} days ago!'), inline=True)
+                                                 f'That\'s {abs(diff2.years)}y(s), {abs(diff2.months)}m, '
+                                                 f'{abs(diff2.days)}d, {abs(diff2.hours)}h, {abs(diff2.minutes)}m and '
+                                                 f'{abs(diff2.seconds)}s ago!'), inline=True)
 
         embed.add_field(name="Registered at", value=(f'{registered} \n'
-                                                     f'That\'s {days.days} days ago!'), inline=True)
+                                                     f'That\'s {abs(diff1.years)}y(s), {abs(diff1.months)}m, '
+                                                     f'{abs(diff1.days)}d, {abs(diff1.hours)}h, {abs(diff1.minutes)}m '
+                                                     f'and {abs(diff1.seconds)}s ago!'), inline=True)
 
         embed.add_field(name="Permissions", value=perms.title())
         embed.set_thumbnail(url=user.avatar_url)
@@ -331,16 +301,16 @@ class Utility:
 
         await ctx.send(embed=embed)
 
-        # Guild Info
-
+    # Guild Info
     @info.command(aliases=['guild'])
     @commands.guild_only()
     async def server(self, ctx):
-        """Shows information about the guild."""
+        """Shows information about the current guild."""
 
         created = ctx.guild.created_at
-        sincethen = datetime.utcnow() - created
         created = created.strftime('%a %b %d %Y at %I:%M %p')
+        created1 = datetime.strptime(created, '%a %b %d %Y at %I:%M %p')
+        created1 = relativedelta(created1, datetime.utcnow())
 
         channels = len(ctx.guild.channels)
         embed = discord.Embed(color=0xba1c1c)
@@ -349,7 +319,8 @@ class Utility:
         bots = [x for x in ctx.guild.members if x.bot]
 
         embed.title = f'{ctx.guild.name} 🏰'
-        embed.description = f'Created on {created} \nThat\'s {sincethen.days} days ago!'
+        embed.description = f'Created on {created} \nThat\'s {abs(created1.years)}y(s), {abs(created1.months)}m, ' \
+                            f'{abs(created1.days)}d, {abs(created1.minutes)}m  and {abs(created1.seconds)}s ago!'
 
         embed.add_field(name='Owner 🤵', value=ctx.guild.owner.mention, inline=True)
         embed.set_thumbnail(url=ctx.guild.icon_url)
@@ -366,27 +337,24 @@ class Utility:
     # Urban Dictionary
     @commands.command(aliases=['urban'])
     async def ud(self, ctx, *, string):
-        """Looks up a word on the Urban Dictionary."""
+        """Looks up a word on the Urban Dictionary.
+           *Also shows related definitions if any*"""
 
         link = '+'.join(string.split())
         async with aiohttp.ClientSession() as session:
             async with session.get("http://api.urbandictionary.com/v0/define?term=" + link) as resp:
                 json_data = await resp.json()
                 definition = json_data['list']
-                first_def = definition[0]
 
-        embed = discord.Embed(color=0xba1c1c)
-
-        embed.set_author(name=first_def['word'], url=first_def['permalink'])
-        embed.description = first_def['definition']
-        embed.add_field(name="Example:", value=first_def['example'])
-        embed.set_footer(text=f"Written by: {first_def['author']}")
-
-        embed.set_thumbnail(
-            url="http://a2.mzstatic.com/us/r30/Purple/v4/dd/ef/75/ddef75c7-d26c-ce82-4e3c-9b07ff0871a5/mzl.yvlduoxl.png"
-        )
-
-        await ctx.send(embed=embed)
+        if len(definition) > 1:
+            p = []
+            number = 0
+            for i in definition:
+                number += 1
+                p.append(func.ud_embed(i, number, len(definition)))
+            await SimplePaginator(extras=p).paginate(ctx)
+        else:
+            await ctx.send(embed=func.ud_embed(definition[0], 1, 1))
 
     # User Avatar
     @commands.command(aliases=['av', 'pfp'])
@@ -450,8 +418,7 @@ class Utility:
                 e.add_field(name='Suggestion', value=string, inline=False)
                 e.add_field(name='Status', value='Denied')
                 await ctx.author.send(embed=e)
-    
-    # From Rapptz
+
     @commands.command(name="help")
     async def _help(self, ctx, *, command: str = None):
         """Shows help about a command or the bot"""
