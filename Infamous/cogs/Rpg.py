@@ -10,15 +10,26 @@ from .utils import rpg_tools as rpg
 logging.basicConfig(level=logging.INFO)
 
 
-class Error(commands.CheckFailure):
-    pass
+class Unregistered(commands.CheckFailure):
+    def __str__(self):
+        return 'You are not registered! Type `*!register` or `@Infamous#5069 register`'
+
+
+class Unequipped(commands.CheckFailure):
+    def __str__(self):
+        return "You don't have an item equipped! Type `*!equip` or `@Infamous#5069 equip`"
+
+
+class Registered(commands.CheckFailure):
+    def __str__(self):
+        return "You are already registered! If you want to edit your class type `*!edit` or `@Infamous#5069 edit`"
 
 
 def registered():
     async def predicate(ctx):
         data = await rpg.fetch_user(ctx)
         if not data:
-            raise Error(f"Looks like you're not registered, type {ctx.prefix}register.")
+            raise Unregistered()
         return True
 
     return commands.check(predicate)
@@ -28,7 +39,7 @@ def unregistered():
     async def predicate(ctx):
         data = await rpg.fetch_user(ctx)
         if data:
-            raise Error("You are already registered, you can't make a second account.")
+            raise Registered()
         return False
 
     return commands.check(predicate)
@@ -36,13 +47,13 @@ def unregistered():
 
 def equipped():
     async def predicate(ctx):
-        data = await ctx.bot.db.fetch(
+        data = await ctx.bot.db.fetchrow(
             "SELECT equipped FROM rpg_profile WHERE id=$1",
             ctx.author.id
         )
 
         if not data:
-            raise Error(f"You need to have an item equipped `{ctx.prefix}equip <item>`")
+            raise Unequipped()
 
         return True
 
@@ -156,8 +167,10 @@ class Rpg:
     async def add_item(self, ctx, name: str, price: int,
                        damage: int, defense: int,
                        description: str):
-        """Add's an item to the shop \n**Example:** \*!admin add-item 'Example Sword' 10 20 15 'This is an Example'
-       """
+        """Add's an item to the shop.
+
+        **Example:** \*!admin add-item 'Example Sword' 10 20 15 'This is an Example'
+        """
         await ctx.send(
             "What skill is required to purchase this item? \n"
             "**Marksmanship, Swordsmanship, Necromancy, Clairvoyance, Pyromania, Permafrost, "
@@ -331,7 +344,7 @@ class Rpg:
         if user.bot:
             return await ctx.send("You can't duel the bot.")
 
-        await ctx.send(f"Do you {user.mention} accept this battle?")
+        await ctx.send(f"Do you {user.mention} accept this battle? Yes or No?")
 
         apt = await rpg.yon(ctx)
         if apt == "Yes":
@@ -430,7 +443,9 @@ class Rpg:
                         await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
                                                  user.id, 0, 1)
                 else:
-                    await ctx.send("It's a tie! Since there are no winners, there is no rewards!")
+                    return await ctx.send("It's a tie! Since there are no winners, there is no rewards!")
+        else:
+            return await ctx.send("I guess you don't want to duel")
 
     @commands.command()
     @registered()
@@ -530,7 +545,11 @@ class Rpg:
     @commands.cooldown(1, 86400, commands.BucketType.user)
     @registered()
     async def daily(self, ctx):
-        """Grab your daily rewards. \n**Items are randomly chosen based on skills that were randomly chosen**"""
+        """Grab your daily rewards.
+
+        **Items are randomly chosen based on skills that were randomly chosen**
+        """
+
         try:
             money = random.randint(100, 1000)
             await rpg.add_money(ctx, money)
@@ -574,7 +593,10 @@ class Rpg:
     @registered()
     @commands.cooldown(1, 600, commands.BucketType.user)
     async def blackjack(self, ctx, bet: int = None):
-        """Play blackjack"""
+        """Play blackjack
+
+        **If there is no bet it takes money out of your balance**
+        """
 
         if not bet:
             user = (await rpg.fetch_user(ctx))[4]
@@ -604,6 +626,17 @@ class Rpg:
                                f"**You:** {number + n}")
                 await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
                                          bet, ctx.author.id)
+            elif number2 + n2 > 21:
+                await rpg.add_money(ctx, bet * 2)
+                await ctx.send(f"You win! You earn {bet * 2}$! \n"
+                               f"**Dealer:** {number2 + n2} \n"
+                               f"**You:** {number + n}")
+            elif number + n > 21:
+                await ctx.send(f"You just lost {bet}$! \n"
+                               f"**Dealer:** {number2 + n2} \n"
+                               f"**You:** {number + n}")
+                await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
+                                         bet, ctx.author.id)
             else:
                 await ctx.send("It's a tie! You keep your money.")
         else:
@@ -619,6 +652,11 @@ class Rpg:
                                f"**You:** {n}")
                 await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
                                          bet, ctx.author.id)
+            elif number2 + n2 > 21:
+                await rpg.add_money(ctx, bet * 2)
+                await ctx.send(f"You win! You earn {bet * 2}$! \n"
+                               f"**Dealer:** {number2 + n2} \n"
+                               f"**You:** {n}")
             else:
                 await ctx.send("It's a tie! You keep your money.")
 
@@ -654,7 +692,7 @@ class Rpg:
 
     @commands.command(aliases=['items', 'inv'])
     @registered()
-    async def inventory(self, ctx, user=None):
+    async def inventory(self, ctx, user: discord.Member=None):
         """Shows inventory of a player."""
         if not user:
             user = ctx.author
@@ -737,7 +775,10 @@ class Rpg:
     @registered()
     @commands.cooldown(2, 600, commands.BucketType.user)
     async def coinflip(self, ctx, *, choice=None):
-        """Heads or Tails?"""
+        """Heads or Tails?
+
+        **Randomly picks if no choice is provided.**
+        """
         if not choice:
             choice = random.choice(["Heads", "Tails"])
 
@@ -786,7 +827,7 @@ class Rpg:
              "Hammer": "https://cdn.discordapp.com/attachments/389275624163770378/502084112547315733/hammer.png"
              }
 
-        item = await rpg.fetch_item(ctx, choice.capitalize(), None, 'rpg_shop')
+        item = await rpg.fetch_item(ctx, choice.title(), None, 'rpg_shop')
         number = 0
         if item:
             number += 1
@@ -843,8 +884,9 @@ class Rpg:
     @registered()
     async def merge(self, ctx, item1: str, item2: str):
         """Merge items together.
-**Example:** *!merge 'Item One' 'Item Two'
-"""
+
+        **Example:** *!merge 'Item One' 'Item Two'
+        """
 
         i1 = await rpg.fetch_item(ctx, item1.title())
         i2 = await rpg.fetch_item(ctx, item2.title())
@@ -915,6 +957,10 @@ class Rpg:
         else:
             return await ctx.send(f"You don't have **{item.title()}**")
 
+    @commands.command(name="class")
+    async def _class(self, ctx, *, _class):
+        await ctx.bot.db.execute("UPDATE rpg_profile SET class = $1 WHERE id=$2", _class.capitalize(), ctx.author.id)
+        await ctx.send(f"Set class to {_class.capitalize()}")
 
 def setup(bot):
     bot.add_cog(Rpg(bot))
