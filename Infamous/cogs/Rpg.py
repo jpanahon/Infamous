@@ -37,7 +37,7 @@ def unregistered():
 def equipped():
     async def predicate(ctx):
         data = await ctx.bot.db.fetch(
-            "SELECT equip FROM rpg_profile WHERE id=$1",
+            "SELECT equipped FROM rpg_profile WHERE id=$1",
             ctx.author.id
         )
 
