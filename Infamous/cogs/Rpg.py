@@ -47,12 +47,12 @@ def unregistered():
 
 def equipped():
     async def predicate(ctx):
-        data = await ctx.bot.db.fetchrow(
-            "SELECT equipped FROM rpg_profile WHERE id=$1",
+        data = await ctx.bot.db.fetch(
+            "SELECT * FROM rpg_profile WHERE id=$1",
             ctx.author.id
         )
 
-        if not data:
+        if not data[5]:
             raise Unequipped()
 
         return True
@@ -341,12 +341,12 @@ class Rpg:
         if not u:
             return await ctx.send(f"{user.mention} needs to equip an item ({ctx.prefix}equip <item>)")
 
-        if user.bot:
-            return await ctx.send("You can't duel the bot.")
+        if user.bot or user == ctx.author:
+            return await ctx.send("You can't duel a bot or yourself.")
 
         await ctx.send(f"Do you {user.mention} accept this battle? Yes or No?")
 
-        apt = await rpg.yon(ctx)
+        apt = await rpg.yon(ctx, user=user)
         if apt == "Yes":
             def control(m):
                 return m.author == ctx.author and m.content in ["1", "2"]
@@ -692,7 +692,7 @@ class Rpg:
 
     @commands.command(aliases=['items', 'inv'])
     @registered()
-    async def inventory(self, ctx, user: discord.Member=None):
+    async def inventory(self, ctx, user: discord.Member = None):
         """Shows inventory of a player."""
         if not user:
             user = ctx.author
@@ -961,6 +961,7 @@ class Rpg:
     async def _class(self, ctx, *, _class):
         await ctx.bot.db.execute("UPDATE rpg_profile SET class = $1 WHERE id=$2", _class.capitalize(), ctx.author.id)
         await ctx.send(f"Set class to {_class.capitalize()}")
+
 
 def setup(bot):
     bot.add_cog(Rpg(bot))
