@@ -10,28 +10,15 @@ from .utils import rpg_tools as rpg
 logging.basicConfig(level=logging.INFO)
 
 
-class Unregistered(commands.CheckFailure):
-    def __str__(self):
-        return 'You are not registered! Type `*!register` or `@Infamous#5069 register`'
-
-
-class Unequipped(commands.CheckFailure):
-    def __str__(self):
-        return "You don't have an item equipped! Type `*!equip` or `@Infamous#5069 equip`"
-
-
-class Registered(commands.CheckFailure):
-    def __str__(self):
-        return "You are already registered! If you want to edit your class type `*!edit` or `@Infamous#5069 edit`"
-
-
 def registered():
     async def predicate(ctx):
         data = await rpg.fetch_user(ctx)
-        if not data:
-            raise Unregistered()
-        return True
-
+        if data is None:
+            raise commands.CheckFailure(
+                "You are not registered! Type `*!register` or `@Infamous#5069 register`"
+            )
+        else:
+            return True
     return commands.check(predicate)
 
 
@@ -39,24 +26,23 @@ def unregistered():
     async def predicate(ctx):
         data = await rpg.fetch_user(ctx)
         if data:
-            raise Registered()
-        return False
-
+            raise commands.CheckFailure(
+                "You are already registered! If you want to edit your class type `*!class` or `@Infamous#5069 class`"
+            )
+        else:
+            return False
     return commands.check(predicate)
 
 
 def equipped():
     async def predicate(ctx):
-        data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_profile WHERE id=$1",
-            ctx.author.id
-        )
-
-        if not data[5]:
-            raise Unequipped()
-
-        return True
-
+        data = (await rpg.fetch_user(ctx))[6]
+        if data is None:
+            raise commands.CheckFailure(
+                "You don't have an item equipped! Type `*!equip` or `@Infamous#5069 equip`"
+            )
+        else:
+            return True
     return commands.check(predicate)
 
 
@@ -73,7 +59,7 @@ class Rpg:
     @unregistered()
     async def register(self, ctx):
         """Register for the rpg."""
-        await ctx.send("Choose a class! (You can pick any it doesn't matter)")
+        await ctx.send("Choose a class! (You can type any class it doesn't matter)")
 
         def class_(m):
             return m.author == ctx.author and m.channel == ctx.channel
@@ -336,9 +322,9 @@ class Rpg:
     @equipped()
     async def duel(self, ctx, user: discord.Member):
         """Duel other players!"""
-        u = (await rpg.fetch_user(ctx, user.id))[5]
+        u = await rpg.fetch_user(ctx, user.id)
 
-        if not u:
+        if u[6] is None:
             return await ctx.send(f"{user.mention} needs to equip an item ({ctx.prefix}equip <item>)")
 
         if user.bot or user == ctx.author:
@@ -620,7 +606,7 @@ class Rpg:
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {number + n}")
-            elif number2 + n2 > number + n:
+            elif number2 + n2 > number + n < 21:
                 await ctx.send(f"You just lost {bet}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {number + n}")
@@ -646,7 +632,7 @@ class Rpg:
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
-            elif number2 + n2 > n:
+            elif number2 + n2 > n < 21:
                 await ctx.send(f"You just lost {bet}$!"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
@@ -960,7 +946,7 @@ class Rpg:
     @commands.command(name="class")
     async def _class(self, ctx, *, _class):
         await ctx.bot.db.execute("UPDATE rpg_profile SET class = $1 WHERE id=$2", _class.capitalize(), ctx.author.id)
-        await ctx.send(f"Set class to {_class.capitalize()}")
+        await ctx.send(f"Set class to **{_class.capitalize()}**")
 
 
 def setup(bot):
