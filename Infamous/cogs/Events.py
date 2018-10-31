@@ -114,11 +114,6 @@ class Events:
                     f'There are no results found on Urban Dictionary.'
                 )
 
-            elif ctx.command.name == 'help':
-                await ctx.send(
-                    "Command not found. Try looking through the help page more clearly."
-                )
-
             elif ctx.command.name == 'wiki':
                 await ctx.send(
                     f"That page does not exist, you can create it using **{ctx.prefix}wiki create**"
@@ -187,8 +182,7 @@ class Events:
             await ctx.send(embed=embed)
 
         elif isinstance(error, commands.CheckFailure):
-            if ctx.command.name == '__create':
-                await ctx.send("You already have a character.")
+            await ctx.send(error)
 
     async def on_typing(self, channel, user, when):
         if user.id == 299879858572492802:
