@@ -246,10 +246,5 @@ class Developer:
         new_ctx = await ctx.bot.get_context(fake_msg)
         await ctx.bot.invoke(new_ctx)
 
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def test(self, ctx):
-        await ctx.send("This is a test")
-
 def setup(bot):
     bot.add_cog(Developer(bot))
