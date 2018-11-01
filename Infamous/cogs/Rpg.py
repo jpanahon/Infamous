@@ -332,7 +332,7 @@ class Rpg:
 
         await ctx.send(f"Do you {user.mention} accept this battle? Yes or No?")
 
-        apt = await rpg.yon(ctx, user=user)
+        apt = await rpg.yon(ctx, user)
         if apt == "Yes":
             def control(m):
                 return m.author == ctx.author and m.content in ["1", "2"]
