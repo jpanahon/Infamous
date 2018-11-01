@@ -249,12 +249,7 @@ class Developer:
     @commands.command(hidden=True)
     @commands.is_owner()
     async def test(self, ctx):
-        for i in self.bot.commands:
-            try:
-                await ctx.invoke(i)
-            except:
-                pass
-
+        await ctx.send("This is a test")
 
 def setup(bot):
     bot.add_cog(Developer(bot))
