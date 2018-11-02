@@ -961,6 +961,25 @@ class Rpg:
         await ctx.bot.db.execute("UPDATE rpg_profile SET class = $1 WHERE id=$2", _class.capitalize(), ctx.author.id)
         await ctx.send(f"Set class to **{_class.capitalize()}**")
 
+    @commands.command()
+    @registered()
+    async def next(self, ctx, user: discord.Member=None):
+        if not user:
+            user = ctx.author
+
+        u = await rpg.fetch_user(ctx, user=user.id)
+
+        skills = await ctx.bot.db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
+        p = []
+        for i in skills:
+            p.append(f"**{i[1]}:** {i[2] * 50 - i[3]}xp to **Level {i[2] + 1}**")
+
+        embed = discord.Embed(color=0xba1c1c)
+        embed.set_author(name=f"{user.name}'s requirements to level up.", icon_url=user.avatar_url)
+        embed.description = f"**{u[2] * 50 - u[3]}xp** to **Level {u[2] + 1}**"
+        embed.add_field(name="Skills", value='\n'.join(p))
+        await ctx.send(embed=embed)
+
 
 def setup(bot):
     bot.add_cog(Rpg(bot))
