@@ -19,6 +19,7 @@ def registered():
             )
         else:
             return True
+
     return commands.check(predicate)
 
 
@@ -30,7 +31,8 @@ def unregistered():
                 "You are already registered! If you want to edit your class type `*!class` or `@Infamous#5069 class`"
             )
         else:
-            return False
+            return True
+
     return commands.check(predicate)
 
 
@@ -43,6 +45,7 @@ def equipped():
             )
         else:
             return True
+
     return commands.check(predicate)
 
 
@@ -243,8 +246,8 @@ class Rpg:
         """Items you can buy."""
         user = await rpg.fetch_user(ctx)
         data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_shop WHERE class = $1 ORDER BY price BETWEEN 0 AND $2 DESC",
-            user[1], user[3]
+            "SELECT * FROM rpg_shop ORDER BY price BETWEEN 0 AND $2 DESC",
+            user[4]
         )
 
         if data:
@@ -320,116 +323,125 @@ class Rpg:
     @commands.command()
     @registered()
     @equipped()
-    async def duel(self, ctx, user: discord.Member):
+    async def duel(self, ctx, player2: discord.Member):
         """Duel other players!"""
-        u = await rpg.fetch_user(ctx, user.id)
+        u = await rpg.fetch_user(ctx, player2.id)
 
         if u[6] is None:
-            return await ctx.send(f"{user.mention} needs to equip an item ({ctx.prefix}equip <item>)")
+            return await ctx.send(f"{player2.mention} needs to equip an item ({ctx.prefix}equip <item>)")
 
-        if user.bot or user == ctx.author:
+        if player2.bot or player2 == ctx.author:
             return await ctx.send("You can't duel a bot or yourself.")
 
-        await ctx.send(f"Do you {user.mention} accept this battle? Yes or No?")
+        await ctx.send(f"Do you {player2.mention} accept this battle? Yes or No?")
 
-        apt = await rpg.yon(ctx, user)
+        apt = await rpg.yon(ctx, user=player2)
         if apt == "Yes":
-            def control(m):
-                return m.author == ctx.author and m.content in ["1", "2"]
-
-            def control2(m):
-                return m.author == user and m.content in ["1", "2"]
-
-            hp2 = 750
-            hp = 750
-            w = await rpg.fetch_user(ctx)
-            w2 = await rpg.fetch_user(ctx, user.id)
-            weapon = await rpg.fetch_item(ctx, w[5])
-            weapon2 = await rpg.fetch_item(ctx, w2[5], user.id)
-            msg = await ctx.bot.wait_for('message', check=control)
-            msg2 = await ctx.bot.wait_for('message', check=control2)
-
+            hp2 = {"hp": 1000}
+            hp = {"hp": 1000}
             await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage")
+            active = True
+            while active:
+                w = await rpg.fetch_user(ctx)
+                w2 = await rpg.fetch_user(ctx, player2.id)
+                weapon = await rpg.fetch_item(ctx, w[6])
+                weapon2 = await rpg.fetch_item(ctx, w2[6], player2.id)
 
-            while hp2 or hp > 0:
+                def control(m):
+                    return m.author == ctx.author and m.content in ["1", "2"]
+
+                msg = await ctx.bot.wait_for('message', check=control, timeout=10)
+
                 if msg.content == "1":
-                    dam = random.randint(1, weapon[2] / 2)
-                    hp2 = hp2 - dam
+                    dam = random.randint(1, abs(weapon[3] - weapon2[4] / 5))
+                    hp2['hp'] -= dam
                     await ctx.send(
-                        f"{ctx.author.mention}'s attack with **{weapon[0]}** dealt {dam}dmg to {user.mention} "
-                        f"\n {user.mention} has {hp2}hp",
+                        f"{ctx.author.mention}'s attack with **{weapon[0]}** dealt {dam}dmg to {player2.mention} "
+                        f"\n{player2.mention} has {hp2['hp']}hp",
                         delete_after=20)
-                    await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
+                    await ctx.send(f"{player2.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
+                    if hp2['hp'] <= 0:
+                        active = False
 
                 else:
-                    dam = random.randint(1, weapon[2] / 2)
-                    hp2 = hp2 - dam
+                    dam = random.randint(10, abs(weapon[3] - weapon2[4] / 5))
+                    hp2['hp'] -= dam
                     await ctx.send(
-                        f"{ctx.author.mention}'s barrage with **{weapon[0]}** dealt {dam}dmg to {user.mention} "
-                        f"\n {user.mention} has {hp2}hp",
+                        f"{ctx.author.mention}'s barrage with **{weapon[0]}** dealt {dam}dmg to {player2.mention} "
+                        f"\n{player2.mention} has {hp2['hp']}hp",
                         delete_after=20)
-                    await ctx.send(f"{user.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
+                    await ctx.send(f"{player2.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
+                    if hp2['hp'] <= 0:
+                        active = False
+
+                def control2(m):
+                    return m.author == player2 and m.content in ["1", "2"]
+
+                msg2 = await ctx.bot.wait_for('message', check=control2, timeout=10)
 
                 if msg2.content == "1":
-                    dam = random.randint(1, weapon2[2] / 2)
-                    hp = hp - dam
+                    dam = random.randint(1, abs(weapon2[3] - weapon[4] / 5))
+                    hp['hp'] -= dam
                     await ctx.send(
-                        f"{user.mention}'s attack with **{weapon[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                        f"\n {ctx.author.mention} has {hp2}hp",
+                        f"{player2.mention}'s attack with **{weapon2[0]}** dealt {dam}dmg to {ctx.author.mention} "
+                        f"\n{ctx.author.mention} has {hp['hp']}hp",
                         delete_after=20)
                     await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
-
+                    if hp['hp'] <= 0:
+                        active = False
                 else:
-                    dam = random.randint(1, weapon[2] / 2)
-                    hp = hp - dam
+                    dam = random.randint(10, abs(weapon2[3] - weapon[4] / 5))
+                    hp['hp'] -= dam
                     await ctx.send(
-                        f"{user.mention}'s barrage with **{weapon[0]}** dealt {dam}dmg to {ctx.author.mention} "
-                        f"\n {ctx.author.mention} has {hp2}hp",
+                        f"{player2.mention}'s barrage with **{weapon2[0]}** dealt {dam}dmg to {ctx.author.mention} "
+                        f"\n{ctx.author.mention} has {hp['hp']}hp",
                         delete_after=20)
                     await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
+                    if hp['hp'] <= 0:
+                        active = False
 
-                if hp <= 0:
-                    await rpg.add_xp(ctx, xp=200, user=user.id)
-                    await rpg.lvl(ctx, mon=200, user=user.id,
-                                  msg1=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
-                                       f"they leveled up and earned 200$",
-                                  msg2=f"{user.mention} won against {ctx.author.mention} using **{weapon2[0]}**,"
-                                       f"they earned 200xp")
-                    lb = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", user.id)
-                    if lb:
-                        await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", user.id)
-                    else:
-                        await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
-                                                 user.id, 1, 0)
-
-                    lb2 = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", ctx.author.id)
-                    if lb2:
-                        await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", ctx.author.id)
-                    else:
-                        await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
-                                                 ctx.author.id, 0, 1)
-                elif hp2 <= 0:
-                    await rpg.add_xp(ctx, xp=200)
-                    await rpg.lvl(ctx, mon=200,
-                                  msg1=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
-                                       f"they leveled up and earned 200$",
-                                  msg2=f"{ctx.author.mention} won against {user.mention} using **{weapon[0]}**,"
-                                       f"they earned 200xp")
-                    lb = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", ctx.author.id)
-                    if lb:
-                        await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", ctx.author.id)
-                    else:
-                        await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
-                                                 ctx.author.id, 1, 0)
-
-                    lb2 = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", user.id)
-                    if lb2:
-                        await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", user.id)
-                    else:
-                        await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
-                                                 user.id, 0, 1)
+            if hp['hp'] <= 0:
+                await rpg.add_xp(ctx, xp=200, user=player2.id)
+                await rpg.lvl(ctx, mon=200, user=player2.id,
+                              msg1=f"{player2.mention} won against {ctx.author.mention} using **{weapon2[0]}**, "
+                                   f"they leveled up and earned 200$",
+                              msg2=f"{player2.mention} won against {ctx.author.mention} using **{weapon2[0]}**, "
+                                   f"they earned 200xp")
+                lb = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", player2.id)
+                if lb:
+                    await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", player2.id)
                 else:
-                    return await ctx.send("It's a tie! Since there are no winners, there is no rewards!")
+                    await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
+                                             player2.id, 1, 0)
+
+                lb2 = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", ctx.author.id)
+                if lb2:
+                    await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", ctx.author.id)
+                else:
+                    await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
+                                             ctx.author.id, 0, 1)
+            elif hp2['hp'] <= 0:
+                await rpg.add_xp(ctx, xp=200)
+                await rpg.lvl(ctx, mon=200,
+                              msg1=f"{ctx.author.mention} won against {player2.mention} using **{weapon[0]}**, "
+                                   f"they leveled up and earned 200$",
+                              msg2=f"{ctx.author.mention} won against {player2.mention} using **{weapon[0]}**, "
+                                   f"they earned 200xp")
+                lb = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", ctx.author.id)
+                if lb:
+                    await ctx.bot.db.execute("UPDATE rpg_duels SET wins = wins + 1 WHERE id=$1", ctx.author.id)
+                else:
+                    await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
+                                             ctx.author.id, 1, 0)
+
+                lb2 = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", player2.id)
+                if lb2:
+                    await ctx.bot.db.execute("UPDATE rpg_duels SET losses = losses + 1 WHERE id=$1", player2.id)
+                else:
+                    await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)",
+                                             player2.id, 0, 1)
+            else:
+                return await ctx.send("It's a tie! Since there are no winners, there is no rewards!")
         else:
             return await ctx.send("I guess you don't want to duel")
 
@@ -944,6 +956,7 @@ class Rpg:
             return await ctx.send(f"You don't have **{item.title()}**")
 
     @commands.command(name="class")
+    @registered()
     async def _class(self, ctx, *, _class):
         await ctx.bot.db.execute("UPDATE rpg_profile SET class = $1 WHERE id=$2", _class.capitalize(), ctx.author.id)
         await ctx.send(f"Set class to **{_class.capitalize()}**")
