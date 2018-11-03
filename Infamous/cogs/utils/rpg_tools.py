@@ -221,3 +221,18 @@ async def choose(ctx, choice: list, user=None):
         return check_
     except asyncio.TimeoutError:
         pass
+
+
+async def lb(ctx, win, loss, user=None):
+    if not user:
+        user = ctx.author
+
+    data = await ctx.bot.db.fetch("SELECT * FROM rpg_duels WHERE id=$1", user.id)
+    if data:
+        await ctx.bot.db.execute("""UPDATE rpg_duels 
+                                    SET wins = wins + $1, losses = losses + $2 
+                                    WHERE id=$3
+                                """, win, loss, user.id)
+    else:
+        await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)", user.id, win, loss)
+
