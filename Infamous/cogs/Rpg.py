@@ -765,17 +765,16 @@ class Rpg:
         if m_ == "Hit":
             number = random.randint(1, 15)
             number2 = random.randint(1, 15)
-            if number + n > number2 + n2:
+            if number + n < 21 > number2 + n2:
                 await rpg.add_money(ctx, bet * 2)
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {number + n}")
-            elif number2 + n2 > number + n < 21:
+            elif number2 + n2 > 21 < number + n:
                 await ctx.send(f"You just lost {bet}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {number + n}")
-                await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
-                                         bet, ctx.author.id)
+                await rpg.remove_money(ctx, bet)
             elif number2 + n2 > 21:
                 await rpg.add_money(ctx, bet * 2)
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
@@ -785,8 +784,7 @@ class Rpg:
                 await ctx.send(f"You just lost {bet}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {number + n}")
-                await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
-                                         bet, ctx.author.id)
+                await rpg.remove_money(ctx, bet)
             else:
                 await ctx.send("It's a tie! You keep your money.")
         else:
@@ -796,12 +794,11 @@ class Rpg:
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
-            elif number2 + n2 > n < 21:
+            elif number2 + n2 > 21 < n:
                 await ctx.send(f"You just lost {bet}$!"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
-                await ctx.bot.db.execute("UPDATE rpg_profile SET bal = bal - $1 WHERE id=$2",
-                                         bet, ctx.author.id)
+                await rpg.remove_money(ctx, bet)
             elif number2 + n2 > 21:
                 await rpg.add_money(ctx, bet * 2)
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
