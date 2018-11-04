@@ -7,47 +7,9 @@ from discord.ext import commands
 
 from .utils import rpg_tools as rpg
 from .utils.paginator import SimplePaginator as paginator
+from .utils import checks
 
 logging.basicConfig(level=logging.INFO)
-
-
-def registered():
-    async def predicate(ctx):
-        data = await rpg.fetch_user(ctx)
-        if data is None:
-            raise commands.CheckFailure(
-                "You are not registered! Type `*!register` or `@Infamous#5069 register`"
-            )
-        else:
-            return True
-
-    return commands.check(predicate)
-
-
-def unregistered():
-    async def predicate(ctx):
-        data = await rpg.fetch_user(ctx)
-        if data:
-            raise commands.CheckFailure(
-                "You are already registered! If you want to edit your class type `*!class` or `@Infamous#5069 class`"
-            )
-        else:
-            return True
-
-    return commands.check(predicate)
-
-
-def equipped():
-    async def predicate(ctx):
-        data = (await rpg.fetch_user(ctx))[6]
-        if data is None:
-            raise commands.CheckFailure(
-                "You don't have an item equipped! Type `*!equip <item>` or `@Infamous#5069 equip <item>`"
-            )
-        else:
-            return True
-
-    return commands.check(predicate)
 
 
 class Rpg:
@@ -60,7 +22,7 @@ class Rpg:
         return ctx.guild is not None
 
     @commands.command()
-    @unregistered()
+    @checks.unregistered()
     async def register(self, ctx):
         """Register for the rpg."""
         await ctx.send("Choose a class! (You can type any class it doesn't matter)")
@@ -100,7 +62,7 @@ class Rpg:
         await paginator(extras=p).paginate(ctx)
 
     @commands.command()
-    @registered()
+    @checks.registered()
     @commands.cooldown(1, 600, commands.BucketType.user)
     async def quest(self, ctx):
         """Quests for the brave"""
@@ -143,7 +105,7 @@ class Rpg:
         await ctx.invoke(cmd, command="admin")
 
     @admin.command(name="add-quest")
-    @registered()
+    @checks.registered()
     @commands.has_permissions(manage_messages=True)
     async def add_quest(self, ctx, *, quest):
         """Adds a quest"""
@@ -152,7 +114,7 @@ class Rpg:
         await ctx.send(f"Added {quest.title()}")
 
     @admin.command(name="add-item")
-    @registered()
+    @checks.registered()
     @commands.has_permissions(manage_messages=True)
     async def add_item(self, ctx, name: str, price: int,
                        damage: int, defense: int,
@@ -215,7 +177,7 @@ class Rpg:
             await ctx.send("Cancelled")
 
     @commands.group(case_insensitive=True, invoke_without_command=True)
-    @registered()
+    @checks.registered()
     async def shop(self, ctx):
         """Items that are available"""
         data = await ctx.bot.db.fetch(
@@ -242,7 +204,7 @@ class Rpg:
             await paginator(extras=p).paginate(ctx)
 
     @shop.command()
-    @registered()
+    @checks.registered()
     async def recommend(self, ctx):
         """Items you can buy."""
         user = await rpg.fetch_user(ctx)
@@ -272,7 +234,7 @@ class Rpg:
             await paginator(extras=p).paginate(ctx)
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def buy(self, ctx, *, item):
         """Buy an item from shop"""
         user = await rpg.fetch_user(ctx)
@@ -309,7 +271,7 @@ class Rpg:
             return await ctx.send(f"Sorry you need {i[2] - user[2]}$ more to purchase!")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def equip(self, ctx, *, item):
         """Equip an item to use in battle"""
         i = await rpg.fetch_item(ctx, item.title())
@@ -322,8 +284,8 @@ class Rpg:
             await ctx.send("You don't have this item.")
 
     @commands.command()
-    @registered()
-    @equipped()
+    @checks.registered()
+    @checks.equipped()
     @commands.cooldown(1, 600, commands.BucketType.channel)
     async def duel(self, ctx, player2: discord.Member):
         """Duel other players!"""
@@ -598,7 +560,7 @@ class Rpg:
             return await ctx.send("I guess you don't want to duel")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def profile(self, ctx, user: discord.Member = None):
         """Your current statistics."""
         if not user:
@@ -637,7 +599,7 @@ class Rpg:
             return await ctx.send("This user isn't registered.")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     @commands.cooldown(1, 1800, commands.BucketType.user)
     async def master(self, ctx):
         """Increase your mastery level of a skill"""
@@ -679,7 +641,7 @@ class Rpg:
                                   msg2=f"You have done great, but you earned 100xp")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def bal(self, ctx, user: discord.Member = None):
         """Show how much money you or other users have."""
         if not user:
@@ -693,7 +655,7 @@ class Rpg:
 
     @commands.command()
     @commands.cooldown(1, 86400, commands.BucketType.user)
-    @registered()
+    @checks.registered()
     async def daily(self, ctx):
         """Grab your daily rewards.
 
@@ -740,7 +702,7 @@ class Rpg:
             await rpg.add_money(ctx, money)
 
     @commands.command()
-    @registered()
+    @checks.registered()
     @commands.cooldown(1, 600, commands.BucketType.user)
     async def blackjack(self, ctx, bet: int = None):
         """Play blackjack
@@ -748,9 +710,14 @@ class Rpg:
         **If there is no bet it takes money out of your balance**
         """
 
+        user = (await rpg.fetch_user(ctx))[4]
         if not bet:
-            user = (await rpg.fetch_user(ctx))[4]
             bet = random.randint(100, user)
+
+        if user < bet:
+            await ctx.send("You don't have enough to make this bet!")
+            ctx.command.reset_cooldown(ctx)
+            return
 
         n = random.randint(1, 15)
         n2 = random.randint(1, 15)
@@ -789,12 +756,12 @@ class Rpg:
                 await ctx.send("It's a tie! You keep your money.")
         else:
             number2 = random.randint(1, 6)
-            if n > number2 + n2:
+            if n < 21 > number2 + n2:
                 await rpg.add_money(ctx, bet * 2)
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
-            elif number2 + n2 > 21 < n:
+            elif number2 + n2 < 21 < n:
                 await ctx.send(f"You just lost {bet}$!"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
@@ -808,7 +775,7 @@ class Rpg:
                 await ctx.send("It's a tie! You keep your money.")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     @commands.cooldown(1, 600, commands.BucketType.user)
     async def upgrade(self, ctx, *, item):
         """Upgrade the statistics of a weapon."""
@@ -838,7 +805,7 @@ class Rpg:
             return await ctx.send("You don't have this item.")
 
     @commands.command(aliases=['items', 'inv'])
-    @registered()
+    @checks.registered()
     async def inventory(self, ctx, user: discord.Member = None):
         """Shows inventory of a player."""
         if not user:
@@ -870,7 +837,7 @@ class Rpg:
             return await ctx.send("This person does not have any items.")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def skills(self, ctx, user: discord.Member = None):
         """Shows skill level of a player"""
         if not user:
@@ -888,7 +855,7 @@ class Rpg:
         await ctx.send(embed=embed)
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def drink(self, ctx, user: discord.Member):
         """Challenge other players in a drinking contest"""
 
@@ -919,7 +886,7 @@ class Rpg:
             await ctx.send("I guess they didn't want to get drunk tonight.")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     @commands.cooldown(2, 600, commands.BucketType.user)
     async def coinflip(self, ctx, *, choice=None):
         """Heads or Tails?
@@ -959,7 +926,7 @@ class Rpg:
                               msg2=f"{ctx.author.mention} Sorry it was **Heads!** You earned 50xp")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def item(self, ctx, *, choice):
         """Show information about an item in the shop"""
 
@@ -1029,7 +996,7 @@ class Rpg:
         await ctx.send(embed=embed)
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def merge(self, ctx, item1: str, item2: str):
         """Merge items together.
 
@@ -1065,7 +1032,7 @@ class Rpg:
             return await ctx.send("You must not have one of the items, or you misspelled one of the names.")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def sell(self, ctx, *, item):
         """Sell your items for cash"""
 
@@ -1086,7 +1053,7 @@ class Rpg:
             return await ctx.send("You don't have that item")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def rename(self, ctx, item: str, name: str):
         """Renames an item"""
 
@@ -1107,7 +1074,7 @@ class Rpg:
             return await ctx.send(f"You don't have **{item.title()}**")
 
     @commands.command(name="class")
-    @registered()
+    @checks.registered()
     async def _class(self, ctx, *, _class):
         """Update your class"""
 
@@ -1115,7 +1082,7 @@ class Rpg:
         await ctx.send(f"Set class to **{_class.capitalize()}**")
 
     @commands.command()
-    @registered()
+    @checks.registered()
     async def next(self, ctx, user: discord.Member = None):
         """Requirements to next level"""
 
