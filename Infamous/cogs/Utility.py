@@ -14,6 +14,7 @@ from discord.ext import commands
 from .utils.paginator import HelpPaginator, SimplePaginator
 from .utils import functions as func
 from dateutil.relativedelta import relativedelta
+from .utils import checks
 
 logging.basicConfig(level=logging.INFO)
 
@@ -117,7 +118,7 @@ class Utility:
 
     # From Rapptz
     @commands.command(pass_context=True, hidden=True, name='eval')
-    @commands.is_owner()
+    @checks.is_admin()
     async def _eval(self, ctx, *, body: str):
         """Executes written code."""
 
@@ -169,7 +170,7 @@ class Utility:
 
     # From Rapptz
     @commands.command(hidden=True)
-    @commands.is_owner()
+    @checks.is_admin()
     async def sql(self, ctx, *, query: str):
         query = self.cleanup_code(query)
         is_multistatement = query.count(';') > 1
