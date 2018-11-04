@@ -8,6 +8,7 @@ import aiohttp
 import discord
 from discord import Webhook, AsyncWebhookAdapter
 from discord.ext import commands
+from .utils import checks
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,9 +19,8 @@ class Developer:
     def __init__(self, bot):
         self.bot = bot
 
-
     @commands.command(hidden=True)
-    @commands.is_owner()
+    @checks.is_admin()
     async def load(self, ctx, extension_name: str):
         """Loads a cog."""
 
@@ -33,7 +33,7 @@ class Developer:
         await ctx.message.delete()
 
     @commands.command(hidden=True, aliases=['r'])
-    @commands.is_owner()
+    @checks.is_admin()
     async def reload(self, ctx, *, module):
         """Reloads a cog."""
 
@@ -46,7 +46,7 @@ class Developer:
             await ctx.message.add_reaction(':BlurpleCheck:452390337382449153')
 
     @commands.command(hidden=True)
-    @commands.is_owner()
+    @checks.is_admin()
     async def unload(self, ctx, *, module):
         """Unloads a cog."""
 
@@ -59,7 +59,7 @@ class Developer:
             await ctx.message.delete()
 
     @commands.command(hidden=True)
-    @commands.is_owner()
+    @checks.is_admin()
     async def quit(self, ctx):
         """Closes the bot."""
 
@@ -76,7 +76,7 @@ class Developer:
         await self.bot.logout()
 
     @commands.command(hidden=True, aliases=['rs'])
-    @commands.is_owner()
+    @checks.is_admin()
     async def restart(self, ctx):
         """Restart all cogs."""
 
@@ -148,7 +148,7 @@ class Developer:
             pass
 
     @commands.command(hidden=True)
-    @commands.is_owner()
+    @checks.is_admin()
     async def say(self, ctx, *, text):
         """Make the bot say anything."""
 
@@ -163,7 +163,7 @@ class Developer:
             await ctx.invoke(x)
 
     @commands.group(case_insensitive=True, invoke_without_command=True, hidden=True)
-    @commands.is_owner()
+    @checks.is_admin()
     async def imitate(self, ctx, user: discord.Member, *, text):
         """Use webhooks to imitate a user."""
         await ctx.message.delete()
@@ -175,7 +175,7 @@ class Developer:
             await webhook.send(text, username=str(user.display_name), avatar_url=user.avatar_url)
 
     @imitate.command()
-    @commands.is_owner()
+    @checks.is_admin()
     async def random(self, ctx, *, text):
         """Imitate a random person."""
 
@@ -189,7 +189,7 @@ class Developer:
             await webhook.send(text, username=user.display_name, avatar_url=user.avatar_url)
 
     @imitate.command(hidden=True)
-    @commands.is_owner()
+    @checks.is_admin()
     async def custom(self, ctx, user: int, *, text):
         """Imitate a person outside the server"""
 
@@ -238,13 +238,14 @@ class Developer:
         await ctx.send(final_url)
 
     @commands.command(hidden=True)
-    @commands.is_owner()
+    @checks.is_admin()
     async def sudo(self, ctx, member: discord.Member, *, command):
         fake_msg = copy.copy(ctx.message)
         fake_msg._update(ctx.message.channel, dict(content=ctx.prefix + command))
         fake_msg.author = member
         new_ctx = await ctx.bot.get_context(fake_msg)
         await ctx.bot.invoke(new_ctx)
+
 
 def setup(bot):
     bot.add_cog(Developer(bot))
