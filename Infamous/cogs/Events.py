@@ -147,21 +147,14 @@ class Events:
                 minutes, seconds = divmod(remainder, 60)
                 days, hours = divmod(hours, 24)
                 await ctx.send(f"You have to wait {days}d, {hours}h, {minutes}m, {seconds}s.")
+            elif ctx.command.name == "duel":
+                await ctx.send(f"There is currently a match going on in {ctx.channel.mention}")
             else:
                 seconds = error.retry_after
                 seconds = round(seconds, 2)
                 hours, remainder = divmod(int(seconds), 3600)
                 minutes, seconds = divmod(remainder, 60)
                 await ctx.send(f"You have to wait {minutes}m and {seconds}s")
-
-        elif isinstance(error, commands.NotOwner):
-            await ctx.send(
-                'You are not **vσятєχтнєgнσυℓ#6346**'
-            )
-            user = self.bot.get_user(299879858572492802)
-            await user.send(
-                f'**{ctx.author}** tried to use **{ctx.command}**'
-            )
 
         elif isinstance(error, commands.BotMissingPermissions):
             perms = ', '.join(error.missing_perms)
