@@ -49,11 +49,3 @@ def is_admin():
             return True
     return commands.check(predicate)
 
-
-def guild_only():
-    async def predicate(ctx):
-        if not ctx.guild:
-            raise commands.CheckFailure("You can't use that here!")
-        else:
-            return True
-    return commands.check(predicate)
