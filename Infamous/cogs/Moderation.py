@@ -3,7 +3,7 @@ import logging
 
 import discord
 from discord.ext import commands
-from .utils import checks
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,7 +17,7 @@ class Moderation:
     # Mute
     @commands.command(aliases=['shutup', 'stfu'])
     @commands.has_permissions(manage_messages=True)
-    @checks.guild_only()
+    @commands.guild_only()
     async def mute(self, ctx, user: discord.Member, *, string):
         """Mutes mentioned user."""
 
@@ -43,7 +43,7 @@ class Moderation:
 
     @commands.command(aliases=['am'])
     @commands.has_permissions(manage_messages=True)
-    @checks.guild_only()
+    @commands.guild_only()
     async def tempmute(self, ctx, user: discord.Member, time: int, *, reason):
         """Temporarily mutes the mentioned user."""
 
@@ -86,7 +86,7 @@ class Moderation:
     # Unmute
     @commands.command()
     @commands.has_permissions(manage_messages=True)
-    @checks.guild_only()
+    @commands.guild_only()
     async def unmute(self, ctx, user: discord.Member):
         """Unmutes mentioned user."""
 
@@ -106,7 +106,7 @@ class Moderation:
     # Kick
     @commands.command()
     @commands.has_permissions(kick_members=True)
-    @checks.guild_only()
+    @commands.guild_only()
     async def kick(self, ctx, user: discord.Member, *, string):
         """Kicks mentioned user from the guild."""
 
@@ -124,7 +124,7 @@ class Moderation:
     # Ban
     @commands.command(aliases=['gtfo'])
     @commands.has_permissions(ban_members=True)
-    @checks.guild_only()
+    @commands.guild_only()
     async def ban(self, ctx, user: discord.Member, *, string):
         """Bans the mentioned user from the guild."""
 
@@ -143,7 +143,7 @@ class Moderation:
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
-    @checks.guild_only()
+    @commands.guild_only()
     async def softban(self, ctx, user: discord.Member, *, reason):
         await ctx.guild.ban(user=user, reason=f'By: {ctx.author} \n Reason: {reason}')
 
@@ -162,7 +162,7 @@ class Moderation:
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
-    @checks.guild_only()
+    @commands.guild_only()
     async def unban(self, ctx, identification: int):
         """Unbans the mentioned user from the guild."""
 
@@ -178,13 +178,13 @@ class Moderation:
     @commands.command()
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
-    @checks.guild_only()
+    @commands.guild_only()
     async def purge(self, ctx, amount: int):
         """Deletes specified amount of messages."""
 
         await ctx.channel.purge(limit=amount)
         await ctx.send(f'Deleted {amount} messages.', delete_after=5)
 
-        
+
 def setup(bot):
     bot.add_cog(Moderation(bot))
