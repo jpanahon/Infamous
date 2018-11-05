@@ -72,7 +72,7 @@ class Events:
                     bot_msg.id, reaction.message.id)
 
         if reaction.emoji != '\N{WHITE MEDIUM STAR}':
-            return
+            pass
 
     async def on_reaction_remove(self, reaction, user):
         if reaction.emoji == '\N{WHITE MEDIUM STAR}':
@@ -105,7 +105,7 @@ class Events:
                                           reaction.message.id)
 
         if reaction.emoji != '\N{WHITE MEDIUM STAR}':
-            return
+            pass
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
