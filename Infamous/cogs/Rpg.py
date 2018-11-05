@@ -63,7 +63,7 @@ class Rpg:
 
     @commands.command()
     @checks.registered()
-    @commands.cooldown(1, 600, commands.BucketType.user)
+    @commands.cooldown(1, 180, commands.BucketType.user)
     async def quest(self, ctx):
         """Quests for the brave"""
 
@@ -286,7 +286,7 @@ class Rpg:
     @commands.command()
     @checks.registered()
     @checks.equipped()
-    @commands.cooldown(1, 600, commands.BucketType.channel)
+    @commands.cooldown(1, 180, commands.BucketType.channel)
     async def duel(self, ctx, player2: discord.Member):
         """Duel other players!"""
         u = await rpg.fetch_user(ctx, player2.id)
@@ -600,7 +600,7 @@ class Rpg:
 
     @commands.command()
     @checks.registered()
-    @commands.cooldown(1, 1800, commands.BucketType.user)
+    @commands.cooldown(1, 600, commands.BucketType.user)
     async def master(self, ctx):
         """Increase your mastery level of a skill"""
 
@@ -703,7 +703,7 @@ class Rpg:
 
     @commands.command()
     @checks.registered()
-    @commands.cooldown(1, 600, commands.BucketType.user)
+    @commands.cooldown(1, 180, commands.BucketType.user)
     async def blackjack(self, ctx, bet: int = None):
         """Play blackjack
 
@@ -776,7 +776,7 @@ class Rpg:
 
     @commands.command()
     @checks.registered()
-    @commands.cooldown(1, 600, commands.BucketType.user)
+    @commands.cooldown(1, 180, commands.BucketType.user)
     async def upgrade(self, ctx, *, item):
         """Upgrade the statistics of a weapon."""
 
@@ -887,7 +887,7 @@ class Rpg:
 
     @commands.command()
     @checks.registered()
-    @commands.cooldown(2, 600, commands.BucketType.user)
+    @commands.cooldown(2, 180, commands.BucketType.user)
     async def coinflip(self, ctx, *, choice=None):
         """Heads or Tails?
 
