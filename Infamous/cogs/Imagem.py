@@ -77,7 +77,7 @@ class Imagem:
         font2 = ImageFont.truetype("fonts/whitney-light.otf", 11)
         async with ctx.typing():
             def write():
-                i = Image.open("img/scapexcutout.png")
+                i = Image.open("Infamous/img/scapexcutout.png")
                 draw = ImageDraw.Draw(i)
                 draw.text(text_, text, fill='white', font=font)
                 draw.text(timestamp, f"Today at {time_}", fill=(111, 115, 120), font=font2)
@@ -89,6 +89,31 @@ class Imagem:
             fp = await self.bot.loop.run_in_executor(None, write)
             file = discord.File(filename="scape.png", fp=fp)
             await ctx.send(file=file)
+
+    @commands.command()
+    async def drake(self, ctx, user1: discord.Member, user2: discord.Member):
+        async with self.session.get(user1.avatar_url_as(format="png", size=512)) as r:
+            av1 = await r.read()
+
+        async with self.session.get(user2.avatar_url_as(format="png", size=512)) as r:
+            av2 = await r.read()
+
+        async with ctx.typing():
+            def draw():
+                user1_av = Image.open(BytesIO(av1)).resize((371, 369)).convert("RGBA")
+                user2_av = Image.open(BytesIO(av2)).resize((371, 349)).convert("RGBA")
+
+                image = Image.open("Infamous/img/drake.jpg")
+                image.paste(user1_av, (346, 0))
+                image.paste(user2_av, (346, 368))
+                b = BytesIO()
+                b.seek(0)
+                image.save(b, "png")
+                return b.getvalue()
+
+        fp = await self.bot.loop.run_in_executor(None, draw)
+        file = discord.File(filename="drake.png", fp=fp)
+        await ctx.send(file=file)
 
 
 def setup(bot: commands.Bot):
