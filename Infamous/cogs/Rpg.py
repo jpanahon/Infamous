@@ -119,9 +119,9 @@ class Rpg:
     async def add_item(self, ctx, name: str, price: int,
                        damage: int, defense: int,
                        description: str):
-        f"""Add's an item to the shop.
+        """Add's an item to the shop.
 
-        **Example:** {ctx.prefix}admin add-item 'Example Sword' 10 20 15 'This is an Example'
+         **Example:** >>admin add-item 'Example Sword' 10 20 15 'This is an Example'
         """
         await ctx.send(
             "What skill is required to purchase this item? \n"
@@ -316,8 +316,8 @@ class Rpg:
                 try:
                     msg = await ctx.bot.wait_for('message', check=control, timeout=10.0)
                 except asyncio.TimeoutError:
-                    if hp2['hp'] > 0:
-                        return await ctx.send("You ran out of time!")
+                    if hp['hp'] > 0 and hp['hp'] > 0:
+                        return await ctx.send("You ran out of time!", delete_after=20)
                 else:
                     if msg.content == "1":
                         dam = random.randint(1, weapon[3] / 10)
@@ -442,7 +442,7 @@ class Rpg:
                 try:
                     msg2 = await ctx.bot.wait_for('message', check=control2, timeout=10.0)
                 except asyncio.TimeoutError:
-                    if hp['hp'] > 0:
+                    if hp2['hp'] > 0 and hp['hp'] > 0:
                         return await ctx.send("You ran out of time!")
                 else:
                     if msg2.content == "1":
@@ -990,9 +990,9 @@ class Rpg:
     @commands.command()
     @checks.registered()
     async def merge(self, ctx, item1: str, item2: str):
-        f"""Merge items together.
+        """Merge items together.
 
-        **Example:** {ctx.prefix}merge 'Item One' 'Item Two'
+         **Example:** >>merge 'Item One' 'Item Two'
         """
 
         i1 = await rpg.fetch_item(ctx, item1.title())
@@ -1004,22 +1004,24 @@ class Rpg:
             await ctx.send(f"Are you sure you want to merge **{i1[0]}** and **{i2[0]}** together? \n"
                            f"**Modified Statistics:** Price: {i1[2] + i2[2]}, Damage: {i1[3] + i2[3]}, Defense: "
                            f"{i1[4] + i2[4]}. `Yes` or `No`?")
-
-            yon = await rpg.yon(ctx)
-            if yon == "Yes":
-                await ctx.send(f"**{rpg.merge(item1.title(), item2.title()).title()}** has been created!")
-                await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                         item1.title(), ctx.author.id)
-                await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                         item2.title(), ctx.author.id)
-                await ctx.bot.db.execute("INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                                         rpg.merge(item1.title(), item2.title()).title(), i1[1], i1[2] + i2[2],
-                                         i1[3] + i2[3], i1[4] + i2[4], i1[5], rpg.merge(i1[6], i2[6]).title(),
-                                         ctx.author.id, 0
-                                         )
-                await rpg.remove_money(ctx, i1[2] + i2[2])
+            if (await rpg.fetch_user(ctx))[4] >= i1[4] + i2[4]:
+                yon = await rpg.yon(ctx)
+                if yon == "Yes":
+                    await ctx.send(f"**{rpg.merge(item1.title(), item2.title()).title()}** has been created!")
+                    await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                             item1.title(), ctx.author.id)
+                    await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                             item2.title(), ctx.author.id)
+                    await ctx.bot.db.execute("INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                                             rpg.merge(item1.title(), item2.title()).title(), i1[1], i1[2] + i2[2],
+                                             i1[3] + i2[3], i1[4] + i2[4], i1[5], rpg.merge(i1[6], i2[6]).title(),
+                                             ctx.author.id, 0
+                                             )
+                    await rpg.remove_money(ctx, i1[2] + i2[2])
+                else:
+                    return await ctx.send("I guess you don't want to merge your items.")
             else:
-                return await ctx.send("I guess you don't want to merge your items.")
+                return await ctx.send("You don't have enough money!")
         else:
             return await ctx.send("You must not have one of the items, or you misspelled one of the names.")
 
@@ -1030,7 +1032,7 @@ class Rpg:
 
         item_ = await rpg.fetch_item(ctx, item)
         if item_:
-            await ctx.send(f"Are you sure you want to sell {item[0]}? \n"
+            await ctx.send(f"Are you sure you want to sell **{item_[0]}**? \n"
                            f"`Yes` or `No`")
 
             yon = await rpg.yon(ctx)
@@ -1054,14 +1056,17 @@ class Rpg:
             await ctx.send(f"Are you sure you want to rename **{item.title()}** to {name.title()}? It will cost"
                            f"**{i[2]}$** \n `Yes` or `No`")
 
-            yon = await rpg.yon(ctx)
-            if yon == "Yes":
-                await ctx.send(f"Renamed {item.title()} to {name.title()}")
-                await ctx.bot.db.execute("UPDATE rpg_inventory SET name=$1 WHERE name=$2 AND owner=$3", name.title(),
-                                         item.title(), ctx.author.id)
-                await rpg.remove_money(ctx, i[2])
+            if (await rpg.fetch_user(ctx))[4] >= i[2]:
+                yon = await rpg.yon(ctx)
+                if yon == "Yes":
+                    await ctx.send(f"Renamed {item.title()} to {name.title()}")
+                    await ctx.bot.db.execute("UPDATE rpg_inventory SET name=$1 WHERE name=$2 AND owner=$3", name.title()
+                                             , item.title(), ctx.author.id)
+                    await rpg.remove_money(ctx, i[2])
+                else:
+                    return await ctx.send(f"I guess you don't want to rename **{item.title()}**.")
             else:
-                return await ctx.send(f"I guess you don't want to rename **{item.title()}**.")
+                return await ctx.send("You don't have enough money!")
         else:
             return await ctx.send(f"You don't have **{item.title()}**")
 
