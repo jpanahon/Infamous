@@ -56,13 +56,13 @@ class Bot(commands.Bot):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_prefix_(self, bot, message):
-        pfx = await self.db.fetchrow("SELECT * FROM settings WHERE guild=$1",
+        pfx = await self.db.fetchval("SELECT prefix FROM settings WHERE guild=$1", 
                                      message.guild.id)
 
-        if pfx[1]:
-            prefix = [pfx[1]]
+        if pfx:
+            prefix = [pfx]
         else:
-            prefix = ['*!']
+            prefix = ['>>']
 
         return commands.when_mentioned_or(*prefix)(bot, message)
 
