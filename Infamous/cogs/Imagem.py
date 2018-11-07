@@ -3,7 +3,7 @@ from functools import partial
 from io import BytesIO
 
 from typing import Union
-
+import parawrap
 import aiohttp
 import discord
 from PIL import Image, ImageDraw, ImageFont
@@ -92,6 +92,8 @@ class Imagem:
 
     @commands.command()
     async def drake(self, ctx, user1: discord.Member, user2: discord.Member):
+        """Compare two members using Drake."""
+
         async with self.session.get(user1.avatar_url_as(format="png", size=512)) as r:
             av1 = await r.read()
 
@@ -115,7 +117,33 @@ class Imagem:
         file = discord.File(filename="drake.png", fp=fp)
         await ctx.send(file=file)
 
+    @commands.command()
+    async def mind(self, ctx, text1: str, text2: str, text3: str):
+        """Mind blown"""
+        
+        text1_pos = (65, 76)
+        text2_pos = (65, 462)
+        text3_pos = (65, 869)
+        text1_ = parawrap.wrap(text1, 12)
+        text2_ = parawrap.wrap(text2, 12)
+        text3_ = parawrap.wrap(text3, 12)
+        async with ctx.typing():
+            def write():
+                font = ImageFont.truetype("Arial.ttf", 72)
+                image = Image.open("Infamous/img/highermind.jpg")
+                draw = ImageDraw.Draw(image)
+                draw.text(text1_pos, '\n'.join(text1_), fill='black', font=font)
+                draw.text(text2_pos, '\n'.join(text2_), fill='black', font=font)
+                draw.text(text3_pos, '\n'.join(text3_), fill='black', font=font)
+                b = BytesIO()
+                b.seek(0)
+                image.save(b, "png")
+                return b.getvalue()
+
+            fp = await self.bot.loop.run_in_executor(None, write)
+            file = discord.File(filename="mind.png", fp=fp)
+            await ctx.send(file=file)
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(Imagem(bot))
-
