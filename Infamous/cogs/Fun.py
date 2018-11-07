@@ -133,7 +133,7 @@ class Fun:
                     BytesIO(member_av)) \
                     .resize((64, 64)).convert("RGBA")
 
-                i = Image.open("img/shipthing.jpg")
+                i = Image.open("Infamous/img/shipthing.jpg")
                 i.paste(av1, p1)
                 i.paste(av2, p2)
                 b = BytesIO()
