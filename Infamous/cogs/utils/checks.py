@@ -7,7 +7,7 @@ def registered():
         data = await fetch_user(ctx)
         if data is None:
             raise commands.CheckFailure(
-                "You are not registered! Type `*!register` or `@Infamous#5069 register`"
+                f"You are not registered! Type `{ctx.prefix}register`"
             )
         else:
             return True
@@ -20,7 +20,7 @@ def unregistered():
         data = await fetch_user(ctx)
         if data:
             raise commands.CheckFailure(
-                "You are already registered! If you want to edit your class type `*!class` or `@Infamous#5069 class`"
+                f"You are already registered! If you want to edit your class type `{ctx.prefix} class`"
             )
         else:
             return True
@@ -33,7 +33,7 @@ def equipped():
         data = (await fetch_user(ctx))[6]
         if data is None:
             raise commands.CheckFailure(
-                "You don't have an item equipped! Type `*!equip <item>` or `@Infamous#5069 equip <item>`"
+                f"You don't have an item equipped! Type `{ctx.prefix}equip <item>` or `@Infamous#5069 equip <item>`"
             )
         else:
             return True
@@ -49,3 +49,14 @@ def is_admin():
             return True
     return commands.check(predicate)
 
+
+def rpg_admin():
+    async def predicate(ctx):
+        if ctx.author.guild_permissions.manage_messages:
+            return True
+        elif ctx.author.id in [299879858572492802, 284191082420633601, 311325365735784449]:
+            return True
+        else:
+            raise commands.CheckFailure("You do not have access to this command!")
+
+    return commands.check(predicate)
