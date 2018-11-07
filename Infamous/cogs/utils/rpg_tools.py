@@ -70,13 +70,13 @@ async def add_xp(ctx, xp, user=None):
     )
 
 
-async def add_mastery_xp(ctx, xp, user=None):
+async def add_mastery_xp(ctx, xp, skill, user=None):
     if not user:
         user = ctx.author.id
 
     await ctx.bot.db.execute(
-        "UPDATE rpg_mastery SET xp = xp + $1 WHERE id = $2",
-        xp, user
+        "UPDATE rpg_mastery SET xp = xp + $1 WHERE skill = $2 AND id = $3",
+        xp, skill, user
     )
 
 
@@ -136,7 +136,8 @@ async def lb_embed(ctx, pfp, current, max_):
     else:
         embed.add_field(name="Fighting Statistics", value="User has not participated in duels")
     embed.set_image(url=member.avatar_url_as(format='png', size=1024))
-    embed.set_footer(text=f"Page {current} of {max_}")
+    shared = sum(1 for m in ctx.bot.get_all_members() if m.id == member.id)
+    embed.set_footer(text=f"Page {current} of {max_} | Related Servers: {shared}")
     return embed
 
 
