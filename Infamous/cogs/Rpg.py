@@ -46,7 +46,7 @@ class Rpg:
                                  ctx.author.id, skill, 1, 0)
         await ctx.send(f"You have successfully registered, type {ctx.prefix}guide for help.")
 
-    @commands.command()
+    @commands.command(aliases=['lb'])
     async def top(self, ctx):
         """The Top Players of the RPG."""
         data = await ctx.bot.db.fetch(
@@ -86,7 +86,7 @@ class Rpg:
             check=message,
             timeout=15
         )
-        if message_.content == ans:
+        if int(message_.content) == ans:
             xp = random.randint(1, 50)
             mon = random.randint(1, 100)
             await rpg.add_xp(ctx, xp=xp)
@@ -106,7 +106,7 @@ class Rpg:
 
     @admin.command(name="add-quest")
     @checks.registered()
-    @commands.has_permissions(manage_messages=True)
+    @checks.rpg_admin()
     async def add_quest(self, ctx, *, quest):
         """Adds a quest"""
 
@@ -115,13 +115,13 @@ class Rpg:
 
     @admin.command(name="add-item")
     @checks.registered()
-    @commands.has_permissions(manage_messages=True)
+    @checks.rpg_admin()
     async def add_item(self, ctx, name: str, price: int,
                        damage: int, defense: int,
                        description: str):
-        """Add's an item to the shop.
+        f"""Add's an item to the shop.
 
-        **Example:** \*!admin add-item 'Example Sword' 10 20 15 'This is an Example'
+        **Example:** {ctx.prefix}admin add-item 'Example Sword' 10 20 15 'This is an Example'
         """
         await ctx.send(
             "What skill is required to purchase this item? \n"
@@ -316,13 +316,14 @@ class Rpg:
                 try:
                     msg = await ctx.bot.wait_for('message', check=control, timeout=10.0)
                 except asyncio.TimeoutError:
-                    pass
+                    if hp2['hp'] > 0:
+                        return await ctx.send("You ran out of time!")
                 else:
                     if msg.content == "1":
                         dam = random.randint(1, weapon[3] / 10)
                         def_ = random.randint(1, (weapon2[4] * 2) / 10)
                         if dam > def_:
-                            chance = random.choice(["Hit", "Miss"])
+                            chance = random.choice(["Hit", "Miss", "Blocked"])
                             if chance == "Hit":
                                 hp2['hp'] -= dam
                                 await ctx.send(
@@ -350,7 +351,7 @@ class Rpg:
                                 await ctx.send(f"{player2.mention}, **1:** Attack, **2:** Barrage",
                                                delete_after=20)
                         else:
-                            chance = random.choice(["Hit", "Miss"])
+                            chance = random.choice(["Hit", "Miss", "Blocked"])
                             if chance == "Hit":
                                 hp2['hp'] -= dam
                                 await ctx.send(
@@ -381,7 +382,7 @@ class Rpg:
                         dam = random.randint(10, weapon[3] / 10)
                         def_ = random.randint(10, (weapon2[4] * 2) / 10)
                         if dam > def_:
-                            chance = random.choice(["Hit", "Miss"])
+                            chance = random.choice(["Hit", "Miss", "Blocked"])
                             if chance == "Hit":
                                 hp2['hp'] -= dam
                                 await ctx.send(
@@ -408,7 +409,7 @@ class Rpg:
                                 await ctx.send(f"{ctx.author.mention} was blocked!", delete_after=20)
                                 await ctx.send(f"{player2.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
                         else:
-                            chance = random.choice(["Hit", "Miss"])
+                            chance = random.choice(["Hit", "Miss", "Blocked"])
                             if chance == "Hit":
                                 hp2['hp'] -= dam
                                 await ctx.send(
@@ -441,13 +442,14 @@ class Rpg:
                 try:
                     msg2 = await ctx.bot.wait_for('message', check=control2, timeout=10.0)
                 except asyncio.TimeoutError:
-                    pass
+                    if hp['hp'] > 0:
+                        return await ctx.send("You ran out of time!")
                 else:
                     if msg2.content == "1":
                         dam = random.randint(1, weapon2[3] / 10)
                         def_ = random.randint(1, (weapon[4] * 2) / 10)
                         if dam > def_:
-                            chance = random.choice(["Hit", "Miss"])
+                            chance = random.choice(["Hit", "Miss", "Blocked"])
                             if chance == "Hit":
                                 hp['hp'] -= dam
                                 await ctx.send(
@@ -474,7 +476,7 @@ class Rpg:
                                 await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage",
                                                delete_after=20)
                         else:
-                            chance = random.choice(["Hit", "Miss"])
+                            chance = random.choice(["Hit", "Miss", "Blocked"])
                             if chance == "Hit":
                                 hp['hp'] -= dam
                                 await ctx.send(
@@ -504,7 +506,7 @@ class Rpg:
                         dam = random.randint(10, weapon2[3] / 10)
                         def_ = random.randint(10, (weapon[4] * 2) / 10)
                         if dam > def_:
-                            choice = random.choice(["Hit", "Miss"])
+                            choice = random.choice(["Hit", "Miss", "Blocked"])
                             if choice == "Hit":
                                 hp['hp'] -= dam
                                 await ctx.send(
@@ -530,7 +532,7 @@ class Rpg:
                                 await ctx.send(f"{player2.mention} was blocked!", delete_after=20)
                                 await ctx.send(f"{ctx.author.mention}, **1:** Attack, **2:** Barrage", delete_after=20)
                         else:
-                            choice = random.choice(["Hit", "Miss"])
+                            choice = random.choice(["Hit", "Miss", "Blocked"])
                             if choice == "Hit":
                                 hp['hp'] -= dam
                                 await ctx.send(
@@ -566,7 +568,7 @@ class Rpg:
         if not user:
             user = ctx.author
 
-        stats = await rpg.fetch_user(ctx, user.id)
+        stats = await rpg.fetch_user(ctx, user=user.id)
         if stats:
             embed = discord.Embed(color=0xba1c1c)
             embed.description = f"**Level:** {stats[2]} \n **XP:** {stats[3]}"
@@ -625,17 +627,17 @@ class Rpg:
                                      ctx.author.id, skill, 1, 0)
 
         if chance > 50 < 75:
-            await rpg.add_mastery_xp(ctx, 50)
+            await rpg.add_mastery_xp(ctx, 50, skill)
             await rpg.mastery_lvl(ctx, 100, skill,
                                   msg1=f"You have done well and leveled up your mastery and earned 100$",
                                   msg2=f"You have done well, but you earned 50xp")
         elif chance < 50:
-            await rpg.add_mastery_xp(ctx, 10)
+            await rpg.add_mastery_xp(ctx, 10, skill)
             await rpg.mastery_lvl(ctx, 10, skill,
                                   msg1=f"You have done poorly, but you leveled up and earned 10$",
                                   msg2=f"You have done poorly, but you earned 10xp")
         else:
-            await rpg.add_mastery_xp(ctx, 100)
+            await rpg.add_mastery_xp(ctx, 100, skill)
             await rpg.mastery_lvl(ctx, 250, skill,
                                   msg1=f"You have done great and leveled up your mastery and earned 250$",
                                   msg2=f"You have done great, but you earned 100xp")
@@ -647,15 +649,15 @@ class Rpg:
         if not user:
             user = ctx.author
 
-        balance = (await rpg.fetch_user(ctx, user.id))[4]
+        balance = (await rpg.fetch_user(ctx, user=user.id))[4]
         embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=user.display_name, icon_url=user.avatar_url)
         embed.description = f"You have {balance}$"
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.cooldown(1, 86400, commands.BucketType.user)
     @checks.registered()
+    @commands.cooldown(1, 86400, commands.BucketType.user)
     async def daily(self, ctx):
         """Grab your daily rewards.
 
@@ -732,46 +734,36 @@ class Rpg:
         if m_ == "Hit":
             number = random.randint(1, 15)
             number2 = random.randint(1, 15)
-            if number + n < 21 > number2 + n2:
-                await rpg.add_money(ctx, bet * 2)
+            if number + n < 21 > number2 + n2 < 21:
+                await rpg.add_money(ctx, bet)
                 await ctx.send(f"You win! You earn {bet * 2}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {number + n}")
-            elif number2 + n2 > 21 < number + n:
+            elif number2 + n2 < 21 > number + n < 21:
                 await ctx.send(f"You just lost {bet}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {number + n}")
                 await rpg.remove_money(ctx, bet)
-            elif number2 + n2 > 21:
-                await rpg.add_money(ctx, bet * 2)
-                await ctx.send(f"You win! You earn {bet * 2}$! \n"
-                               f"**Dealer:** {number2 + n2} \n"
-                               f"**You:** {number + n}")
-            elif number + n > 21:
-                await ctx.send(f"You just lost {bet}$! \n"
-                               f"**Dealer:** {number2 + n2} \n"
-                               f"**You:** {number + n}")
-                await rpg.remove_money(ctx, bet)
-            else:
+            elif n + number == n2 + number2:
                 await ctx.send("It's a tie! You keep your money.")
         else:
             number2 = random.randint(1, 6)
-            if n < 21 > number2 + n2:
-                await rpg.add_money(ctx, bet * 2)
-                await ctx.send(f"You win! You earn {bet * 2}$! \n"
+            if n > number2 + n2 < 21:
+                await rpg.add_money(ctx, bet)
+                await ctx.send(f"You win! You earn {bet}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
-            elif number2 + n2 < 21 < n:
-                await ctx.send(f"You just lost {bet}$!"
+            elif n < number2 + n2 < 21:
+                await ctx.send(f"You just lost {bet}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
                 await rpg.remove_money(ctx, bet)
-            elif number2 + n2 > 21:
-                await rpg.add_money(ctx, bet * 2)
-                await ctx.send(f"You win! You earn {bet * 2}$! \n"
+            elif n2 + number2 > 21:
+                await rpg.add_money(ctx, bet)
+                await ctx.send(f"You win! You earn {bet}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
-            else:
+            elif n == number2 + n2:
                 await ctx.send("It's a tie! You keep your money.")
 
     @commands.command()
@@ -865,7 +857,7 @@ class Rpg:
         await ctx.send(f"{user.mention} do you accept {ctx.author.mention}'s challenge? \n"
                        f"Yes or No?")
 
-        yon = await rpg.yon(ctx, user)
+        yon = await rpg.yon(ctx, user=user)
         if yon == "Yes":
             choice = random.choice([ctx.author.name, user.name])
             if choice == ctx.author.name:
@@ -998,9 +990,9 @@ class Rpg:
     @commands.command()
     @checks.registered()
     async def merge(self, ctx, item1: str, item2: str):
-        """Merge items together.
+        f"""Merge items together.
 
-        **Example:** *!merge 'Item One' 'Item Two'
+        **Example:** {ctx.prefix}merge 'Item One' 'Item Two'
         """
 
         i1 = await rpg.fetch_item(ctx, item1.title())
