@@ -93,6 +93,9 @@ class Imagem:
     @commands.command()
     async def drake(self, ctx, user1: discord.Member, user2: discord.Member):
         """Compare two members using Drake."""
+        
+        if len(text1 or text2 or text3) > 30:
+            return await ctx.send("30 chars on each!")
 
         async with self.session.get(user1.avatar_url_as(format="png", size=512)) as r:
             av1 = await r.read()
