@@ -86,9 +86,9 @@ class Imagem:
                 i.save(b, "png")
                 return b.getvalue()
 
-            fp = await self.bot.loop.run_in_executor(None, write)
-            file = discord.File(filename="scape.png", fp=fp)
-            await ctx.send(file=file)
+        fp = await self.bot.loop.run_in_executor(None, write)
+        file = discord.File(filename="scape.png", fp=fp)
+        await ctx.send(file=file)
 
     @commands.command()
     async def drake(self, ctx, user1: discord.Member, user2: discord.Member):
@@ -120,10 +120,10 @@ class Imagem:
     @commands.command()
     async def mind(self, ctx, text1: str, text2: str, text3: str):
         """Mind blown"""
-        
+
         if len(text1 or text2 or text3) > 30:
             return await ctx.send("30 chars on each!")
-        
+
         text1_pos = (65, 76)
         text2_pos = (65, 462)
         text3_pos = (65, 869)
@@ -143,9 +143,9 @@ class Imagem:
                 image.save(b, "png")
                 return b.getvalue()
 
-            fp = await self.bot.loop.run_in_executor(None, write)
-            file = discord.File(filename="mind.png", fp=fp)
-            await ctx.send(file=file)
+        fp = await self.bot.loop.run_in_executor(None, write)
+        file = discord.File(filename="mind.png", fp=fp)
+        await ctx.send(file=file)
 
 
 def setup(bot: commands.Bot):
