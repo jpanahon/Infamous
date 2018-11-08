@@ -121,15 +121,15 @@ class Imagem:
     async def mind(self, ctx, text1: str, text2: str, text3: str):
         """Mind blown"""
 
-        if len(text1 or text2 or text3) > 30:
-            return await ctx.send("30 chars on each!")
+        if len(text1 or text2 or text3) > 50:
+            return await ctx.send("50 chars on each!")
 
         text1_pos = (65, 76)
         text2_pos = (65, 462)
         text3_pos = (65, 869)
-        text1_ = parawrap.wrap(text1, 12)
-        text2_ = parawrap.wrap(text2, 12)
-        text3_ = parawrap.wrap(text3, 12)
+        text1_ = parawrap.wrap(text1, 16)
+        text2_ = parawrap.wrap(text2, 16)
+        text3_ = parawrap.wrap(text3, 16)
         async with ctx.typing():
             def write():
                 font = ImageFont.truetype("Arial.ttf", 72)
