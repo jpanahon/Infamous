@@ -73,8 +73,8 @@ class Imagem:
         timestamp = (166, 26)
         time_ = datetime.datetime.now()
         time_ = time_.strftime("%-I:%M %p")
-        font = ImageFont.truetype("fonts/whitney-book.otf", int(16.5))
-        font2 = ImageFont.truetype("fonts/whitney-light.otf", 11)
+        font = ImageFont.truetype("Infamous/fonts/whitney-book.otf", int(16.5))
+        font2 = ImageFont.truetype("Infamous/fonts/whitney-light.otf", 11)
         async with ctx.typing():
             def write():
                 i = Image.open("Infamous/img/scapexcutout.png")
@@ -132,7 +132,7 @@ class Imagem:
         text3_ = parawrap.wrap(text3, 16)
         async with ctx.typing():
             def write():
-                font = ImageFont.truetype("Arial.ttf", 72)
+                font = ImageFont.truetype("Infamous/fonts/Arial.ttf", 72)
                 image = Image.open("Infamous/img/highermind.jpg")
                 draw = ImageDraw.Draw(image)
                 draw.text(text1_pos, '\n'.join(text1_), fill='black', font=font)
