@@ -236,4 +236,3 @@ async def lb(ctx, win, loss, user=None):
                                 """, win, loss, user.id)
     else:
         await ctx.bot.db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)", user.id, win, loss)
-
