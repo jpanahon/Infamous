@@ -63,7 +63,7 @@ class Rpg:
 
     @commands.command()
     @checks.registered()
-    @commands.cooldown(1, 180, commands.BucketType.user)
+    @commands.cooldown(2, 180, commands.BucketType.user)
     async def quest(self, ctx):
         """Quests for the brave"""
 
@@ -74,9 +74,9 @@ class Rpg:
         embed = discord.Embed(color=0xba1c1c)
         embed.set_author(name=f"You have been sent on a quest!")
         embed.description = q[0]
-        embed.set_footer(text="Type a number between 1-10")
+        embed.set_footer(text="Type a number between 1-5")
         await ctx.send(embed=embed)
-        ans = random.randint(1, 10)
+        ans = random.randint(1, 5)
 
         def message(m):
             return m.author == ctx.author and m.content.isdigit()
@@ -94,9 +94,9 @@ class Rpg:
                           msg2=f"You completed the quest and earned {xp}xp")
         else:
             mon = random.randint(1, 100)
-            await rpg.add_xp(ctx, xp=10)
+            await rpg.add_xp(ctx, xp=20)
             await rpg.lvl(ctx, mon=mon, msg1=f"You failed to complete the quest, but you leveled up and earned {mon}",
-                          msg2=f"You failed to complete the quest and earned 10xp")
+                          msg2=f"You failed to complete the quest and earned 20xp")
 
     @commands.group(case_insensitive=True, invoke_without_command=True)
     async def admin(self, ctx):
@@ -121,7 +121,7 @@ class Rpg:
                        description: str):
         """Add's an item to the shop.
 
-         **Example:** >>admin add-item 'Example Sword' 10 20 15 'This is an Example'
+        **Example:** >>admin add-item 'Example Sword' 10 20 15 'This is an Example'
         """
         await ctx.send(
             "What skill is required to purchase this item? \n"
@@ -632,10 +632,10 @@ class Rpg:
                                   msg1=f"You have done well and leveled up your mastery and earned 100$",
                                   msg2=f"You have done well, but you earned 50xp")
         elif chance < 50:
-            await rpg.add_mastery_xp(ctx, 10, skill)
+            await rpg.add_mastery_xp(ctx, 20, skill)
             await rpg.mastery_lvl(ctx, 10, skill,
                                   msg1=f"You have done poorly, but you leveled up and earned 10$",
-                                  msg2=f"You have done poorly, but you earned 10xp")
+                                  msg2=f"You have done poorly, but you earned 20xp")
         else:
             await rpg.add_mastery_xp(ctx, 100, skill)
             await rpg.mastery_lvl(ctx, 250, skill,
@@ -705,7 +705,7 @@ class Rpg:
 
     @commands.command()
     @checks.registered()
-    @commands.cooldown(1, 180, commands.BucketType.user)
+    @commands.cooldown(2, 180, commands.BucketType.user)
     async def blackjack(self, ctx, bet: int = None):
         """Play blackjack
 
@@ -992,7 +992,7 @@ class Rpg:
     async def merge(self, ctx, item1: str, item2: str):
         """Merge items together.
 
-         **Example:** >>merge 'Item One' 'Item Two'
+        **Example:** >>merge 'Item One' 'Item Two'
         """
 
         i1 = await rpg.fetch_item(ctx, item1.title())
