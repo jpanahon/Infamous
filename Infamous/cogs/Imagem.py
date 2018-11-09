@@ -148,18 +148,19 @@ class Imagem:
         await ctx.send(file=file)
     
     @commands.command()
-    async def gon(self, ctx, user: discord.Member, *, text):
+    async def gon(self, ctx, text: str, user: discord.Member=None):
+        user = user or ctx.author
         async with self.session.get(user.avatar_url_as(size=512)) as r:
             av = await r.read()
 
         text_pos = (633, 974)
-        font = ImageFont.truetype("Infamous/fonts/Arial.ttf", 48)
+        font = ImageFont.truetype("fonts/Arial.ttf", 48)
         async with ctx.typing():
             def draw_():
                 avatar = Image.open(BytesIO(av)).resize((414, 414)).convert("RGBA")
-                image = Image.open("Infamous/img/gon.jpg")
+                image = Image.open("img/gon.jpg")
                 draw = ImageDraw.Draw(image)
-                draw.text(text_pos, text + " gon", fill='black', font=font)
+                draw.text(text_pos, text + "gon", fill='black', font=font)
                 image.paste(avatar, (601, 547))
                 b = BytesIO()
                 b.seek(0)
@@ -169,7 +170,7 @@ class Imagem:
         fp = await self.bot.loop.run_in_executor(None, draw_)
         file = discord.File(filename="gon.png", fp=fp)
         await ctx.send(file=file)
-
+        
         
 def setup(bot: commands.Bot):
     bot.add_cog(Imagem(bot))
