@@ -162,7 +162,11 @@ class Pages:
 
     async def stop_pages(self):
         """stops the interactive pagination session"""
-        await self.message.clear_reactions()
+        try:
+            await self.message.clear_reactions()
+        except discord.Forbidden:
+            await self.message.delete()
+
         self.paginating = False
 
     def react_check(self, reaction, user):
@@ -300,7 +304,10 @@ class SimplePaginator:
 
     async def stop_controller(self, message):
         try:
-            await message.clear_reactions()
+            if not message.guild.me.guild_permissions.manage_messages:
+                await message.delete()
+            else:
+                await message.clear_reactions()
         except discord.HTTPException:
             pass
 
