@@ -20,6 +20,15 @@ class Events:
             if message.author.id == 299879858572492802:
                 channel_ = self.bot.get_channel(258801388836880385)
                 await channel_.send(message.content)
+        
+        # removes advertising
+        if message.guild.id == 258801388836880385:
+            if "discord.gg" in message.content:
+                await message.delete()
+                try:
+                    await message.author.send("Don't post invite links.")
+                except discord.Forbidden:
+                    await message.channel.send("Don't post invite links.")
 
     # Concept inspired by Rapptz
     async def on_reaction_add(self, reaction, user):
