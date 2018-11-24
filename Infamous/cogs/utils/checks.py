@@ -60,3 +60,13 @@ def rpg_admin():
             raise commands.CheckFailure("You do not have access to this command!")
 
     return commands.check(predicate)
+
+
+def in_fame():
+    async def predicate(ctx):
+        if ctx.guild.id == 258801388836880385:
+            return True
+        else:
+            raise commands.CheckFailure("You must be in the Fame discord server to use this command! \n"
+                                        "https://discord.gg/NY2MSA3")
+    return commands.check(predicate)
