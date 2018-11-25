@@ -20,8 +20,7 @@ class Events:
             if message.author.id == 299879858572492802:
                 channel_ = self.bot.get_channel(258801388836880385)
                 await channel_.send(message.content)
-        
-        # removes advertising
+
         if message.guild.id == 258801388836880385:
             if "discord.gg" in message.content:
                 await message.delete()
@@ -195,7 +194,12 @@ class Events:
             pass
 
     async def on_guild_join(self, guild):
+        self.bot.prefixes[guild.id] = None
         await self.bot.db.execute("INSERT INTO settings VALUES($1)", guild.id)
+
+    async def on_guild_remove(self, guild):
+        del self.bot.prefixes[guild.id]
+        await self.bot.db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
 
     async def on_member_join(self, member):
         welcome = await self.bot.db.fetchrow("SELECT * FROM settings WHERE guild=$1", member.guild.id)
