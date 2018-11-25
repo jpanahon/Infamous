@@ -171,7 +171,7 @@ class Original:
 
             active = True
             while active:
-                react = await ctx.get_message(react.id)
+                react = await channel.get_message(react.id)
                 if react.reactions[0].count >= 3:
                     def create():
                         i_ = Image.open(BytesIO(image)).resize((128, 128)).convert("RGBA")
