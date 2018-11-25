@@ -138,15 +138,15 @@ class Original:
                 else:
                     if not (3 <= len(text.content) <= 60):
                         await ctx.send("Text must be longer than 3 chars and shorter than 60.")
-
-                    payload = {"text": text.content}
-                    async with ctx.channel.typing(), ctx.bot.session.post("https://public-api.travitia.xyz/talk",
-                                                                          json=payload,
-                                                                          headers={
-                                                                              "authorization":
-                                                                                  os.getenv("APIKEY")}) as req:
-                        resp = await req.json()
-                        await ctx.send(f"{text.author.mention} {resp['response']}")
+                    else:
+                        payload = {"text": text.content}
+                        async with ctx.channel.typing(), ctx.bot.session.post("https://public-api.travitia.xyz/talk",
+                                                                              json=payload,
+                                                                              headers={
+                                                                                  "authorization":
+                                                                                      os.getenv("APIKEY")}) as req:
+                            resp = await req.json()
+                            await ctx.send(f"{text.author.mention} {resp['response']}")
 
     @commands.command()
     @checks.in_fame()
