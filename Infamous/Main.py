@@ -96,7 +96,7 @@ class Bot(commands.Bot):
         await self.wait_until_ready()
         while not self.is_closed():
             await self.change_presence(activity=discord.Game(
-                name='>>help'
+                name='>help'
             ))
 
     async def on_ready(self):
