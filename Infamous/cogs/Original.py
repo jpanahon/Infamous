@@ -111,15 +111,41 @@ class Original:
             command = self.bot.get_command('guess')
             await ctx.invoke(command)
 
+    # Similar to Chr1s's cleverbot bot conversation except it allows multiple people.
     @commands.command()
-    async def ask(self, ctx, *, text):
-        if not (3 <= len(text) <= 60):
-            return await ctx.send("Text must be longer than 3 chars and shorter than 60.")
-        payload = {"text": text}
-        async with ctx.channel.typing(), ctx.bot.session.post("https://public-api.travitia.xyz/talk", json=payload,
-                                                              headers={"authorization": "&KP6Y0%YCx'C?wK4O9q9"}) as req:
-            resp = await req.json()
-            await ctx.send(f"{ctx.author.mention} {resp['response']}")
+    async def chat(self, ctx):
+        """Talk to a cleverbot AI"""
+        await ctx.send("You are engaged in conversation with the bot. Anybody can join the conversation."
+                       "To stop chatting type `stop`")
+        active = True
+        while active:
+            def check(m):
+                if m.author.bot:
+                    return False
+                if m.channel == ctx.channel:
+                    return True
+
+            try:
+                text = await ctx.bot.wait_for('message', check=check, timeout=20
+            except asyncio.TimeoutError:
+                await ctx.send("I guess you don't want to talk to me anymore :cry:")
+                active = False
+            else:
+                if text.content == "stop":
+                    await ctx.send("Stopping the conversation.")
+                    active = False
+                else:
+                    if not (3 <= len(text) <= 60):
+                        await ctx.send("Text must be longer than 3 chars and shorter than 60.")
+
+                    payload = {"text": text.content}
+                    async with ctx.channel.typing(), ctx.bot.session.post("https://public-api.travitia.xyz/talk",
+                                                                          json=payload,
+                                                                          headers={
+                                                                              "authorization":
+                                                                                  "&KP6Y0%YCx'C?wK4O9q9"}) as req:
+                        resp = await req.json()
+                        await ctx.send(f"{text.author.mention} {resp['response']}")
 
     @commands.command()
     @checks.in_fame()
