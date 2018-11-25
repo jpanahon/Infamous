@@ -19,35 +19,35 @@ class Original:
 
     # Annoy
     @commands.command()
-    @commands.cooldown(2, 600, commands.BucketType.user)
+    @commands.cooldown(1, 1500, commands.BucketType.user)
     @commands.guild_only()
-    async def annoy(self, ctx, *, string):
-        """Direct Messages a random person, with the message of choice."""
-
-        user = random.choice([x for x in ctx.guild.members if not x.bot])
-
-        try:
-            embed = discord.Embed(
-                title="Sent in PM",
-                description=f'{string}',
-                color=0xba1c1c,
-
-            )
-
+    async def annoy(self, ctx, user: discord.Member, *, string=None):
+        """Annoys a specific person"""
+        if not string:
             if ctx.message.attachments:
-                image = ' '.join(m.url for m in ctx.message.attachments)
-                embed.set_image(url=image)
-                await user.send(f"{string}\n{image}")
+                string = ctx.message.attachments[0].url
+            else:
+                return await ctx.send("Provide an attachment or message.")
 
-            embed.set_author(name=user, icon_url=user.avatar_url)
-            embed.set_footer(
-                text=f'Sent by {ctx.author}',
-                icon_url=ctx.author.avatar_url
-            )
-            await ctx.send(embed=embed)
-            await user.send(string)
-        except discord.Forbidden:
-            pass
+        if string:
+            if ctx.message.attachments:
+                string = f"{string} \n{ctx.message.attachments[0].url}"
+            else:
+                pass
+
+        timer = 1500
+        active = True
+        while active:
+            timer -= 300
+            try:
+                await user.send(f"Congratulations :tada: You have been chosen by {str(ctx.author)}"
+                                f" to be annoyed with this message every five minutes: {string}")
+            except discord.Forbidden:
+                return await ctx.send("It appears I have been blocked or the user has disabled DMs.")
+            await asyncio.sleep(300)
+
+            if timer == 0:
+                active = False
 
     # Random Nickname
     @commands.command()
