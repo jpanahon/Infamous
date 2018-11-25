@@ -116,16 +116,16 @@ class Original:
     @commands.command()
     async def chat(self, ctx):
         """Talk to a cleverbot AI"""
-        await ctx.send("You are engaged in conversation with the bot. Anybody can join the conversation."
-                       "To stop chatting type `stop`")
+        await ctx.send("You are engaged in conversation with the bot. "
+                       "Anybody can join the conversation by typing `let me join`. To stop chatting type `stop`")
         active = True
+        participants = [ctx.author]
         while active:
             def check(m):
                 if m.author.bot:
                     return False
                 if m.channel == ctx.channel:
                     return True
-
             try:
                 text = await ctx.bot.wait_for('message', check=check, timeout=20)
             except asyncio.TimeoutError:
@@ -135,6 +135,11 @@ class Original:
                 if text.content == "stop":
                     await ctx.send("Stopping the conversation.")
                     active = False
+
+                elif text.content.lower() == "let me join":
+                    participants.append(text.author)
+                elif text.author not in participants:
+                    pass
                 else:
                     if not (3 <= len(text.content) <= 60):
                         await ctx.send("Text must be longer than 3 chars and shorter than 60.")
@@ -147,7 +152,7 @@ class Original:
                                                                                       os.getenv("APIKEY")}) as req:
                             resp = await req.json()
                             await ctx.send(f"{text.author.mention} {resp['response']}")
-
+                                           
     @commands.command()
     @checks.in_fame()
     async def emoji(self, ctx, text=None):
