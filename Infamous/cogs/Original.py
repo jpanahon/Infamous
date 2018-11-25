@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import random
+import os
 import discord
 from discord.ext import commands
 from .utils import checks
@@ -126,7 +127,7 @@ class Original:
                     return True
 
             try:
-                text = await ctx.bot.wait_for('message', check=check, timeout=20
+                text = await ctx.bot.wait_for('message', check=check, timeout=20)
             except asyncio.TimeoutError:
                 await ctx.send("I guess you don't want to talk to me anymore :cry:")
                 active = False
@@ -135,7 +136,7 @@ class Original:
                     await ctx.send("Stopping the conversation.")
                     active = False
                 else:
-                    if not (3 <= len(text) <= 60):
+                    if not (3 <= len(text.content) <= 60):
                         await ctx.send("Text must be longer than 3 chars and shorter than 60.")
 
                     payload = {"text": text.content}
@@ -143,7 +144,7 @@ class Original:
                                                                           json=payload,
                                                                           headers={
                                                                               "authorization":
-                                                                                  "&KP6Y0%YCx'C?wK4O9q9"}) as req:
+                                                                                  os.getenv("APIKEY")}) as req:
                         resp = await req.json()
                         await ctx.send(f"{text.author.mention} {resp['response']}")
 
