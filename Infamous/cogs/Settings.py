@@ -27,6 +27,7 @@ class Settings:
             "UPDATE settings SET prefix=$1 WHERE guild=$2",
             prefix, ctx.guild.id
         )
+        self.bot.prefixes[ctx.guild.id] = prefix
         await ctx.send(f"Set the prefix to {prefix} for **{ctx.guild.name}**")
 
     @settings.command()
@@ -47,8 +48,9 @@ class Settings:
     async def resetprefix(self, ctx):
         """Reset to default prefix"""
 
+        self.bot.prefixes[ctx.guild.id] = None
         await ctx.bot.db.execute("UPDATE settings SET prefix = NULL WHERE guild=$1", ctx.guild.id)
-        await ctx.send("The prefix has been reset to default (*!)")
+        await ctx.send("The prefix has been reset to default `>`")
 
     @settings.command()
     async def resetwelcome(self, ctx):
