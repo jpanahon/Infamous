@@ -27,8 +27,11 @@ initial_extensions = (
 async def run():
     credentials = os.getenv('DATABASE_URL')
     db = await asyncpg.create_pool(credentials)
-
-    bot = Bot(description='A community bot for the server Fame', db=db)
+    prefixes = {}
+    for i in await db.fetch("SELECT * FROM settings"):
+        prefixes[i[0]] = i[1]
+        
+    bot = Bot(description='A community bot for the server Fame', db=db, prefixes=prefixes)
     try:
         await bot.start(os.getenv('TOKEN'))
     except KeyboardInterrupt:
@@ -52,18 +55,15 @@ class Bot(commands.Bot):
         self.path = os.path.dirname(os.path.realpath(__file__))
         self.launch_time = datetime.datetime.utcnow()
         self.db = kwargs.pop("db")
+        self.prefixes = kwargs.pop("prefixes")
         self.lines = self.lines_of_code()
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_prefix_(self, bot, message):
-        pfx = await self.db.fetchval("SELECT prefix FROM settings WHERE guild=$1", 
-                                     message.guild.id)
-
-        if pfx:
-            prefix = [pfx]
+        if self.prefixes[message.guild.id]:
+            prefix = [self.prefixes[message.guild.id]]
         else:
-            prefix = ['>>']
-
+            prefix = ['>']
         return commands.when_mentioned_or(*prefix)(bot, message)
 
     async def load_all_extensions(self):
