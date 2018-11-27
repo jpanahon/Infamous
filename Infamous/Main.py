@@ -30,8 +30,19 @@ async def run():
     prefixes = {}
     for i in await db.fetch("SELECT * FROM settings"):
         prefixes[i[0]] = i[1]
+
+    disabled = {}
+    p = []
+    for i in await db.fetch("SELECT * FROM disabled"):
+        p.append(i[1])
+        disabled[i[0]] = p
+
+    blocked = {}
+    for i in await db.fetch("SELECT * FROM blocked"):
+        blocked[i[0]] = i[1]
         
-    bot = Bot(description='A community bot for the server Fame', db=db, prefixes=prefixes)
+    bot = Bot(description='A community bot for the server Fame', db=db, prefixes=prefixes, 
+             disabled=disabled, blocked=blocked)
     try:
         await bot.start(os.getenv('TOKEN'))
     except KeyboardInterrupt:
@@ -52,10 +63,13 @@ class Bot(commands.Bot):
         self.loop.create_task(self.load_all_extensions())
         self.loop.create_task(self.playing_status())
         self.remove_command("help")
+        self.add_check(self.check_if_disabled)
         self.path = os.path.dirname(os.path.realpath(__file__))
         self.launch_time = datetime.datetime.utcnow()
         self.db = kwargs.pop("db")
         self.prefixes = kwargs.pop("prefixes")
+        self.disabled_commands = kwargs.pop("disabled")
+        self.blocked = kwargs.pop("blocked")
         self.lines = self.lines_of_code()
         self.session = aiohttp.ClientSession(loop=self.loop)
 
@@ -111,6 +125,14 @@ class Bot(commands.Bot):
             return
         await self.process_commands(message)
     
+    async def check_if_disabled(self, ctx):
+        if ctx.command.qualified_name in self.disabled_commands[ctx.guild.id]:
+            raise commands.CheckFailure("I'm sorry a server moderator has disabled this command.")
+
+        elif ctx.author.id in self.blocked:
+            raise commands.CheckFailure(f"You have been blocked for: {self.blocked[ctx.author.id]}")
+
+        return True
   
 loop = asyncio.get_event_loop()
 loop.run_until_complete(run())
