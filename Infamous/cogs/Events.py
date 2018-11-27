@@ -116,6 +116,7 @@ class Events:
             pass
 
     async def on_command_error(self, ctx, error):
+        error = getattr(error, 'original', error)
         if isinstance(error, commands.CommandInvokeError):
             if ctx.command.name == 'ud':
                 await ctx.send(
@@ -129,9 +130,6 @@ class Events:
 
             else:
                 await ctx.send(f"**Error:** {str(error.original).title()}")
-
-                print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
-                traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
         elif isinstance(error, commands.MissingRequiredArgument):
             embed = discord.Embed(color=0xba1c1c)
@@ -181,9 +179,11 @@ class Events:
             embed.title = ctx.command.signature
             embed.description = ctx.command.help
             await ctx.send(embed=embed)
-
         elif isinstance(error, commands.CheckFailure):
             await ctx.send(error)
+
+        print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
+        traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
     async def on_typing(self, channel, user, when):
         if user.id == 299879858572492802:
@@ -201,18 +201,6 @@ class Events:
         del self.bot.prefixes[guild.id]
         await self.bot.db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
 
-    async def on_member_join(self, member):
-        welcome = await self.bot.db.fetchrow("SELECT * FROM settings WHERE guild=$1", member.guild.id)
-        if welcome[2]:
-            text = welcome[2]
-            channel = self.bot.get_channel(welcome[3])
-            if "[member]" in text:
-                text = str(welcome[2]).replace("[member]", "{}")
-
-            await channel.send(text.format(member.mention))
-        else:
-            pass
-
-
+                                   
 def setup(bot):
     bot.add_cog(Events(bot))
