@@ -1,6 +1,7 @@
+import logging
+
 import discord
 from discord.ext import commands
-import logging
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,51 +15,56 @@ class Settings:
     async def __local_check(self, ctx):
         return ctx.author.guild_permissions.manage_guild
 
-    @commands.group(aliases=['config', 'set'], invoke_without_command=True, case_insensitive=True)
-    async def settings(self, ctx):
-        """List of sub commands that can change my config for this server."""
-        pass
+    @commands.group(name="prefix", invoke_without_command=True)
+    async def prefix_(self, ctx):
+        """The prefix for this guild."""
 
-    @settings.command()
-    async def prefix(self, ctx, prefix: str):
+        await ctx.send(f"My prefix for {ctx.guild.name} is `{ctx.prefix}`")
+
+    @prefix_.command(name="set")
+    async def set_(self, ctx, prefix: str):
         """Change my prefix!"""
 
+        self.bot.prefixes[ctx.guild.id] = prefix
         await ctx.bot.db.execute(
             "UPDATE settings SET prefix=$1 WHERE guild=$2",
             prefix, ctx.guild.id
         )
-        self.bot.prefixes[ctx.guild.id] = prefix
         await ctx.send(f"Set the prefix to {prefix} for **{ctx.guild.name}**")
 
-    @settings.command()
-    async def welcome(self, ctx, welcomemsg: str, channel: discord.channel.TextChannel=None):
-        """Insert [member] in text to mention user."""
-
-        if not channel:
-            channel = ctx.channel
-
-        await ctx.bot.db.execute("UPDATE settings SET welcomemsg = $1 WHERE guild=$2",
-                                 welcomemsg, ctx.guild.id)
-        await ctx.bot.db.execute("UPDATE settings SET welcomechannel = $1 WHERE guild=$2",
-                                 channel.id, ctx.guild.id)
-
-        await ctx.send(f"The welcome message is {welcomemsg} and the channel is {channel}")
-
-    @settings.command()
-    async def resetprefix(self, ctx):
+    @prefix_.command()
+    async def reset(self, ctx):
         """Reset to default prefix"""
 
         self.bot.prefixes[ctx.guild.id] = None
         await ctx.bot.db.execute("UPDATE settings SET prefix = NULL WHERE guild=$1", ctx.guild.id)
         await ctx.send("The prefix has been reset to default `>`")
 
-    @settings.command()
-    async def resetwelcome(self, ctx):
-        """Removes welcome message"""
+    @commands.command()
+    async def disable(self, ctx, *, command):
+        """Disables a command"""
 
-        await ctx.bot.db.execute("UPDATE settings SET welcomemsg = NULL WHERE guild=$1", ctx.guild.id)
-        await ctx.bot.db.execute("UPDATE settings SET welcomechannel = NULL WHERE guild=$1", ctx.guild.id)
-        await ctx.send("I removed the welcome message!")
+        try:
+            command_ = ctx.bot.get_command(command.lower())
+        except discord.Forbidden:
+            return await ctx.send("That's not a command.")
+
+        self.bot.disabled_commands[ctx.guild.id].append(command_.name)
+        await ctx.bot.db.execute("INSERT INTO disabled VALUES($1, $2)", ctx.guild.id, command_.name)
+        await ctx.send("The command has been disabled.")
+
+    @commands.command()
+    async def enable(self, ctx, *, command):
+        """Enables a command"""
+
+        try:
+            command_ = ctx.bot.get_command(command.lower())
+        except discord.Forbidden:
+            return await ctx.send("That's not a command.")
+
+        self.bot.disabled_commands[ctx.guild.id].remove(command_.name)
+        await ctx.bot.db.execute("DELETE FROM disabled WHERE id=$1 AND command=$2", ctx.guild.id, command_.name)
+        await ctx.send("The command has been enabled.")
 
 
 def setup(bot):
