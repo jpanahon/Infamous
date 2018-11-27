@@ -1,13 +1,16 @@
 import copy
 import datetime
+import inspect
 import logging
 import os
 import random
-import inspect
+
 import aiohttp
+import asyncpg
 import discord
 from discord import Webhook, AsyncWebhookAdapter
 from discord.ext import commands
+
 from .utils import checks
 
 logging.basicConfig(level=logging.INFO)
@@ -149,7 +152,7 @@ class Developer:
 
     @commands.command(hidden=True)
     @checks.is_admin()
-    async def say(self, ctx, *, text):
+    async def say(self, ctx, *, text: commands.clean_content):
         """Make the bot say anything."""
 
         await ctx.send(text)
@@ -245,6 +248,26 @@ class Developer:
         fake_msg.author = member
         new_ctx = await ctx.bot.get_context(fake_msg)
         await ctx.bot.invoke(new_ctx)
+
+    @commands.command(hidden=True)
+    @checks.is_admin()
+    async def block(self, ctx, user: discord.Member, *, reason):
+        try:
+            await ctx.bot.db.execute("INSERT INTO blocked VALUES($1, $2)", user.id, reason)
+        except asyncpg.exceptions.UniqueViolationError:
+            return await ctx.send(f"{user.name} is already blocked")
+
+        await ctx.send(f"Blocked {user.name} from using the bot because: {reason}")
+
+    @commands.command(hidden=True)
+    @checks.is_admin()
+    async def unblock(self, ctx, user: discord.Member):
+        try:
+            await ctx.bot.db.execute("DELETE FROM blocked WHERE id=$1", user.id)
+        except asyncpg.exceptions.UniqueViolationError:
+            return await ctx.send(f"{user.name} was never blocked")
+
+        await ctx.send(f"{user.name} has been unblocked.")
 
 
 def setup(bot):
