@@ -254,6 +254,7 @@ class Developer:
     async def block(self, ctx, user: discord.Member, *, reason):
         try:
             await ctx.bot.db.execute("INSERT INTO blocked VALUES($1, $2)", user.id, reason)
+            self.bot.blocked[ctx.author.id] = reason
         except asyncpg.exceptions.UniqueViolationError:
             return await ctx.send(f"{user.name} is already blocked")
 
@@ -264,10 +265,12 @@ class Developer:
     async def unblock(self, ctx, user: discord.Member):
         try:
             await ctx.bot.db.execute("DELETE FROM blocked WHERE id=$1", user.id)
+            del self.bot.blocked[ctx.author.id]
         except asyncpg.exceptions.UniqueViolationError:
             return await ctx.send(f"{user.name} was never blocked")
 
         await ctx.send(f"{user.name} has been unblocked.")
+
 
 
 def setup(bot):
