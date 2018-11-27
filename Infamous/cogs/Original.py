@@ -1,12 +1,14 @@
 import asyncio
 import logging
-import random
 import os
-import discord
-from discord.ext import commands
-from .utils import checks
-from PIL import Image
+import random
 from io import BytesIO
+
+import discord
+from PIL import Image
+from discord.ext import commands
+
+from .utils import checks
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,6 +36,8 @@ class Original:
                 string = f"{string} \n{ctx.message.attachments[0].url}"
             else:
                 pass
+
+        await ctx.send("I will now annoy them for the next 25 minutes in 5 minute intervals.")
 
         timer = 1500
         active = True
@@ -126,6 +130,7 @@ class Original:
                     return False
                 if m.channel == ctx.channel:
                     return True
+
             try:
                 text = await ctx.bot.wait_for('message', check=check, timeout=20)
             except asyncio.TimeoutError:
@@ -138,6 +143,7 @@ class Original:
 
                 elif text.content.lower() == "let me join":
                     participants.append(text.author)
+                    await ctx.send("Hello...")
                 elif text.author not in participants:
                     pass
                 else:
@@ -149,13 +155,19 @@ class Original:
                                                                               json=payload,
                                                                               headers={
                                                                                   "authorization":
-                                                                                      os.getenv("APIKEY")}) as req:
+                                                                                      os.getenv('APIKEY')}) as req:
                             resp = await req.json()
-                            await ctx.send(f"{text.author.mention} {resp['response']}")
-                                           
-    @commands.command()
+                            await ctx.send(resp['response'])
+
+    @commands.group(invoke_without_command=True)
     @checks.in_fame()
-    async def emoji(self, ctx, text=None):
+    async def emoji(self, ctx):
+        """Command group for adding emojis to the server."""
+        await ctx.invoke(self.bot.get_command("help"), command="emoji")
+
+    @emoji.command(name="add")
+    @checks.in_fame()
+    async def add__(self, ctx, text=None):
         if not text or not text.startswith("http"):
             if ctx.message.attachments:
                 text = ctx.message.attachments[0].url
@@ -181,7 +193,7 @@ class Original:
         else:
             channel = ctx.bot.get_channel(270907435999297557)
             react = await channel.send(embed=discord.Embed(color=0xba1c1c)
-                                       .set_author(name=f":{msg}:")
+                                       .set_author(name=f"Add :{msg}:")
                                        .set_image(url=text)
                                        .set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar_url)
                                        )
@@ -203,7 +215,7 @@ class Original:
 
             active = True
             while active:
-                react = await channel.get_message(react.id)
+                react = await ctx.get_message(react.id)
                 if react.reactions[0].count >= 3:
                     def create():
                         i_ = Image.open(BytesIO(image)).resize((128, 128)).convert("RGBA")
@@ -222,6 +234,45 @@ class Original:
                     except discord.Forbidden:
                         await ctx.send("There are no more slots or the file is too big.")
                         active = False
+
+    @emoji.command(name="remove")
+    @checks.in_fame()
+    async def remove_(self, ctx, emote: discord.Emoji = None):
+        if not emote:
+            return await ctx.send("Choose a custom emoji")
+
+        channel = ctx.bot.get_channel(270907435999297557)
+        msg = await channel.send(embed=discord.Embed(color=0xba1c1c)
+                                 .set_author(name=f"Remove :{emote.name}:")
+                                 .set_image(url=emote.url)
+                                 .set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar_url)
+                                 )
+
+        await msg.add_reaction("\N{OK HAND SIGN}")
+
+        def emo(reaction, user):
+            if user.bot:
+                return False
+
+            if str(reaction.emoji) == "\N{OK HAND SIGN}":
+                return True
+
+        await ctx.bot.wait_for('reaction_add', check=emo)
+        try:
+            await msg.remove_reaction("\N{OK HAND SIGN}", ctx.bot.user)
+        except discord.Forbidden:
+            pass
+
+        active = True
+        while active:
+            msg = await channel.get_message(msg.id)
+            if msg.reactions[0].count >= 3:
+                await ctx.send(f"{str(emote)} will be deleted.")
+                try:
+                    await emote.delete()
+                    active = False
+                except discord.Forbidden:
+                    pass
 
 
 def setup(bot):
