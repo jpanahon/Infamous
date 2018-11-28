@@ -49,8 +49,12 @@ class Settings:
         except discord.Forbidden:
             return await ctx.send("That's not a command.")
 
-        self.bot.disabled_commands[ctx.guild.id].append(command_.name)
         await ctx.bot.db.execute("INSERT INTO disabled VALUES($1, $2)", ctx.guild.id, command_.name)
+        if self.bot.disabled_commands[ctx.guild.id] is None:
+            self.bot.disabled_commands[ctx.guild.id] = [command]
+        else:
+            self.bot.disabled_commands[ctx.guild.id].append(command)
+
         await ctx.send("The command has been disabled.")
 
     @commands.command()
@@ -62,7 +66,11 @@ class Settings:
         except discord.Forbidden:
             return await ctx.send("That's not a command.")
 
-        self.bot.disabled_commands[ctx.guild.id].remove(command_.name)
+        if self.bot.disabled_commands[ctx.guild.id] is not None:
+            self.bot.disabled_commands[ctx.guild.id].remove(command_.name)
+        else:
+            self.bot.disabled_commands[ctx.guild.id] = None
+
         await ctx.bot.db.execute("DELETE FROM disabled WHERE id=$1 AND command=$2", ctx.guild.id, command_.name)
         await ctx.send("The command has been enabled.")
 
