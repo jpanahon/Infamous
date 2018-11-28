@@ -126,13 +126,15 @@ class Bot(commands.Bot):
         await self.process_commands(message)
     
     async def check_if_disabled(self, ctx):
-        if ctx.command.qualified_name in self.disabled_commands[ctx.guild.id]:
-            raise commands.CheckFailure("I'm sorry a server moderator has disabled this command.")
+        if ctx.guild.id in self.disabled_commands:
+            if ctx.command.qualified_name in self.disabled_commands[ctx.guild.id]:
+                raise commands.CheckFailure("I'm sorry a server moderator has disabled this command.")
 
         elif ctx.author.id in self.blocked:
             raise commands.CheckFailure(f"You have been blocked for: {self.blocked[ctx.author.id]}")
 
         return True
   
+
 loop = asyncio.get_event_loop()
 loop.run_until_complete(run())
