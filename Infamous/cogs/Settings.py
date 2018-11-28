@@ -50,7 +50,7 @@ class Settings:
             return await ctx.send("That's not a command.")
 
         await ctx.bot.db.execute("INSERT INTO disabled VALUES($1, $2)", ctx.guild.id, command_.name)
-        if self.bot.disabled_commands[ctx.guild.id] is None:
+        if ctx.guild.id not in self.bot.disabled_commands:
             self.bot.disabled_commands[ctx.guild.id] = [command]
         else:
             self.bot.disabled_commands[ctx.guild.id].append(command)
@@ -68,6 +68,8 @@ class Settings:
 
         if self.bot.disabled_commands[ctx.guild.id] is not None:
             self.bot.disabled_commands[ctx.guild.id].remove(command_.name)
+        elif ctx.guild.id not in self.bot.disabled_commands:
+            await ctx.send("There are no disabled commands.")
         else:
             self.bot.disabled_commands[ctx.guild.id] = None
 
