@@ -14,7 +14,7 @@ def _splice(s1, s2):
 
 
 class Fun:
-    """Fun commands to play with."""
+    """Commands that are made to have fun."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -28,9 +28,11 @@ class Fun:
     async def quotes(self, ctx):
         """Shows a random quote from the community."""
 
-        quotes = await ctx.bot.db.fetchrow("SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1")
+        async with ctx.bot.db.acquire() as db:
+            quotes = await db.fetchrow("SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1")
+
         embed = discord.Embed(title="Some random quote",
-                              color=0xba1c1c,
+                              color=self.bot.embed_color,
                               timestamp=datetime.datetime.utcnow()
                               )
 
@@ -38,8 +40,13 @@ class Fun:
         await ctx.send(embed=embed)
 
     @quotes.command()
-    async def insert(self, ctx, *, link):
-        await ctx.bot.db.execute("INSERT INTO quotes VALUES($1)", link)
+    async def insert(self, ctx, *, link=None):
+        if not link:
+            link = ctx.message.attachments[0].url
+
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("INSERT INTO quotes VALUES($1)", link)
+
         await ctx.message.add_reaction(':FAXcheck:428160543975800833')
 
     # Questions
@@ -47,10 +54,12 @@ class Fun:
     async def question(self, ctx):
         """Asks community provided questions."""
 
-        question = await ctx.bot.db.fetchrow("SELECT * FROM questions ORDER BY RANDOM() LIMIT 1")
+        async with ctx.bot.db.acquire() as db:
+            question = await db.fetchrow("SELECT * FROM questions ORDER BY RANDOM() LIMIT 1")
+
         embed = discord.Embed(title="Random Question",
                               description=question[0],
-                              color=0xba1c1c)
+                              color=self.bot.embed_color)
 
         await ctx.send(embed=embed)
 
@@ -58,7 +67,9 @@ class Fun:
     async def add(self, ctx, *, string):
         """Adds a question to the question pool."""
 
-        await ctx.bot.db.execute("INSERT INTO questions VALUES($1)", string)
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("INSERT INTO questions VALUES($1)", string)
+
         await ctx.author.add_reaction('👌')
 
     # Ask a Question That Gets Answered by a Randomly Picked User
@@ -67,7 +78,7 @@ class Fun:
         """Answer a question with a randomly picked user."""
 
         embed = discord.Embed(title=f'Answer to "{string}"',
-                              color=0xba1c1c,
+                              color=self.bot.embed_color,
                               timestamp=datetime.datetime.utcnow()
                               )
         roulette = random.choice([x for x in ctx.guild.members if not x.bot])
@@ -99,7 +110,7 @@ class Fun:
         embed = discord.Embed(title="Random Gay Couple",
                               description=f"<@{gay.id}> and <@{gay2.id}> have a gay/lesbian "
                                           f"relationship with each other.",
-                              color=0xba1c1c)
+                              color=self.bot.embed_color)
 
         embed.set_image(url=photo)
         await ctx.send(embed=embed)
