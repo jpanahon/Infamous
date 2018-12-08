@@ -18,7 +18,7 @@ initial_extensions = (
     'cogs.Events',
     'cogs.Original',
     'cogs.Moderation',
-    'cogs.Rpg',
+    'cogs.Rpg v2',
     'cogs.Imagem',
     'cogs.Settings'
 )
