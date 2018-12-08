@@ -11,7 +11,7 @@ from discord.ext import commands
 
 
 class Imagem:
-    """Like Photoshop, but easier."""
+    """Commands that edit images."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -60,7 +60,7 @@ class Imagem:
             file = discord.File(filename="circle.png", fp=final_buffer)
             await ctx.send(file=file)
 
-    @commands.command()
+    @commands.command(hidden=True)
     async def scape(self, ctx, *, text):
         """Make ScapeX say anything you want."""
 
@@ -73,8 +73,8 @@ class Imagem:
         timestamp = (166, 26)
         time_ = datetime.datetime.now()
         time_ = time_.strftime("%-I:%M %p")
-        font = ImageFont.truetype("Infamous/fonts/whitney-book.otf", int(16.5))
-        font2 = ImageFont.truetype("Infamous/fonts/whitney-light.otf", 11)
+        font = ImageFont.truetype("fonts/whitney-book.otf", int(16.5))
+        font2 = ImageFont.truetype("fonts/whitney-light.otf", 11)
         async with ctx.typing():
             def write():
                 i = Image.open("Infamous/img/scapexcutout.png")
@@ -117,11 +117,11 @@ class Imagem:
         file = discord.File(filename="drake.png", fp=fp)
         await ctx.send(file=file)
 
-    @commands.command()
+    @commands.command(aliases=['brain'])
     async def mind(self, ctx, text1: str, text2: str, text3: str):
         """Mind blown"""
 
-        if len(text1 or text2 or text3) > 50:
+        if len(text1) or len(text2) or len(text3) > 50:
             return await ctx.send("50 chars on each!")
 
         text1_pos = (65, 76)
@@ -146,15 +146,16 @@ class Imagem:
         fp = await self.bot.loop.run_in_executor(None, write)
         file = discord.File(filename="mind.png", fp=fp)
         await ctx.send(file=file)
-    
+
     @commands.command()
-    async def gon(self, ctx, text: str, user: discord.Member=None):
+    async def gon(self, ctx, text: str, user: discord.Member = None):
+        """Replaces a nonagon with a user's avatar and changes the name of it"""
         user = user or ctx.author
         async with self.session.get(user.avatar_url_as(size=512)) as r:
             av = await r.read()
 
         text_pos = (633, 974)
-        font = ImageFont.truetype("Infamous/fonts/Arial.ttf", 48)
+        font = ImageFont.truetype("fonts/Arial.ttf", 48)
         async with ctx.typing():
             def draw_():
                 avatar = Image.open(BytesIO(av)).resize((414, 414)).convert("RGBA")
@@ -170,7 +171,47 @@ class Imagem:
         fp = await self.bot.loop.run_in_executor(None, draw_)
         file = discord.File(filename="gon.png", fp=fp)
         await ctx.send(file=file)
-        
-        
+
+    @commands.command()
+    async def blurple(self, ctx, user: discord.Member = None):
+        if not user:
+            user = ctx.author
+
+        async with self.session.get(user.avatar_url_as(size=1024)) as r_:
+            avatar = await r_.read()
+
+        async with ctx.typing():
+            def blurplify():
+                im = Image.open(BytesIO(avatar))
+                im = im.convert('RGBA')
+                size = im.size
+
+                colors = [(255, 255, 255), (114, 137, 218), (78, 93, 148)]
+                thresholds = [m * 255 / len(colors) for m in range(1, len(colors) + 1)]
+
+                for x in range(size[0]):
+                    for y in range(size[1]):
+                        r, g, b, a = im.getpixel((x, y))
+                        gval = 0.299 * r + 0.587 * g + 0.114 * b
+
+                        for t in list(enumerate(thresholds))[::-1]:
+                            lower = thresholds[t[0] - 1] if t[0] - 1 >= 0 else -1
+                            if lower < gval <= thresholds[t[0]]:
+                                px = colors[list(enumerate(thresholds))[::-1][t[0]][0]]
+                                im.putpixel((x, y), (px[0], px[1], px[2], a))
+
+                b = BytesIO()
+                b.seek(0)
+                im.save(b, "png")
+                return b.getvalue()
+
+            fp = await self.bot.loop.run_in_executor(None, blurplify)
+            file = discord.File(filename="blurple.png", fp=fp)
+            await ctx.send(file=file)
+
+
+Imagem.__name__ = "Image Manipulation"
+
+
 def setup(bot: commands.Bot):
     bot.add_cog(Imagem(bot))
