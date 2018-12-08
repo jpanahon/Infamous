@@ -104,9 +104,9 @@ class SuperhumanFinder(commands.Converter):
     async def convert(self, ctx, argument):
         async with ctx.bot.db.acquire() as db:
             argument = await commands.MemberConverter().convert(ctx, argument)
-            users = await db.fetch("SELECT * FROM profiles")
+            users = await db.fetchval("SELECT id FROM profiles WHERE id=$1", argument.id)
 
-        if not [x for x in users if x[0] == argument.id]:
+        if not users:
             raise commands.BadArgument(f"{ctx.author.mention} pick a user registered in the RPG!")
         else:
             return argument
