@@ -1,4 +1,3 @@
-import datetime
 import logging
 import sys
 import traceback
@@ -16,6 +15,9 @@ class Events:
 
     # Meant for speaking through bot
     async def on_message(self, message):
+        if not message.guild:
+            return
+
         if message.channel.id == 399442902524362753:
             if message.author.id == 299879858572492802:
                 channel_ = self.bot.get_channel(258801388836880385)
@@ -29,110 +31,25 @@ class Events:
                 except discord.Forbidden:
                     await message.channel.send("Don't post invite links.")
 
-    # Concept inspired by Rapptz
-    async def on_reaction_add(self, reaction, user):
-        if reaction.message.guild.id != 258801388836880385:
-            return
-
-        if reaction.emoji == '\N{WHITE MEDIUM STAR}' and reaction.count >= 3:
-            msg = await self.bot.db.fetchrow(
-                "SELECT * FROM starboard WHERE id=$1",
-                reaction.message.id)
-
-            if msg:
-                users = []
-                async for m in reaction.users:
-                    users.append(m.name)
-
-                await self.bot.db.execute(
-                    "UPDATE starboard SET reactions = reactions + 1 WHERE id=$1",
-                    reaction.message.id)
-
-                await self.bot.db.execute(
-                    "UPDATE starboard SET starred_by = starred_by || ', ' || $1 WHERE id=$2",
-                    ', '.join(users), reaction.message.id)
-
-                channel = self.bot.get_channel(419365646917435392)
-                message = await channel.get_message(msg['bot_message'])
-                await message.edit(content=f"**\N{WHITE MEDIUM STAR} {msg['reactions']}** <#{msg['channel']}>")
-            else:
-                await self.bot.db.execute(
-                    "INSERT INTO starboard VALUES($1, $2, $3, $4)",
-                    reaction.message.id, reaction.count, reaction.message.channel.id, user.name)
-
-                embed = discord.Embed(color=0xba1c1c)
-                embed.set_author(name=reaction.message.author,
-                                 icon_url=reaction.message.author.avatar_url)
-
-                embed.description = reaction.message.content
-                embed.timestamp = datetime.datetime.utcnow()
-
-                if reaction.message.attachments:
-                    attachment = reaction.message.attachments[0].url
-                    embed.set_image(url=attachment)
-
-                channel = self.bot.get_channel(419365646917435392)
-                bot_msg = await channel.send(f"**\N{WHITE MEDIUM STAR} {reaction.count} "
-                                             f"<#{reaction.message.channel}>**", embed=embed)
-
-                await self.bot.execute(
-                    "UPDATE starboard SET bot_message = $1 WHERE id=$2",
-                    bot_msg.id, reaction.message.id)
-
-        if reaction.emoji != '\N{WHITE MEDIUM STAR}':
-            pass
-
-    async def on_reaction_remove(self, reaction, user):
-        if reaction.emoji == '\N{WHITE MEDIUM STAR}':
-            msg = await self.bot.db.fetchrow(
-                "SELECT * FROM starboard WHERE id=$1",
-                reaction.message.id)
-            if msg:
-                await self.bot.db.execute(
-                    "UPDATE starboard SET reactions = reactions - 1 WHERE id=$1",
-                    reaction.message.id)
-
-                await self.bot.db.execute(
-                    "UPDATE starboard SET reactions = $1 WHERE id=$2",
-                    reaction.count, reaction.message.id)
-
-                channel = self.bot.get_channel(419365646917435392)
-                message = await channel.get_message(msg['bot_message'])
-                await message.edit(content=f"**\N{WHITE MEDIUM STAR} {msg['reactions']} <#{msg['channel']}>**")
-
-        if reaction.emoji == '\N{WHITE MEDIUM STAR}' and reaction.count < 3:
-            msg = await self.bot.db.fetchrow(
-                "SELECT * FROM starboard WHERE id=$1",
-                reaction.message.id)
-
-            if msg:
-                channel = self.bot.get_channel(419365646917435392)
-                message = await channel.get_message(msg['bot_message'])
-                await message.delete()
-                await self.bot.db.execute("DELETE FROM starboard WHERE id=$1",
-                                          reaction.message.id)
-
-        if reaction.emoji != '\N{WHITE MEDIUM STAR}':
-            pass
+    async def on_message_edit(self, before, after):
+        if after.author.id in [299879858572492802, 507490400534265856]:
+            if before.content != after.content:
+                if "eval" in after.content:
+                    command = self.bot.get_command("eval")
+                    ctx = await self.bot.get_context(after)
+                    await ctx.invoke(command, body=after.content.strip(f"{ctx.prefix}eval"))
 
     async def on_command_error(self, ctx, error):
         error = getattr(error, 'original', error)
-        if isinstance(error, commands.CommandInvokeError):
-            if ctx.command.name == 'ud':
-                await ctx.send(
-                    f'There are no results found on Urban Dictionary.'
-                )
+        ignored = (commands.CommandNotFound, commands.UserInputError)
+        if isinstance(error, ignored):
+            return
 
-            elif ctx.command.name == 'wiki':
-                await ctx.send(
-                    f"That page does not exist, you can create it using **{ctx.prefix}wiki create**"
-                )
+        if hasattr(ctx.command, 'on_error'):
+            return
 
-            else:
-                await ctx.send(f"**Error:** {str(error.original).title()}")
-
-        elif isinstance(error, commands.MissingRequiredArgument):
-            embed = discord.Embed(color=0xba1c1c)
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(color=self.bot.embed_color)
             embed.title = ctx.command.signature
             embed.description = ctx.command.help
             await ctx.send(embed=embed)
@@ -175,7 +92,7 @@ class Events:
             )
 
         elif isinstance(error, commands.BadArgument):
-            embed = discord.Embed(color=0xba1c1c)
+            embed = discord.Embed(color=self.bot.embed_color)
             embed.title = ctx.command.signature
             embed.description = ctx.command.help
             await ctx.send(embed=embed)
@@ -201,6 +118,6 @@ class Events:
         del self.bot.prefixes[guild.id]
         await self.bot.db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
 
-                                   
+
 def setup(bot):
     bot.add_cog(Events(bot))
