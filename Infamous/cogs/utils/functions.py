@@ -1,6 +1,8 @@
 import datetime
 import discord
-import re
+
+
+embed_color = 0x0f0f0f
 
 
 def time_(time):
@@ -52,7 +54,7 @@ def activity(activity_):
 
 
 def ud_embed(definition_, current, max_):
-    embed = discord.Embed(color=0xba1c1c)
+    embed = discord.Embed(color=embed_color)
     embed.set_author(name=definition_['word'], url=definition_['permalink'])
     embed.description = ((definition_['definition'])[:2046] + '..') if len(definition_['definition']) > 2048 \
         else definition_['definition']
