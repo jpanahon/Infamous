@@ -361,15 +361,14 @@ class Rpg2:
     @commands.cooldown(1, 600, commands.BucketType.channel)
     async def duel(self, ctx, user: checks.SuperhumanFinder=None):
         """Battle other players."""
-
         if not user:
             await ctx.send(f"You need to pick someone.")
             ctx.command.reset_cooldown(ctx)
             return
 
-        user = ctx.guild.get_member_named(user)
+        user = ctx.guild.get_member_named(str(user))
         abilities1 = await rpg.fetch_abilities(ctx)
-        abilities2 = await rpg.fetch_abilities(ctx, user)
+        abilities2 = await rpg.fetch_abilities(ctx, user=user)
 
         if len(abilities1 or abilities2) <= 2:
             await ctx.send("One of you don't have two or more abilities")
@@ -578,7 +577,7 @@ class Rpg2:
 
     @commands.command()
     async def top(self, ctx):
-        """The Top players."""
+        """The top players."""
 
         async with ctx.bot.db.acquire() as db:
             lb = await db.fetch("SELECT * FROM profiles ORDER BY xp DESC")
@@ -593,7 +592,7 @@ class Rpg2:
 
             number += 1
             p.append(discord.Embed(color=self.bot.embed_color, description=f"**Total XP:** {user[2]}")
-                     .set_author(name=f"#{number} {user_.display_name or user_.name}| Level {user[1]}")
+                     .set_author(name=f"#{number} {user_.display_name or user_.name} | Level {user[1]}")
                      .set_image(url=user_.avatar_url_as(static_format="png", size=1024))
                      .set_footer(text=f"Page {number} of {len(lb)}")
                      )
@@ -603,14 +602,17 @@ class Rpg2:
     @commands.command()
     @checks.registered2()
     @commands.cooldown(1, 600, commands.BucketType.channel)
-    async def drink(self, ctx, user: checks.SuperhumanFinder):
+    async def drink(self, ctx, user: checks.SuperhumanFinder=None):
+        """Last one standing wins!"""
+
         if not user:
-            return await ctx.send("Find a reasonable drinking partner")
+            await ctx.send("Find a reasonable drinking partner")
+            ctx.command.reset_cooldown(ctx)
+            return
 
-        user = ctx.guild.get_member_named(user)
-
-        yon = await rpg.yon(ctx, user)
-        await asyncio.sleep(60)
+        user = ctx.guild.get_member_named(str(user))
+        await ctx.send(f"{user.mention} Do you accept this challenge? \nYes or No?")
+        yon = await rpg.yon(ctx, user=user)
         if yon == "Yes":
             choice = random.choice([ctx.author, user])
             xp = random.randint(100, 200)
@@ -631,6 +633,9 @@ class Rpg2:
     async def drink_handler(self, ctx, error):
         if isinstance(error, commands.CommandOnCooldown):
             return await ctx.send(f"There is currently a drinking competition in {ctx.channel.mention}")
+
+        elif isinstance(error, commands.BadArgument):
+            return await ctx.send(error)
 
     @commands.group(invoke_without_command=True)
     async def guild(self, ctx):
@@ -661,6 +666,7 @@ class Rpg2:
                 await ctx.send(f"You are now the leader and founder of {name}")
                 async with ctx.bot.db.acquire() as db:
                     await db.execute("INSERT INTO guilds VALUES($1, $2, $3, $4)", name, ctx.author.id, 1, 0)
+                    await db.execute("UPDATE profiles SET guild=$1 WHERE id=$2", name, ctx.author.id)
             else:
                 return await ctx.send(f"{ctx.author.mention} You need ${10000 - user[3]} to create a guild!")
         else:
@@ -675,7 +681,7 @@ class Rpg2:
             leader = await db.fetchval("SELECT leader FROM guilds WHERE guild=$1", name)
 
         leader = self.bot.get_user(leader)
-        await ctx.send(f"**{leader}** the leader of {name} has been informed of you application.")
+        await ctx.send(f"**{leader}** the leader of {name} has been informed of your application.")
         try:
             await leader.send(f"{leader.mention} Do you accept **{ctx.author}** into your guild? \n"
                               f"Yes or No?")
@@ -684,11 +690,11 @@ class Rpg2:
                            f"Yes or No?")
 
         def check(m):
-            return m.author == leader and m.channel == leader and m.content.capitalize() in ["Yes", "No"]
+            return m.author == leader and m.channel == leader or ctx.channel and m.content.capitalize() in ["Yes", "No"]
 
         msg = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
         if msg == "Yes":
-            async with ctx.bot.db.acquire as db:
+            async with ctx.bot.db.acquire() as db:
                 await db.execute("UPDATE profiles SET guild=$1 WHERE id=$2", name, ctx.author.id)
 
             await ctx.send(f"{ctx.author.mention} you have been accepted to join {name}")
