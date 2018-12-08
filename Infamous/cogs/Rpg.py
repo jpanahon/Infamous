@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Rpg:
-    """Infamous RPG commands."""
+    """Interact in the world of Infamy"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -39,19 +39,21 @@ class Rpg:
                   "Insight", "Sorcery", "Telekinesis", "Swiftness"]
 
         skill = await rpg.choose(ctx, skills)
-        await ctx.bot.db.execute("INSERT INTO rpg_profile VALUES($1, $2, $3, $4, $5, $6)",
-                                 ctx.author.id, m_.content.capitalize(), 1, 0, 100, skill)
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("INSERT INTO rpg_profile VALUES($1, $2, $3, $4, $5, $6)",
+                             ctx.author.id, m_.content.capitalize(), 1, 0, 100, skill)
 
-        await ctx.bot.db.execute("INSERT INTO rpg_mastery VALUES($1, $2, $3, $4)",
-                                 ctx.author.id, skill, 1, 0)
+            await db.execute("INSERT INTO rpg_mastery VALUES($1, $2, $3, $4)",
+                             ctx.author.id, skill, 1, 0)
         await ctx.send(f"You have successfully registered, type {ctx.prefix}guide for help.")
 
     @commands.command(aliases=['lb'])
     async def top(self, ctx):
         """The Top Players of the RPG."""
-        data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_profile ORDER BY level DESC"
-        )
+        async with ctx.bot.db.acquire() as db:
+            data = await db.fetch(
+                "SELECT * FROM rpg_profile ORDER BY level DESC"
+            )
 
         p = []
         number = 0
@@ -66,12 +68,12 @@ class Rpg:
     @commands.cooldown(2, 180, commands.BucketType.user)
     async def quest(self, ctx):
         """Quests for the brave"""
+        async with ctx.bot.db.acquire() as db:
+            q = await db.fetchrow(
+                "SELECT * FROM rpg_quests ORDER BY RANDOM() LIMIT 1",
+            )
 
-        q = await ctx.bot.db.fetchrow(
-            "SELECT * FROM rpg_quests ORDER BY RANDOM() LIMIT 1",
-        )
-
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name=f"You have been sent on a quest!")
         embed.description = q[0]
         embed.set_footer(text="Type a number between 1-5")
@@ -109,8 +111,9 @@ class Rpg:
     @checks.rpg_admin()
     async def add_quest(self, ctx, *, quest):
         """Adds a quest"""
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("INSERT INTO rpg_quests VALUES($1)", quest.title())
 
-        await ctx.bot.db.execute("INSERT INTO rpg_quests VALUES($1)", quest.title())
         await ctx.send(f"Added {quest.title()}")
 
     @admin.command(name="add-item")
@@ -168,9 +171,10 @@ class Rpg:
 
         y = await rpg.yon(ctx)
         if y == "Yes":
-            await ctx.bot.db.execute(
-                "INSERT INTO rpg_shop VALUES($1, $2, $3, $4, $5, $6, $7, $8)",
-                name.title(), type_, price, damage, defense, skills, description.title(), req)
+            async with ctx.bot.db.acquire() as db:
+                await db.execute(
+                    "INSERT INTO rpg_shop VALUES($1, $2, $3, $4, $5, $6, $7, $8)",
+                    name.title(), type_, price, damage, defense, skills, description.title(), req)
 
             await ctx.send(f"**{name.title()}** has been created!")
         else:
@@ -180,9 +184,10 @@ class Rpg:
     @checks.registered()
     async def shop(self, ctx):
         """Items that are available"""
-        data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_shop ORDER BY price DESC"
-        )
+        async with ctx.bot.db.acquire() as db:
+            data = await db.fetch(
+                "SELECT * FROM rpg_shop ORDER BY price DESC"
+            )
 
         if data:
             p = []
@@ -208,10 +213,12 @@ class Rpg:
     async def recommend(self, ctx):
         """Items you can buy."""
         user = await rpg.fetch_user(ctx)
-        data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_shop ORDER BY price BETWEEN 0 AND $1 DESC",
-            user[4]
-        )
+
+        async with ctx.bot.db.acquire() as db:
+            data = await db.fetch(
+                "SELECT * FROM rpg_shop ORDER BY price BETWEEN 0 AND $1 DESC",
+                user[4]
+            )
 
         if data:
             p = []
@@ -246,8 +253,9 @@ class Rpg:
             return await ctx.send("You don't have the right skill")
 
         mast = (await rpg.fetch_mastery(ctx, skill=i[5], user=ctx.author.id))[2]
-        inv = await ctx.bot.db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                        item.title(), ctx.author.id)
+        async with ctx.bot.db.acquire() as db:
+            inv = await db.fetchrow("SELECT * FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                    item.title(), ctx.author.id)
         if inv:
             return await ctx.send("You already have this item!")
 
@@ -259,10 +267,11 @@ class Rpg:
                 if msg == "Yes":
                     await ctx.send(f"{i[0]} has been added to your inventory.")
 
-                    await ctx.bot.db.execute(
-                        "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                        i[0], i[1], i[2], i[3], i[4], i[5], i[6], user[0], 0
-                    )
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute(
+                            "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                            i[0], i[1], i[2], i[3], i[4], i[5], i[6], user[0], 0
+                        )
                 else:
                     await ctx.send(f"Guess you don't want to spend **{i[2]}$**")
             else:
@@ -277,9 +286,10 @@ class Rpg:
         i = await rpg.fetch_item(ctx, item.title())
         if i:
             await ctx.send(f"**{i[0]}** has been equipped and can be used for battle.")
-            await ctx.bot.db \
-                .execute("UPDATE rpg_profile SET equipped = $1 WHERE id=$2",
-                         i[0], ctx.author.id)
+            async with ctx.bot.db.acquire() as db:
+                await db \
+                    .execute("UPDATE rpg_profile SET equipped = $1 WHERE id=$2",
+                             i[0], ctx.author.id)
         else:
             await ctx.send("You don't have this item.")
 
@@ -570,7 +580,7 @@ class Rpg:
 
         stats = await rpg.fetch_user(ctx, user=user.id)
         if stats:
-            embed = discord.Embed(color=0xba1c1c)
+            embed = discord.Embed(color=self.bot.embed_color)
             embed.description = f"**Level:** {stats[2]} \n **XP:** {stats[3]}"
             embed.set_author(name=user.name, icon_url=user.avatar_url)
             embed.add_field(name="Statistics", value=f"**Class:** {stats[1]} \n"
@@ -578,15 +588,17 @@ class Rpg:
                                                      f"**Equipped Weapon:** {stats[6]} \n"
                                                      f"**Main Skill:** {stats[5]}", inline=True)
 
-            skills = await ctx.bot.db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
+            async with ctx.bot.db.acquire() as db:
+                skills = await db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
 
             p = []
             for i in skills:
                 p.append(f"**{i[1]}** - Level {i[2]} \n")
 
             embed.add_field(name="Skills", value=''.join(p), inline=True)
+            async with ctx.bot.db.acquire() as db:
+                iv = await db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", user.id)
 
-            iv = await ctx.bot.db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", user.id)
             if iv:
                 inv = []
                 for i in iv:
@@ -623,8 +635,9 @@ class Rpg:
         if u:
             pass
         else:
-            await ctx.bot.db.execute("INSERT INTO rpg_mastery VALUES($1, $2, $3, $4)",
-                                     ctx.author.id, skill, 1, 0)
+            async with ctx.bot.db.acquire() as db:
+                await db.execute("INSERT INTO rpg_mastery VALUES($1, $2, $3, $4)",
+                                 ctx.author.id, skill, 1, 0)
 
         if chance > 50 < 75:
             await rpg.add_mastery_xp(ctx, 50, skill)
@@ -650,7 +663,7 @@ class Rpg:
             user = ctx.author
 
         balance = (await rpg.fetch_user(ctx, user=user.id))[4]
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name=user.display_name, icon_url=user.avatar_url)
         embed.description = f"You have {balance}$"
         await ctx.send(embed=embed)
@@ -670,31 +683,37 @@ class Rpg:
 
             skills = await rpg.fetch_skills(ctx)
             skills = random.choice(skills)
-            items = await ctx.bot.db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", ctx.author.id)
+            async with ctx.bot.db.acquire() as db:
+                items = await db.fetch("SELECT * FROM rpg_inventory WHERE owner=$1", ctx.author.id)
             p = []
             for i in items:
                 p.append(i[0])
-            item = await ctx.bot.db.fetchrow(
-                "SELECT * FROM rpg_shop WHERE skill=$1 AND level < 3 ORDER BY RANDOM() LIMIT 1",
-                skills)
+
+            async with ctx.bot.db.acquire() as db:
+                item = await db.fetchrow(
+                    "SELECT * FROM rpg_shop WHERE skill=$1 AND level < 3 ORDER BY RANDOM() LIMIT 1",
+                    skills)
+
             if item[0] in p:
                 skills_ = await rpg.fetch_skills(ctx)
                 skills_ = random.choice(skills_)
-                item_ = await ctx.bot.db.fetchrow(
+                item_ = await db.fetchrow(
                     "SELECT * FROM rpg_shop WHERE skill=$1, level < 3 AND name != $1 ORDER BY RANDOM() LIMIT 1",
                     skills_)
 
-                await ctx.bot.db.execute(
-                    "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                    item_[0], item_[1], item_[2], item_[3], item_[4], item_[5], item_[6], ctx.author.id, 0
-                )
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute(
+                        "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                        item_[0], item_[1], item_[2], item_[3], item_[4], item_[5], item_[6], ctx.author.id, 0
+                    )
 
                 await ctx.send(f"For your patience, you earned {money}$ and **{item_[0]}**")
             else:
-                await ctx.bot.db.execute(
-                    "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                    item[0], item[1], item[2], item[3], item[4], item[5], item[6], ctx.author.id, 0
-                )
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute(
+                        "INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                        item[0], item[1], item[2], item[3], item[4], item[5], item[6], ctx.author.id, 0
+                    )
 
                 await ctx.send(f"For your patience, you earned {money}$ and **{item[0]}**")
         except Exception as e:
@@ -734,18 +753,22 @@ class Rpg:
         if m_ == "Hit":
             number = random.randint(1, 15)
             number2 = random.randint(1, 15)
-            if number + n < 21 > number2 + n2 < 21:
-                await rpg.add_money(ctx, bet)
-                await ctx.send(f"You win! You earn {bet * 2}$! \n"
-                               f"**Dealer:** {number2 + n2} \n"
-                               f"**You:** {number + n}")
-            elif number2 + n2 < 21 > number + n < 21:
-                await ctx.send(f"You just lost {bet}$! \n"
-                               f"**Dealer:** {number2 + n2} \n"
-                               f"**You:** {number + n}")
-                await rpg.remove_money(ctx, bet)
-            elif n + number == n2 + number2:
+            if number + n > number2 + n2:
+                if number2 + n2 < 21 and number + n < 21:
+                    await rpg.add_money(ctx, bet)
+                    await ctx.send(f"You win! You earn {bet * 2}$! \n"
+                                   f"**Dealer:** {number2 + n2} \n"
+                                   f"**You:** {number + n}")
+            elif number2 + n2 > number + n:
+                if number2 + n2 < 21 and number + n < 21:
+                    await ctx.send(f"You just lost {bet}$! \n"
+                                   f"**Dealer:** {number2 + n2} \n"
+                                   f"**You:** {number + n}")
+                    await rpg.remove_money(ctx, bet)
+            elif n + number == n2 + number2 or number + n > 21 < number2 + n2:
                 await ctx.send("It's a tie! You keep your money.")
+            else:
+                print(f"N1:{number + n} N2:{number2 + n2}")
         else:
             number2 = random.randint(1, 6)
             if n > number2 + n2 < 21:
@@ -758,7 +781,7 @@ class Rpg:
                                f"**Dealer:** {number2 + n2} \n"
                                f"**You:** {n}")
                 await rpg.remove_money(ctx, bet)
-            elif n2 + number2 > 21:
+            elif n2 + number2 > 21 < n:
                 await rpg.add_money(ctx, bet)
                 await ctx.send(f"You win! You earn {bet}$! \n"
                                f"**Dealer:** {number2 + n2} \n"
@@ -783,10 +806,11 @@ class Rpg:
             msg = await rpg.yon(ctx)
             if msg == "Yes":
                 if c[4] >= i[2] * 2:
-                    await ctx.bot.db.execute(
-                        "UPDATE rpg_inventory SET price=$1, damage=$2, defense=$3, upgrades = upgrades + 1 "
-                        "WHERE name=$4 AND owner=$5",
-                        i[2] * 2, i[3] * 2, i[4] * 2, i[0], i[7])
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute(
+                            "UPDATE rpg_inventory SET price=$1, damage=$2, defense=$3, upgrades = upgrades + 1 "
+                            "WHERE name=$4 AND owner=$5",
+                            i[2] * 2, i[3] * 2, i[4] * 2, i[0], i[7])
                     await ctx.send(f"Upgraded **{item.title()}**'s statistics.")
                     await rpg.remove_money(ctx, i[2] * 2)
                 else:
@@ -803,9 +827,10 @@ class Rpg:
         if not user:
             user = ctx.author
 
-        data = await ctx.bot.db.fetch(
-            "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price DESC",
-            user.id)
+        async with ctx.bot.db.acquire() as db:
+            data = await db.fetch(
+                "SELECT * FROM rpg_inventory WHERE owner=$1 ORDER BY price DESC",
+                user.id)
         if data:
             t = {"Sword": "https://cdn.discordapp.com/attachments/389275624163770378/502084949420277781/sword.png",
                  "Bow": "https://cdn.discordapp.com/attachments/389275624163770378/502087339854659604/bow.png",
@@ -835,13 +860,14 @@ class Rpg:
         if not user:
             user = ctx.author
 
-        skills = await ctx.bot.db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
+        async with ctx.bot.db.acquire() as db:
+            skills = await db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
 
         p = []
         for i in skills:
             p.append(f"**{i[1]}** - Level {i[2]} \n")
 
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name=f"{user.name}'s skills", icon_url=user.avatar_url)
         embed.description = ''.join(p)
         await ctx.send(embed=embed)
@@ -944,7 +970,7 @@ class Rpg:
     @commands.command()
     async def guide(self, ctx):
         """Shows how to play the RPG"""
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.description = \
             "Welcome to the Infamous RPG where you can become the most powerful warrior there ever was. You can go on" \
             " quests to earn money and forge a weapon to finish those who challenge you."
@@ -1008,15 +1034,16 @@ class Rpg:
                 yon = await rpg.yon(ctx)
                 if yon == "Yes":
                     await ctx.send(f"**{rpg.merge(item1.title(), item2.title()).title()}** has been created!")
-                    await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                             item1.title(), ctx.author.id)
-                    await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                             item2.title(), ctx.author.id)
-                    await ctx.bot.db.execute("INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                                             rpg.merge(item1.title(), item2.title()).title(), i1[1], i1[2] + i2[2],
-                                             i1[3] + i2[3], i1[4] + i2[4], i1[5], rpg.merge(i1[6], i2[6]).title(),
-                                             ctx.author.id, 0
-                                             )
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                         item1.title(), ctx.author.id)
+                        await db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                         item2.title(), ctx.author.id)
+                        await db.execute("INSERT INTO rpg_inventory VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                                         rpg.merge(item1.title(), item2.title()).title(), i1[1], i1[2] + i2[2],
+                                         i1[3] + i2[3], i1[4] + i2[4], i1[5], rpg.merge(i1[6], i2[6]).title(),
+                                         ctx.author.id, 0
+                                         )
                     await rpg.remove_money(ctx, i1[2] + i2[2])
                 else:
                     return await ctx.send("I guess you don't want to merge your items.")
@@ -1039,8 +1066,9 @@ class Rpg:
             if yon == "Yes":
                 await ctx.send(f"You have received **{item_[2]}$** for selling **{item_[0]}**")
                 await rpg.add_money(ctx, item_[2])
-                await ctx.bot.db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
-                                         item_[0], ctx.author.id)
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("DELETE FROM rpg_inventory WHERE name=$1 AND owner=$2",
+                                     item_[0], ctx.author.id)
             else:
                 return await ctx.send(f"I guess you don't want to sell {item.title()}")
         else:
@@ -1060,8 +1088,10 @@ class Rpg:
                 yon = await rpg.yon(ctx)
                 if yon == "Yes":
                     await ctx.send(f"Renamed {item.title()} to {name.title()}")
-                    await ctx.bot.db.execute("UPDATE rpg_inventory SET name=$1 WHERE name=$2 AND owner=$3", name.title()
-                                             , item.title(), ctx.author.id)
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("UPDATE rpg_inventory SET name=$1 WHERE name=$2 AND owner=$3",
+                                         name.title(), item.title(), ctx.author.id)
+
                     await rpg.remove_money(ctx, i[2])
                 else:
                     return await ctx.send(f"I guess you don't want to rename **{item.title()}**.")
@@ -1074,8 +1104,8 @@ class Rpg:
     @checks.registered()
     async def _class(self, ctx, *, _class):
         """Update your class"""
-
-        await ctx.bot.db.execute("UPDATE rpg_profile SET class = $1 WHERE id=$2", _class.capitalize(), ctx.author.id)
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("UPDATE rpg_profile SET class = $1 WHERE id=$2", _class.capitalize(), ctx.author.id)
         await ctx.send(f"Set class to **{_class.capitalize()}**")
 
     @commands.command()
@@ -1088,16 +1118,21 @@ class Rpg:
 
         u = await rpg.fetch_user(ctx, user=user.id)
 
-        skills = await ctx.bot.db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
+        async with ctx.bot.db.acquire() as db:
+            skills = await db.fetch("SELECT * FROM rpg_mastery WHERE id=$1", user.id)
+
         p = []
         for i in skills:
             p.append(f"**{i[1]}:** {i[2] * 50 - i[3]}xp to **Level {i[2] + 1}**")
 
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name=f"{user.name}'s requirements to level up.", icon_url=user.avatar_url)
         embed.description = f"**{u[2] * 50 - u[3]}xp** to **Level {u[2] + 1}**"
         embed.add_field(name="Skills", value='\n'.join(p))
         await ctx.send(embed=embed)
+
+
+Rpg.__name__ = "Infamous RPG"
 
 
 def setup(bot):
