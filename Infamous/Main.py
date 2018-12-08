@@ -27,7 +27,7 @@ initial_extensions = (
 async def run():
     credentials = os.getenv('DATABASE_URL')
     db = await asyncpg.create_pool(credentials)
-    prefix = {}
+    prefixes = {}
     disabled = {}
     
     async with db.acquire() as conn:
