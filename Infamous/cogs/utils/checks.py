@@ -54,8 +54,6 @@ def rpg_admin():
     async def predicate(ctx):
         if ctx.author.guild_permissions.manage_messages:
             return True
-        elif ctx.author.id in [299879858572492802, 284191082420633601, 311325365735784449]:
-            return True
         else:
             raise commands.CheckFailure("You do not have access to this command!")
 
@@ -69,4 +67,58 @@ def in_fame():
         else:
             raise commands.CheckFailure("You must be in the Fame discord server to use this command! \n"
                                         "https://discord.gg/NY2MSA3")
+    return commands.check(predicate)
+
+
+def registered2():
+    async def predicate(ctx):
+        async with ctx.bot.db.acquire() as db:
+            data = await db.fetchrow("SELECT * FROM profiles WHERE id=$1", ctx.author.id)
+
+        if not data:
+            raise commands.CheckFailure(
+                f"You are not registered! Type `{ctx.prefix}register or @Infamous#5069 register`"
+            )
+        else:
+            return True
+
+    return commands.check(predicate)
+
+
+def unregistered2():
+    async def predicate(ctx):
+        async with ctx.bot.db.acquire() as db:
+            data = await db.fetchrow("SELECT * FROM profiles WHERE id=$1", ctx.author.id)
+
+        if data:
+            raise commands.CheckFailure(
+                "You are already registered!"
+            )
+        else:
+            return True
+
+    return commands.check(predicate)
+
+
+class SuperhumanFinder(commands.Converter):
+    async def convert(self, ctx, argument):
+        async with ctx.bot.db.acquire() as db:
+            argument = await commands.MemberConverter().convert(ctx, argument)
+            users = await db.fetch("SELECT * FROM profiles")
+
+        if not [x for x in users if x[0] == argument.id]:
+            raise commands.BadArgument(f"{ctx.author.mention} pick a user registered in the RPG!")
+        else:
+            return argument
+
+
+def has_guild():
+    async def predicate(ctx):
+        async with ctx.bot.db.acquire() as db:
+            guild_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", ctx.author.id)
+
+        if guild_:
+            raise commands.CheckFailure(f"{ctx.author.mention} you already enlisted in {guild_}")
+        else:
+            return True
     return commands.check(predicate)
