@@ -85,7 +85,7 @@ class TabularData:
 
 
 class Utility:
-    """Commands that have Utility"""
+    """Commands that provide information and debugging."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -111,7 +111,7 @@ class Utility:
         await ctx.trigger_typing()
         t_2 = time.perf_counter()
         ping = round((t_2 - t_1) * 1000)
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.title = 'Pong! :ping_pong:'
         embed.description = f'That took {ping}ms!'
         await ctx.send(embed=embed)
@@ -226,7 +226,7 @@ class Utility:
         cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
         ram_usage = self.process.memory_full_info().uss / 1024 ** 2
 
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
         embed.description = 'A Community Bot for ★ Fame ★.'
         embed.set_thumbnail(
@@ -314,7 +314,7 @@ class Utility:
         created1 = relativedelta(created1, datetime.utcnow())
 
         channels = len(ctx.guild.channels)
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
 
         members = [x for x in ctx.guild.members if not x.bot]
         bots = [x for x in ctx.guild.members if x.bot]
@@ -357,6 +357,11 @@ class Utility:
         else:
             await ctx.send(embed=func.ud_embed(definition[0], 1, 1))
 
+    @ud.error
+    async def ud_handler(self, ctx, error):
+        if isinstance(error, commands.CommandInvokeError):
+            return await ctx.send("There were no results found on Urban Dictionary.")
+
     # User Avatar
     @commands.command(aliases=['av', 'pfp'])
     async def avatar(self, ctx, user: discord.Member = None):
@@ -365,9 +370,9 @@ class Utility:
         if user is None:
             user = ctx.author
 
-        avatar = user.avatar_url_as(format='png', size=1024)
+        avatar = user.avatar_url_as(static_format='png', size=1024)
 
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name=f"{user}'s avatar", icon_url=avatar)
         embed.description = f'[[Download Avatar]]({avatar})'
 
@@ -377,48 +382,20 @@ class Utility:
 
     @commands.command(aliases=['request'])
     @commands.cooldown(1, 120, commands.BucketType.user)
-    async def suggest(self, ctx, *, string):
+    async def suggest(self, ctx, *, string=None):
         """Suggest what you want to be implemented into the bot."""
 
-        await ctx.message.add_reaction(':checkmark1:434297575663861761')
+        if not string:
+            await ctx.send("Give a suggestion.")
+            ctx.command.reset_cooldown(ctx)
+            return
 
-        accept = random.randint(1, 100)
-        deny = 100 - accept
-        vortex = self.bot.get_user(299879858572492802)
-        embed = discord.Embed(color=0xba1c1c)
-        embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-        embed.description = string
-        embed.add_field(name='Probability', value=(f'**Chances of being accepted:** {accept}% \n'
-                                                   f'**Chances of being denied:** {deny}%'), inline=False)
-        msg = await vortex.send(embed=embed)
+        channel = ctx.bot.get_channel(520909751681548307)
+        await channel.send(embed=discord.Embed(color=self.bot.embed_color,
+                                               description=string)
+                           .set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
+                           )
 
-        await msg.add_reaction(':checkmark1:434297575663861761')
-        await msg.add_reaction(':xmark:404503695502344203')
-
-        def check(reaction_, user_):
-            return user_ == vortex and str(reaction_.emoji) in ['<:checkmark1:434297575663861761>',
-                                                                '<:xmark:404503695502344203>']
-
-        try:
-            reaction, user = await self.bot.wait_for('reaction_add', check=check)
-        except asyncio.TimeoutError:
-            await vortex.send("I'll take that as a no.")
-        else:
-            if str(reaction.emoji) == '<:checkmark1:434297575663861761>':
-                e = discord.Embed(color=0xba1c1c)
-                e.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-                e.add_field(name='Suggestion', value=string, inline=False)
-                e.add_field(name='Status', value='Accepted')
-
-                await vortex.send(embed=e)
-                await ctx.author.send(embed=e)
-            elif str(reaction.emoji) == '<:xmark:404503695502344203>':
-                await vortex.send("Ok... So I won't be getting any new feature?")
-                e = discord.Embed(color=0xba1c1c)
-                e.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-                e.add_field(name='Suggestion', value=string, inline=False)
-                e.add_field(name='Status', value='Denied')
-                await ctx.author.send(embed=e)
 
     @commands.command(name="help")
     async def _help(self, ctx, *, command: str = None):
