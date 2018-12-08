@@ -7,13 +7,16 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Settings:
-    """Customize my configuration."""
+    """Commands that changes the configuration of the bot for each server."""
 
     def __init__(self, bot):
         self.bot = bot
 
     async def __local_check(self, ctx):
-        return ctx.author.guild_permissions.manage_guild
+        if not ctx.author.guild_permissions.manage_guild:
+            raise commands.CheckFailure("You don't have the `Manage Server` permission.")
+        else:
+            return True
 
     @commands.group(name="prefix", invoke_without_command=True)
     async def prefix_(self, ctx):
@@ -26,10 +29,10 @@ class Settings:
         """Change my prefix!"""
 
         self.bot.prefixes[ctx.guild.id] = prefix
-        await ctx.bot.db.execute(
-            "UPDATE settings SET prefix=$1 WHERE guild=$2",
-            prefix, ctx.guild.id
-        )
+
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("UPDATE settings SET prefix=$1 WHERE guild=$2", prefix, ctx.guild.id)
+
         await ctx.send(f"Set the prefix to {prefix} for **{ctx.guild.name}**")
 
     @prefix_.command()
@@ -37,7 +40,10 @@ class Settings:
         """Reset to default prefix"""
 
         self.bot.prefixes[ctx.guild.id] = None
-        await ctx.bot.db.execute("UPDATE settings SET prefix = NULL WHERE guild=$1", ctx.guild.id)
+
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("UPDATE settings SET prefix = NULL WHERE guild=$1", ctx.guild.id)
+
         await ctx.send("The prefix has been reset to default `>`")
 
     @commands.command()
@@ -49,7 +55,15 @@ class Settings:
         except discord.Forbidden:
             return await ctx.send("That's not a command.")
 
-        await ctx.bot.db.execute("INSERT INTO disabled VALUES($1, $2)", ctx.guild.id, command_.name)
+        async with ctx.bot.db.acquire() as db:
+            data = await db.fetchval("SELECT disabled FROM settings WHERE guild=$1", ctx.guild.id)
+
+            if data is not None:
+                await db.execute("UPDATE settings SET disabled = disabled || ', ' || $1 WHERE guild=$2",
+                                 command_.name, ctx.guild.id)
+            else:
+                await db.execute("UPDATE settings SET disabled = $1 WHERE guild=$2", command_.name, ctx.guild.id)
+
         if ctx.guild.id not in self.bot.disabled_commands:
             self.bot.disabled_commands[ctx.guild.id] = [command]
         else:
@@ -73,8 +87,16 @@ class Settings:
         else:
             self.bot.disabled_commands[ctx.guild.id] = None
 
-        await ctx.bot.db.execute("DELETE FROM disabled WHERE id=$1 AND command=$2", ctx.guild.id, command_.name)
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("UPDATE settings SET disabled = $1 WHERE guild=$2",
+                             ', '.join(self.bot.disabled_commands[ctx.guild.id]), ctx.guild.id)
+
         await ctx.send("The command has been enabled.")
+
+    @commands.command()
+    async def disabled(self, ctx):
+        await ctx.send(
+            f"Commands disabled for **{ctx.guild.name}**: {', '.join(self.bot.disabled_commands[ctx.guild.id])}")
 
 
 def setup(bot):
