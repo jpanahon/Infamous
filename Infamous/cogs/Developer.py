@@ -71,7 +71,7 @@ class Developer:
         minutes, seconds = divmod(remainder, 60)
         days, hours = divmod(hours, 24)
 
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name=self.bot.user, icon_url=self.bot.user.avatar_url)
         embed.description = f'Well that was a good {days}d {hours}h {minutes}m {seconds}s of activity.'
         await ctx.send(embed=embed)
@@ -114,7 +114,7 @@ class Developer:
         if not users:
             users = None
 
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.title = f'List of users with the #{str(discrim)} discriminator'
         embed.description = f'`{users}`'
         embed.set_footer(text=f'{len(user)} users found')
@@ -129,7 +129,7 @@ class Developer:
 
         try:
             user = ctx.guild.get_member(id)
-            embed = discord.Embed(color=0xba1c1c)
+            embed = discord.Embed(color=self.bot.embed_color)
             embed.set_author(name=user)
             embed.title = 'Discord ID'
             embed.description = id
@@ -140,7 +140,7 @@ class Developer:
             await ctx.send(embed=embed)
         except:
             user = await self.bot.get_user_info(id)
-            embed = discord.Embed(color=0xba1c1c)
+            embed = discord.Embed(color=self.bot.embed_color)
             embed.set_author(name=user)
             embed.title = 'Discord ID'
             embed.description = id
@@ -253,7 +253,9 @@ class Developer:
     @checks.is_admin()
     async def block(self, ctx, user: discord.Member, *, reason):
         try:
-            await ctx.bot.db.execute("INSERT INTO blocked VALUES($1, $2)", user.id, reason)
+            async with ctx.bot.db.acquire() as db:
+                await db.execute("INSERT INTO blocked VALUES($1, $2)", user.id, reason)
+
             self.bot.blocked[ctx.author.id] = reason
         except asyncpg.exceptions.UniqueViolationError:
             return await ctx.send(f"{user.name} is already blocked")
@@ -264,13 +266,14 @@ class Developer:
     @checks.is_admin()
     async def unblock(self, ctx, user: discord.Member):
         try:
-            await ctx.bot.db.execute("DELETE FROM blocked WHERE id=$1", user.id)
+            async with ctx.bot.db.acquire() as db:
+                await db.execute("DELETE FROM blocked WHERE id=$1", user.id)
+
             del self.bot.blocked[ctx.author.id]
         except asyncpg.exceptions.UniqueViolationError:
             return await ctx.send(f"{user.name} was never blocked")
 
         await ctx.send(f"{user.name} has been unblocked.")
-
 
 
 def setup(bot):
