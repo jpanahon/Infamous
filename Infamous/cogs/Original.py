@@ -67,7 +67,7 @@ class Original:
             embed = discord.Embed(
                 title="Changed/Set Nickname",
                 description=f"{string}",
-                color=0xba1c1c,
+                color=self.bot.embed_color,
 
             )
             embed.set_author(name=user, icon_url=user.avatar_url)
@@ -94,7 +94,7 @@ class Original:
             discrim = str(user).split(user.name)
             discrim = ''.join(discrim)
 
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name='Can you guess who this is?')
         embed.description = f'Their discriminant is `{discrim}`'
         embed.set_image(
@@ -192,7 +192,7 @@ class Original:
             await ctx.send("You ran out of time!")
         else:
             channel = ctx.bot.get_channel(270907435999297557)
-            react = await channel.send(embed=discord.Embed(color=0xba1c1c)
+            react = await channel.send(embed=discord.Embed(color=self.bot.embed_color)
                                        .set_author(name=f"Add :{msg}:")
                                        .set_image(url=text)
                                        .set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar_url)
@@ -242,7 +242,7 @@ class Original:
             return await ctx.send("Choose a custom emoji")
 
         channel = ctx.bot.get_channel(270907435999297557)
-        msg = await channel.send(embed=discord.Embed(color=0xba1c1c)
+        msg = await channel.send(embed=discord.Embed(color=self.bot.embed_color)
                                  .set_author(name=f"Remove :{emote.name}:")
                                  .set_image(url=emote.url)
                                  .set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.avatar_url)
