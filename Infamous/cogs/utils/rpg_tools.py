@@ -350,17 +350,17 @@ async def guild_level(ctx, xp, user=None):
     if not lvl_:
         return await ctx.send("You currently aren't apart of a guild; therefore there are no guild rewards.")
     else:
-        lvl_ = {"xp": lvl_[2] + xp, "lvl": lvl_[1], "name": lvl_[0]}
+        lvl_ = {"xp": lvl_[3] + xp, "lvl": lvl_[2], "name": lvl_[0]}
 
     if lvl_["xp"] >= lvl_["lvl"] * 2000:
         await ctx.send(f"{lvl_['name']} has leveled up to Level {lvl_['lvl'] + 1}.")
 
         async with ctx.bot.db.acquire() as db:
-            await db.execute("UPDATE guild SET level = level + 1, xp = xp + $1 WHERE id=$2",
+            await db.execute("UPDATE guild SET level = level + 1, xp = xp + $1 WHERE guild=$2",
                              xp, lvl_['name'])
     else:
         await ctx.send(f"**{lvl_['name']}** needs {lvl_['lvl'] * 2000 - lvl_['xp']}xp left to the next level.")
 
         async with ctx.bot.db.acquire() as db:
-            await db.execute("UPDATE guilds SET xp = xp + $1 WHERE id=$2",
-                             xp, user.id)
+            await db.execute("UPDATE guilds SET xp = xp + $1 WHERE guild=$2",
+                             xp, lvl_['name'])
