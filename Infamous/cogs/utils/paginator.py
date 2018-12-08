@@ -36,7 +36,7 @@ class Pages:
             pages += 1
         self.maximum_pages = pages
         self.maximum_pages = pages
-        self.embed = discord.Embed(colour=0xba1c1c)
+        self.embed = discord.Embed(colour=self.bot.embed_color)
         self.paginating = len(entries) > per_page
         self.show_entry_count = show_entry_count
         self.reaction_emojis = [
@@ -191,22 +191,44 @@ class Pages:
             self.bot.loop.create_task(first_page)
 
         while self.paginating:
-            try:
-                reaction, user = await self.bot.wait_for('reaction_add', check=self.react_check, timeout=120.0)
-            except asyncio.TimeoutError:
-                self.paginating = False
+            if not self.message.guild.me.guild_permissions.manage_messages:
+                done, pending = await asyncio.wait([
+                    self.bot.wait_for('reaction_add', check=self.react_check, timeout=120.0),
+                    self.bot.wait_for('reaction_remove', check=self.react_check, timeout=120.0)
+                ], return_when=asyncio.FIRST_COMPLETED)
                 try:
-                    await self.message.clear_reactions()
-                except:
-                    pass
-                finally:
-                    break
+                    done.pop().result()
+                except asyncio.TimeoutError:
+                    self.paginating = False
+                    try:
+                        await self.message.clear_reactions()
+                    except:
+                        await self.message.delete()
+                    finally:
+                        break
 
-            try:
-                await self.message.remove_reaction(reaction, user)
-            except:
-                pass
-            await self.match()
+                for future in pending:
+                    future.cancel()
+
+                await self.match()
+            else:
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', check=self.react_check, timeout=120.0)
+                except asyncio.TimeoutError:
+                    self.paginating = False
+                    try:
+                        await self.message.clear_reactions()
+                    except:
+                        await self.message.delete()
+                    finally:
+                        break
+
+                try:
+                    await self.message.remove_reaction(reaction, user)
+                except discord.HTTPException:
+                    pass
+
+                await self.match()
 
 
 class SimplePaginator:
@@ -279,17 +301,34 @@ class SimplePaginator:
             return True
 
         while True:
-            try:
-                react, user = await bot.wait_for('reaction_add', check=check, timeout=self.timeout)
-            except asyncio.TimeoutError:
-                return ctx.bot.loop.create_task(self.stop_controller(self.base))
+            if not ctx.guild.me.guild_permissions.manage_messages:
+                done, pending = await asyncio.wait([
+                    bot.wait_for('reaction_add', check=check, timeout=self.timeout),
+                    bot.wait_for('reaction_remove', check=check, timeout=self.timeout)
+                ], return_when=asyncio.FIRST_COMPLETED)
 
-            control = self.controls.get(str(react))
+                try:
+                    react, user = done.pop().result()
+                except asyncio.TimeoutError:
+                    return ctx.bot.loop.create_task(self.stop_controller(self.base))
 
-            try:
-                await self.base.remove_reaction(react, user)
-            except discord.HTTPException:
-                pass
+                for future in pending:
+                    future.cancel()
+
+                control = self.controls.get(str(react))
+
+            else:
+                try:
+                    react, user = await bot.wait_for('reaction_add', check=check, timeout=self.timeout)
+                except asyncio.TimeoutError:
+                    return ctx.bot.loop.create_task(self.stop_controller(self.base))
+
+                control = self.controls.get(str(react))
+
+                try:
+                    await self.base.remove_reaction(react, user)
+                except discord.HTTPException:
+                    pass
 
             self.previous = self.current
             await self.indexer(ctx, control)
@@ -507,8 +546,8 @@ class HelpPaginator(Pages):
 
     def get_bot_page(self, page):
         cog, description, commands = self.entries[page - 1]
-        self.title = f"__**{cog}**__"
-        self.description = f"*{description.title()}*"
+        self.title = f"{cog} Commands"
+        self.description = description
         return commands
 
     async def show_page(self, page, *, first=False):
@@ -518,7 +557,8 @@ class HelpPaginator(Pages):
         self.embed.clear_fields()
         self.embed.title = self.title
         self.embed.description = self.description
-        self.embed.set_footer(text=f'Use the reactions to navigate | Page {page} of {self.maximum_pages}')
+        self.embed.set_footer(text=f'Use the reactions to navigate | '
+                                   f'Use "{self.prefix}help command" for info on a command.')
 
         signature = _command_signature
 
@@ -529,7 +569,7 @@ class HelpPaginator(Pages):
             self.embed.set_author(
                 name=f'Infamous | Page {page} of {self.maximum_pages}',
                 icon_url=
-                "https://cdn.discordapp.com/avatars/347205176903335937/ed455d734107fff84666695399d08683.png?size=1024"
+                "https://cdn.discordapp.com/avatars/429461624341135361/a279705cffe9ef364163f76ec4cd1657.png?size=1024"
             )
 
         if not self.paginating:
