@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Community:
-    """Community related commands."""
+    """Things written by the community of this bot."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -20,8 +20,8 @@ class Community:
     @commands.group(case_insensitive=True, invoke_without_command=True)
     async def wiki(self, ctx, *, page=None):
         """Fetches a wiki page from the list of available wiki pages"""
-
-        wiki_page = await self.bot.db.fetch("SELECT * FROM wiki WHERE guild_id = $1 ORDER BY views DESC", ctx.guild.id)
+        async with ctx.bot.db.acquire() as db:
+            wiki_page = await db.fetch("SELECT * FROM wiki WHERE guild_id = $1 ORDER BY views DESC", ctx.guild.id)
         if not page:
             if wiki_page:
                 entries = [f"**{r[0]}** is created by **{str(self.bot.get_user(r[8]))}** \n"
@@ -42,7 +42,8 @@ class Community:
             else:
                 await ctx.send("There are no wiki pages.")
 
-        wiki = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name=$1 AND guild_id=$2", page, ctx.guild.id)
+        async with ctx.bot.db.acquire() as db:
+            wiki = await db.fetchrow("SELECT * FROM wiki WHERE name=$1 AND guild_id=$2", page, ctx.guild.id)
 
         if wiki:
             if str(wiki['image']).startswith('https:'):
@@ -85,7 +86,13 @@ class Community:
                 embed.set_thumbnail(url=user.avatar_url)
 
             await ctx.send(embed=embed)
-            await self.bot.db.execute("UPDATE wiki SET views = views + 1 WHERE name=$1", page)
+            async with ctx.bot.db.acquire() as db:
+                await db.execute("UPDATE wiki SET views = views + 1 WHERE name=$1", page)
+
+    @wiki.error
+    async def wiki_handler(self, ctx, error):
+        if isinstance(error, commands.CommandInvokeError):
+            return await ctx.send("The wiki was not found.")
 
     @wiki.command(name="create")
     async def _create(self, ctx):
@@ -98,7 +105,9 @@ class Community:
 
         name_ = await self.bot.wait_for('message', check=name)
         name_ = name_.content
-        wiki_page = await self.bot.db.fetchrow("SELECT name FROM wiki WHERE name=$1", name_)
+        async with ctx.bot.db.acquire() as db:
+            wiki_page = await db.fetchrow("SELECT name FROM wiki WHERE name=$1", name_)
+
         if wiki_page is None:
             await ctx.send(f"So the wiki page is named {name_}? \n"
                            f"What is a quote from them? This will be automatically given quotations.")
@@ -216,11 +225,12 @@ class Community:
                 image = ' '.join(m.url for m in image_.attachments)
 
             await ctx.send(f"I've successfully created it! Now type **{ctx.prefix} wiki {name_.lower()}** to view it!")
-            await self.bot.db.execute(
-                "INSERT INTO wiki VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
-                name_.lower(), quote_, aliases_, bio_, roles_, games_, color_, image,
-                ctx.author.id, ctx.author.name, time.strftime("%c"), time.strftime("%c"),
-                0, ctx.guild.id)
+            async with ctx.bot.db.acquire() as db:
+                await db.execute(
+                    "INSERT INTO wiki VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+                    name_.lower(), quote_, aliases_, bio_, roles_, games_, color_, image,
+                    ctx.author.id, ctx.author.name, time.strftime("%c"), time.strftime("%c"),
+                    0, ctx.guild.id)
 
         else:
             await ctx.send("A wiki page with that name has already been created.")
@@ -237,7 +247,9 @@ class Community:
         page_ = await self.bot.wait_for('message', check=page)
         page_ = page_.content
 
-        wiki = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name=$1 AND guild_id=$2", page_, ctx.guild.id)
+        async with ctx.bot.db.acquire() as db:
+            wiki = await db.fetchrow("SELECT * FROM wiki WHERE name=$1 AND guild_id=$2", page_, ctx.guild.id)
+
         time = datetime.datetime.now()
         if wiki:
             await ctx.send("What field are you going to edit?")
@@ -255,17 +267,21 @@ class Community:
 
                 content_ = await self.bot.wait_for('message', check=content)
                 content_ = content_.content
-                await self.bot.db.execute("UPDATE wiki SET quote=$1 WHERE name=$2", content_, page_)
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("UPDATE wiki SET quote=$1 WHERE name=$2", content_, page_)
+
                 await ctx.send(f"I have set the quote for **{page_}** to {content_}")
-                info = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
-                await self.bot.db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
-                                          page_)
+                async with ctx.bot.db.acquire() as db:
+                    info = await db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
+                    await db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
+                                     page_)
 
                 if ctx.author.name in info['contributors']:
                     return
                 else:
-                    await self.bot.db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
-                                              ctx.author.name, page_)
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
+                                         ctx.author.name, page_)
 
             if resp.content == "aliases":
                 await ctx.send(f"What is the new content of **{resp.content}**?")
@@ -275,17 +291,21 @@ class Community:
 
                 content_ = await self.bot.wait_for('message', check=content)
                 content_ = content_.content
-                await self.bot.db.execute("UPDATE wiki SET aliases=$1 WHERE name=$2", content_, page_)
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("UPDATE wiki SET aliases=$1 WHERE name=$2", content_, page_)
+
                 await ctx.send(f"I have set the aliases for **{page_}** to {content_}")
-                info = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
-                await self.bot.db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
-                                          page_)
+                async with ctx.bot.db.acquire() as db:
+                    info = await db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
+                    await db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
+                                     page_)
 
                 if ctx.author.name in info['contributors']:
                     return
                 else:
-                    await self.bot.db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
-                                              ctx.author.name, page_)
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
+                                         ctx.author.name, page_)
 
             if resp.content == "bio":
                 await ctx.send(f"What is the new content of **{resp.content}**?")
@@ -295,17 +315,21 @@ class Community:
 
                 content_ = await self.bot.wait_for('message', check=content)
                 content_ = content_.content
-                await self.bot.db.execute("UPDATE wiki SET bio=$1 WHERE name=$2", content_, page_)
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("UPDATE wiki SET bio=$1 WHERE name=$2", content_, page_)
+
                 await ctx.send(f"I have set the bio for **{page_}** to {content_}")
-                info = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
-                await self.bot.db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
-                                          page_)
+                async with ctx.bot.db.acquire() as db:
+                    info = await db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
+                    await db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
+                                     page_)
 
                 if ctx.author.name in info['contributors']:
                     return
                 else:
-                    await self.bot.db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
-                                              ctx.author.name, page_)
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
+                                         ctx.author.name, page_)
 
             if resp.content == "roles":
                 await ctx.send(f"What is the new content of **{resp.content}**?")
@@ -315,17 +339,21 @@ class Community:
 
                 content_ = await self.bot.wait_for('message', check=content)
                 content_ = content_.content
-                await self.bot.db.execute("UPDATE wiki SET roles=$1 WHERE name=$2", content_, page_)
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("UPDATE wiki SET roles=$1 WHERE name=$2", content_, page_)
                 await ctx.send(f"I have set the role(s) for **{page_}** to {content_}")
-                info = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
-                await self.bot.db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
-                                          page_)
+
+                async with ctx.bot.db.acquire() as db:
+                    info = await db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
+                    await db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
+                                     page_)
 
                 if ctx.author.name in info['contributors']:
                     return
                 else:
-                    await self.bot.db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
-                                              ctx.author.name, page_)
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
+                                         ctx.author.name, page_)
 
             if resp.content == "games":
                 await ctx.send(f"What is the new content of **{resp.content}**?")
@@ -335,17 +363,22 @@ class Community:
 
                 content_ = await self.bot.wait_for('message', check=content)
                 content_ = content_.content
-                await self.bot.db.execute("UPDATE wiki SET games=$1 WHERE name=$2", content_, page_)
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("UPDATE wiki SET games=$1 WHERE name=$2", content_, page_)
+
                 await ctx.send(f"I have set the games for **{page_}** to {content_}")
-                info = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
-                await self.bot.db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
-                                          page_)
+
+                async with ctx.bot.db.acquire() as db:
+                    info = await db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
+                    await db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
+                                     page_)
 
                 if ctx.author.name in info['contributors']:
                     return
                 else:
-                    await self.bot.db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
-                                              ctx.author.name, page_)
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
+                                         ctx.author.name, page_)
 
             if resp.content == "color":
                 await ctx.send(f"What is the new content of **{resp.content}**?")
@@ -376,17 +409,21 @@ class Community:
                 elif content_ == "White":
                     content_ = "FFFFFF"
 
-                await self.bot.db.execute("UPDATE wiki SET color=$1 WHERE name=$2", content_, page_)
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("UPDATE wiki SET color=$1 WHERE name=$2", content_, page_)
                 await ctx.send(f"I have set the color for **{page_}** to {content_}")
-                info = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
-                await self.bot.db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
-                                          page_)
+
+                async with ctx.bot.db.acquire() as db:
+                    info = await db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
+                    await db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
+                                     page_)
 
                 if ctx.author.name in info['contributors']:
                     return
                 else:
-                    await self.bot.db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
-                                              ctx.author.name, page_)
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
+                                         ctx.author.name, page_)
 
             if resp.content == "image":
                 await ctx.send(f"What is the new content of **{resp.content}**?")
@@ -404,17 +441,20 @@ class Community:
                 if content.attachments:
                     image = ' '.join(m.url for m in content.attachments)
 
-                await self.bot.db.execute("UPDATE wiki SET image=$1 WHERE name=$2", image, page_)
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("UPDATE wiki SET image=$1 WHERE name=$2", image, page_)
                 await ctx.send(f"I have set the image for **{page_}** to {image}")
-                info = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
-                await self.bot.db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
-                                          page_)
+                async with ctx.bot.db.acquire() as db:
+                    info = await db.fetchrow("SELECT * FROM wiki WHERE name = $1", page_)
+                    await db.execute("UPDATE wiki SET last_modified = $1 WHERE name=$2", time.strftime("%c"),
+                                     page_)
 
                 if ctx.author.name in info['contributors']:
                     return
                 else:
-                    await self.bot.db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
-                                              ctx.author.name, page_)
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("UPDATE wiki SET contributors = contributors || ', ' || $1 WHERE name=$2",
+                                         ctx.author.name, page_)
 
         else:
             return await ctx.send("This wiki page does not exist.")
@@ -422,8 +462,8 @@ class Community:
     @wiki.command()
     async def delete(self, ctx, *, page):
         """Deletes existing wiki pages"""
-
-        wiki = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name = $1", page)
+        async with ctx.bot.db.acquire() as db:
+            wiki = await db.fetchrow("SELECT * FROM wiki WHERE name = $1", page)
 
         if wiki:
             if ctx.author.id == wiki['creator'] or ctx.author.guild_permissions.manage_guild:
@@ -443,7 +483,7 @@ class Community:
                 else:
                     if str(reaction.emoji) == '<:BlurpleCheck:452390337382449153>':
                         await ctx.send(f"Deleted the {page.title()} wiki page from database.")
-                        await self.bot.db.execute("DELETE FROM wiki WHERE name= $1", page)
+                        await db.execute("DELETE FROM wiki WHERE name= $1", page)
                     else:
                         return await ctx.send("So you changed your mind.")
             else:
@@ -454,8 +494,8 @@ class Community:
     @wiki.command()
     async def info(self, ctx, *, page):
         """Shows information about a wiki page."""
-
-        wiki = await self.bot.db.fetchrow("SELECT * FROM wiki WHERE name=$1", page)
+        async with ctx.bot.db.acquire() as db:
+            wiki = await db.fetchrow("SELECT * FROM wiki WHERE name=$1", page)
 
         if str(wiki['image']).startswith('https:'):
             user = wiki['image']
@@ -463,7 +503,7 @@ class Community:
             user = self.bot.get_user(int(wiki['image']))
 
         if wiki:
-            embed = discord.Embed(color=0xba1c1c)
+            embed = discord.Embed(color=self.bot.embed_color)
 
             if str(wiki['image']).startswith('https:'):
                 user = wiki['image']
@@ -500,7 +540,7 @@ class Community:
             question = await r.json()
             question = question[0]
 
-        embed = discord.Embed(color=0xba1c1c)
+        embed = discord.Embed(color=self.bot.embed_color)
         embed.title = 'Trivia Question'
         embed.description = question['question']
         text = question['answer']
@@ -527,4 +567,3 @@ class Community:
 
 def setup(bot):
     bot.add_cog(Community(bot))
-
