@@ -27,18 +27,22 @@ initial_extensions = (
 async def run():
     credentials = os.getenv('DATABASE_URL')
     db = await asyncpg.create_pool(credentials)
-    prefixes = {}
-    for i in await db.fetch("SELECT * FROM settings"):
-        prefixes[i[0]] = i[1]
-
+    prefix = {}
     disabled = {}
-    p = []
-    for i in await db.fetch("SELECT * FROM disabled"):
-        p.append(i[1])
-        disabled[i[0]] = p
+    
+    async with db.acquire() as conn:
+        settings = await conn.fetch("SELECT * FROM settings")
+        block = await conn.fetch("SELECT * FROM blocked")
+
+    for i in settings:
+        prefixes[i[0]] = i[1]
+        if i[2] is None:
+            disabled[i[0]] = []
+        else:
+            disabled[i[0]] = i[2].split(', ')
 
     blocked = {}
-    for i in await db.fetch("SELECT * FROM blocked"):
+    for i in block:
         blocked[i[0]] = i[1]
         
     bot = Bot(description='A community bot for the server Fame', db=db, prefixes=prefixes, 
@@ -68,6 +72,7 @@ class Bot(commands.Bot):
         self.launch_time = datetime.datetime.utcnow()
         self.db = kwargs.pop("db")
         self.prefixes = kwargs.pop("prefixes")
+        self.embed_color = 0x0f0f0f
         self.disabled_commands = kwargs.pop("disabled")
         self.blocked = kwargs.pop("blocked")
         self.lines = self.lines_of_code()
@@ -108,10 +113,9 @@ class Bot(commands.Bot):
 
     async def playing_status(self):
         await self.wait_until_ready()
-        while not self.is_closed():
-            await self.change_presence(activity=discord.Game(
-                name='>help'
-            ))
+        await self.change_presence(activity=discord.Game(
+            name='>help'
+        ))
 
     async def on_ready(self):
         self.app_info = await self.application_info()
@@ -129,11 +133,14 @@ class Bot(commands.Bot):
         if ctx.guild.id in self.disabled_commands:
             if ctx.command.qualified_name in self.disabled_commands[ctx.guild.id]:
                 raise commands.CheckFailure("I'm sorry a server moderator has disabled this command.")
+            else:
+                return True
 
-        elif ctx.author.id in self.blocked:
-            raise commands.CheckFailure(f"You have been blocked for: {self.blocked[ctx.author.id]}")
-
-        return True
+        else:
+            if ctx.author.id in self.blocked:
+                raise commands.CheckFailure(f"You have been blocked for: {self.blocked[ctx.author.id]}")
+            else:
+                return True
   
 
 loop = asyncio.get_event_loop()
