@@ -145,16 +145,16 @@ class Moderation:
     @commands.has_permissions(ban_members=True)
     @commands.guild_only()
     async def softban(self, ctx, user: discord.Member, *, reason):
+        """Bans and unbans users to delete messages."""
+
         await ctx.guild.ban(user=user, reason=f'By: {ctx.author} \n Reason: {reason}')
 
         notice = (f'You have been banned from {ctx.guild} for: {reason} \n'
                   f'You may contact {ctx.author.mention} for appeal.')
         try:
             await user.send(notice)
-            await ctx.author.send(f"You can unban the user by typing in `f.unban {user.id}`")
         except:
             await ctx.author.send(f'Unable to send `{user}` a DM.')
-            await ctx.author.send(f"You can unban the user by typing in `f.unban {user.id}`")
             pass
 
         await ctx.guild.unban(user=user, reason="All is forgiven.")
