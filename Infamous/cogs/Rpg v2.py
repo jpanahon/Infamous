@@ -134,6 +134,20 @@ class Rpg2:
         await rpg.level2(ctx, money, xp)
         await rpg.guild_level(ctx, xp)
 
+    @commands.command()
+    @commands.cooldown(1, 3600, commands.BucketType.user)
+    async def odyssey(self, ctx):
+        await ctx.send("You have to find the oldest and purebred superhuman in existence who was said to have had "
+                       "the gift of immortality; making her ageless. She also possesses the power of super speed and "
+                       "is one of the fastest speedsters.")
+        await asyncio.sleep(3600)
+        xp = random.randint(250, 750)
+        mon = random.randint(250, 750)
+        await ctx.send(
+            f"You found the immortal and she gave you insight about your powers; she gave you {xp}xp and ${mon}")
+        await rpg.level2(ctx, mon, xp)
+        await rpg.guild_level(ctx, xp)
+
     @commands.command(aliases=['p'])
     async def profile(self, ctx, user: discord.Member = None):
         """View the stats of fellow superhumans."""
@@ -343,7 +357,7 @@ class Rpg2:
             except asyncio.TimeoutError:
                 return await ctx.send("I guess you don't want to risk it.")
 
-            if int(msg) >= user[3]:
+            if int(msg) > user[3]:
                 await ctx.send(f"{ctx.author.mention} you can't gamble what you don't have.")
             else:
                 choice = random.choice(["Win", "Lose"])
@@ -585,14 +599,15 @@ class Rpg2:
         p = []
         number = 0
         for user in lb:
-            try:
-                user_ = ctx.guild.get_member(user[0])
-            except discord.HTTPException:
+            user_ = ctx.guild.get_member(user[0])
+            if not user_:
                 user_ = ctx.bot.get_user(user[0])
 
             number += 1
-            p.append(discord.Embed(color=self.bot.embed_color, description=f"**Total XP:** {user[2]}")
-                     .set_author(name=f"#{number} {user_.display_name or user_.name} | Level {user[1]}")
+            p.append(discord.Embed(color=self.bot.embed_color, description=f"**Level:** {user[1]} \n"
+                                                                           f"**Total XP:** {user[2]} \n"
+                                                                           f"**Guild:** {user[5]}")
+                     .set_author(name=f"#{number} {user_.display_name or user_.name}")
                      .set_image(url=user_.avatar_url_as(static_format="png", size=1024))
                      .set_footer(text=f"Page {number} of {len(lb)}")
                      )
@@ -638,6 +653,7 @@ class Rpg2:
             return await ctx.send(error)
 
     @commands.group(invoke_without_command=True)
+    @checks.registered2()
     async def guild(self, ctx):
         """Show your current guild."""
 
@@ -652,6 +668,7 @@ class Rpg2:
 
     @guild.command(name="create", aliases=['form'])
     @checks.has_guild()
+    @checks.registered2()
     async def _create_(self, ctx, *, name=None):
         """Create your own guild."""
 
@@ -665,7 +682,8 @@ class Rpg2:
             if user[3] >= 10000:
                 await ctx.send(f"You are now the leader and founder of {name}")
                 async with ctx.bot.db.acquire() as db:
-                    await db.execute("INSERT INTO guilds VALUES($1, $2, $3, $4)", name, ctx.author.id, 1, 0)
+                    await db.execute("INSERT INTO guilds VALUES($1, $2, $3, $4, $5)",
+                                     name, ctx.author.id, 1, 0, )
                     await db.execute("UPDATE profiles SET guild=$1 WHERE id=$2", name, ctx.author.id)
             else:
                 return await ctx.send(f"{ctx.author.mention} You need ${10000 - user[3]} to create a guild!")
@@ -674,6 +692,7 @@ class Rpg2:
 
     @guild.command()
     @checks.has_guild()
+    @checks.registered2()
     async def join(self, ctx, *, name):
         """Join a guild."""
 
@@ -700,6 +719,89 @@ class Rpg2:
             await ctx.send(f"{ctx.author.mention} you have been accepted to join {name}")
         else:
             return await ctx.send(f"{ctx.author.mention} you have been sadly rejected to join {name}")
+
+    @guild.command()
+    @checks.registered2()
+    @checks.no_guild()
+    async def leave(self, ctx):
+        """Leave your guild."""
+        async with ctx.bot.db.acquire() as db:
+            guild_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", ctx.author.id)
+
+        if not guild_:
+            return await ctx.send("Either you misspelled the name of your guild, or you're not in that guild.")
+        else:
+            await ctx.send(f"Are you sure you want to leave {guild_}? \n"
+                           f"Yes or No?")
+            yon = await rpg.yon(ctx)
+            if yon == "Yes":
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("UPDATE profiles SET guild = NULL WHERE id=$1", ctx.author.id)
+                await ctx.send(f"You have left **{guild_}**")
+            else:
+                return await ctx.send("I guess you don't want to leave **{guild_}**")
+
+    @guild.command()
+    @checks.no_guild()
+    async def transfer(self, ctx, user: discord.Member=None):
+        """Transfer leadership of guild."""
+        async with ctx.bot.db.acquire() as db:
+            guild_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", ctx.author.id)
+            leader_ = await db.fetchval("SELECT leader FROM profiles WHERE id=$1", ctx.author.id)
+
+        if not user or user == ctx.author:
+            return await ctx.send("You either didn't pick a user, or you picked yourself.")
+
+        if guild_:
+            if leader_ == ctx.author.id:
+                await ctx.send("Are you sure you want to transfer leadership of **{guild_}** to {user.mention}? \n"
+                               "Yes or No?")
+
+                yon = await rpg.yon(ctx)
+                if yon == "Yes":
+                    async with ctx.bot.db.acquire() as db:
+                        await db.execute("UPDATE guilds SET leader = $1 WHERE guild=$2", user.id, guild_)
+
+                    await ctx.send(f"Bow down to the new leader of {guild_}, {user.display_name or user.name}")
+            else:
+                return await ctx.send(f"You're not the current leader of **{guild_}**")
+
+    @guild.command(name="info")
+    @checks.no_guild()
+    async def _info_(self, ctx, *, name):
+        async with ctx.bot.db.acquire() as db:
+            guild_ = await db.fetchrow("SELECT * FROM guilds WHERE guild=$1", name)
+            members = await db.fetch("SELECT * FROM profiles WHERE guild=$1", name)
+
+        leader = ctx.guild.get_member(guild_[1])
+        if not leader:
+            leader = ctx.bot.get_user(guild_[1])
+
+        await ctx.send(embed=discord.Embed(description=f"Current Leader: {leader.display_name or leader.name}")
+                       .set_author(name=guild_[0])
+                       .set_image(url=guild_[4] or "https://imgur.com/Xy8i2UB")
+                       .add_field(name="Stats", value=f"**Level:** {guild_[2]} \n"
+                                                      f"**XP:** {guild_[3]}")
+                       .add_field(name="Members", value='\n'.join([x.name or x.display_name for x in members]))
+                       )
+
+    @guild.command()
+    @checks.no_guild()
+    async def icon(self, ctx, *, icon=None):
+        if not icon:
+            if ctx.message.attachments:
+                icon = ctx.message.attachments[0].url
+            else:
+                return await ctx.send("Provide an attachment or image url.")
+
+        async with ctx.bot.db.acquire() as db:
+            guild_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", ctx.author.id)
+            leader = await db.fetchval("SELECT leader FROM guilds WHERE guild=$1", guild_)
+            if leader != ctx.author.id:
+                return await ctx.send("You are not the leader of **{guild_}**")
+            else:
+                await db.execute("UPDATE guilds SET icon = $1 WHERE name=$2", icon, guild_)
+                await ctx.send(f"Changed the icon of **{guild_}** to: {icon}")
 
 
 Rpg2.__name__ = "Infamous RPG v2"
