@@ -373,7 +373,7 @@ class Rpg2:
     @commands.command()
     @checks.registered2()
     @commands.cooldown(1, 600, commands.BucketType.channel)
-    async def duel(self, ctx, user: checks.SuperhumanFinder=None):
+    async def duel(self, ctx, user: checks.SuperhumanFinder = None):
         """Battle other players."""
         if not user:
             await ctx.send(f"You need to pick someone.")
@@ -617,7 +617,7 @@ class Rpg2:
     @commands.command()
     @checks.registered2()
     @commands.cooldown(1, 600, commands.BucketType.channel)
-    async def drink(self, ctx, user: checks.SuperhumanFinder=None):
+    async def drink(self, ctx, user: checks.SuperhumanFinder = None):
         """Last one standing wins!"""
 
         if not user:
@@ -664,6 +664,7 @@ class Rpg2:
                     return f'{ctx.author.mention} You are not in a guild! To join a guild type `{ctx.prefix}guild join`'
                 else:
                     return f'{ctx.author.mention} you are enlisted in {data}'
+
         await ctx.send(await msg())
 
     @guild.command(name="create", aliases=['form'])
@@ -743,11 +744,11 @@ class Rpg2:
 
     @guild.command()
     @checks.no_guild()
-    async def transfer(self, ctx, user: discord.Member=None):
+    async def transfer(self, ctx, user: discord.Member = None):
         """Transfer leadership of guild."""
         async with ctx.bot.db.acquire() as db:
             guild_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", ctx.author.id)
-            leader_ = await db.fetchval("SELECT leader FROM profiles WHERE id=$1", ctx.author.id)
+            leader_ = await db.fetchval("SELECT leader FROM guilds WHERE name=$1", guild_)
 
         if not user or user == ctx.author:
             return await ctx.send("You either didn't pick a user, or you picked yourself.")
@@ -773,6 +774,10 @@ class Rpg2:
             guild_ = await db.fetchrow("SELECT * FROM guilds WHERE guild=$1", name)
             members = await db.fetch("SELECT * FROM profiles WHERE guild=$1", name)
 
+        p = []
+        for i in members:
+            p.append((ctx.guild.get_member(i[0])).display_name or (ctx.bot.get_user(i)).name)
+
         leader = ctx.guild.get_member(guild_[1])
         if not leader:
             leader = ctx.bot.get_user(guild_[1])
@@ -782,7 +787,7 @@ class Rpg2:
                        .set_image(url=guild_[4] or "https://imgur.com/Xy8i2UB")
                        .add_field(name="Stats", value=f"**Level:** {guild_[2]} \n"
                                                       f"**XP:** {guild_[3]}")
-                       .add_field(name="Members", value='\n'.join([x.name or x.display_name for x in members]))
+                       .add_field(name="Members", value=p)
                        )
 
     @guild.command()
