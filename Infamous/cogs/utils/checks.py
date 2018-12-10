@@ -122,3 +122,15 @@ def has_guild():
         else:
             return True
     return commands.check(predicate)
+
+
+def no_guild():
+    async def predicate(ctx):
+        async with ctx.bot.db.acquire() as db:
+            guild_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", ctx.author.id)
+
+        if not guild_:
+            raise commands.CheckFailure(f"{ctx.author.mention} you are not in a guild.")
+        else:
+            return True
+    return commands.check(predicate)
