@@ -29,15 +29,20 @@ class Fun:
         """Shows a random quote from the community."""
 
         async with ctx.bot.db.acquire() as db:
-            quotes = await db.fetchrow("SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1")
+            quotes = await db.fetchrow("SELECT quote FROM quotes WHERE guild=$1 ORDER BY RANDOM() LIMIT 1",
+                                       ctx.guild.id)
 
-        embed = discord.Embed(title="Some random quote",
-                              color=self.bot.embed_color,
-                              timestamp=datetime.datetime.utcnow()
-                              )
+        if quotes:
+            embed = discord.Embed(title="Some random quote",
+                                  color=self.bot.embed_color,
+                                  timestamp=datetime.datetime.utcnow()
+                                  )
 
-        embed.set_image(url=quotes[0])
-        await ctx.send(embed=embed)
+            embed.set_image(url=quotes[0])
+            await ctx.send(embed=embed)
+        else:
+            return await ctx.send(f"Insert screenshots of your fellow server members saying memorable things by "
+                                  f"using `{ctx.prefix}quotes insert <link or attachment>`")
 
     @quotes.command()
     async def insert(self, ctx, *, link=None):
@@ -45,7 +50,7 @@ class Fun:
             link = ctx.message.attachments[0].url
 
         async with ctx.bot.db.acquire() as db:
-            await db.execute("INSERT INTO quotes VALUES($1)", link)
+            await db.execute("INSERT INTO quotes VALUES($1, $2)", link, ctx.guild.id)
 
         await ctx.message.add_reaction(':FAXcheck:428160543975800833')
 
@@ -55,20 +60,24 @@ class Fun:
         """Asks community provided questions."""
 
         async with ctx.bot.db.acquire() as db:
-            question = await db.fetchrow("SELECT * FROM questions ORDER BY RANDOM() LIMIT 1")
+            question = await db.fetchrow("SELECT * FROM questions WHERE guild=$1 ORDER BY RANDOM() LIMIT 1",
+                                         ctx.guild.id)
 
-        embed = discord.Embed(title="Random Question",
-                              description=question[0],
-                              color=self.bot.embed_color)
+        if question:
+            embed = discord.Embed(title="Random Question",
+                                  description=question[0],
+                                  color=self.bot.embed_color)
 
-        await ctx.send(embed=embed)
+            await ctx.send(embed=embed)
+        else:
+            return await ctx.send(f"Add questions related to your server by doing `{ctx.prefix}questions add`")
 
     @question.command()
     async def add(self, ctx, *, string):
         """Adds a question to the question pool."""
 
         async with ctx.bot.db.acquire() as db:
-            await db.execute("INSERT INTO questions VALUES($1)", string)
+            await db.execute("INSERT INTO questions VALUES($1, $2)", string, ctx.guild.id)
 
         await ctx.author.add_reaction('👌')
 
@@ -144,7 +153,7 @@ class Fun:
                     BytesIO(member_av)) \
                     .resize((64, 64)).convert("RGBA")
 
-                i = Image.open("Infamous/img/shipthing.jpg")
+                i = Image.open("img/shipthing.jpg")
                 i.paste(av1, p1)
                 i.paste(av2, p2)
                 b = BytesIO()
