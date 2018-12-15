@@ -1,7 +1,8 @@
-import discord
 import asyncio
 
-embed_color = 0x0f0f0f
+import discord
+
+embed_color = 0x101010
 
 
 async def lvl(ctx, mon, msg1, msg2, user=None):
