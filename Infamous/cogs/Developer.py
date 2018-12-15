@@ -28,12 +28,11 @@ class Developer:
         """Loads a cog."""
 
         try:
-            self.bot.load_extension(f'cogs.{extension_name.capitalize()}')
+            self.bot.load_extension(f'cogs.{extension_name.title()}')
         except (AttributeError, ImportError):
             await ctx.message.add_reaction(':BlurpleX:452390303698124800')
             return
         await ctx.message.add_reaction(':BlurpleCheck:452390337382449153')
-        await ctx.message.delete()
 
     @commands.command(hidden=True, aliases=['r'])
     @checks.is_admin()
@@ -41,8 +40,8 @@ class Developer:
         """Reloads a cog."""
 
         try:
-            self.bot.unload_extension(f'cogs.{module.capitalize()}')
-            self.bot.load_extension(f'cogs.{module.capitalize()}')
+            self.bot.unload_extension(f'cogs.{module.title()}')
+            self.bot.load_extension(f'cogs.{module.title()}')
         except Exception:
             await ctx.message.add_reaction(':BlurpleX:452390303698124800')
         else:
@@ -59,7 +58,7 @@ class Developer:
             await ctx.message.add_reaction(':BlurpleX:452390303698124800')
         else:
             await ctx.message.add_reaction(':BlurpleCheck:452390337382449153')
-            await ctx.message.delete()
+
 
     @commands.command(hidden=True)
     @checks.is_admin()
@@ -274,6 +273,19 @@ class Developer:
             return await ctx.send(f"{user.name} was never blocked")
 
         await ctx.send(f"{user.name} has been unblocked.")
+
+    @commands.command(hidden=True)
+    @checks.in_testing()
+    async def beta(self, ctx):
+        """Toggle on or off your beta testing role."""
+
+        role = discord.utils.get(ctx.guild.roles, id=407090515583041537)
+        if role in ctx.author.roles:
+            await ctx.author.remove_roles(role)
+            await ctx.message.add_reaction('➖')
+        else:
+            await ctx.author.add_roles(role)
+            await ctx.message.add_reaction('➕')
 
 
 def setup(bot):
