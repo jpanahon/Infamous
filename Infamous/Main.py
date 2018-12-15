@@ -29,7 +29,8 @@ async def run():
     db = await asyncpg.create_pool(credentials)
     prefixes = {}
     disabled = {}
-    
+    alerts = {}
+
     async with db.acquire() as conn:
         settings = await conn.fetch("SELECT * FROM settings")
         block = await conn.fetch("SELECT * FROM blocked")
@@ -40,13 +41,14 @@ async def run():
             disabled[i[0]] = []
         else:
             disabled[i[0]] = i[2].split(', ')
+        alerts[i[0]] = i[3]
 
     blocked = {}
     for i in block:
         blocked[i[0]] = i[1]
-        
-    bot = Bot(description='A community bot for the server Fame', db=db, prefixes=prefixes, 
-             disabled=disabled, blocked=blocked)
+
+    bot = Bot(description='A community bot for the server Fame', db=db, prefixes=prefixes,
+              disabled=disabled, blocked=blocked, alerts=alerts)
     try:
         await bot.start(os.getenv('TOKEN'))
     except KeyboardInterrupt:
@@ -72,17 +74,20 @@ class Bot(commands.Bot):
         self.launch_time = datetime.datetime.utcnow()
         self.db = kwargs.pop("db")
         self.prefixes = kwargs.pop("prefixes")
-        self.embed_color = 0x0f0f0f
+        self.embed_color = 0x101010
         self.disabled_commands = kwargs.pop("disabled")
         self.blocked = kwargs.pop("blocked")
+        self.alerts = kwargs.pop("alerts")
         self.lines = self.lines_of_code()
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_prefix_(self, bot, message):
-        if self.prefixes[message.guild.id]:
+        if not message.guild:
+            prefix = ['beta ']
+        elif self.prefixes[message.guild.id]:
             prefix = [self.prefixes[message.guild.id]]
         else:
-            prefix = ['>']
+            prefix = ['beta ']
         return commands.when_mentioned_or(*prefix)(bot, message)
 
     async def load_all_extensions(self):
@@ -130,17 +135,20 @@ class Bot(commands.Bot):
         await self.process_commands(message)
     
     async def check_if_disabled(self, ctx):
-        if ctx.guild.id in self.disabled_commands:
-            if ctx.command.qualified_name in self.disabled_commands[ctx.guild.id]:
-                raise commands.CheckFailure("I'm sorry a server moderator has disabled this command.")
-            else:
-                return True
+        if ctx.guild:
+            if ctx.guild.id in self.disabled_commands:
+                if ctx.command.qualified_name in self.disabled_commands[ctx.guild.id]:
+                    raise commands.CheckFailure("I'm sorry a server moderator has disabled this command.")
+                else:
+                    return True
 
-        else:
-            if ctx.author.id in self.blocked:
-                raise commands.CheckFailure(f"You have been blocked for: {self.blocked[ctx.author.id]}")
             else:
-                return True
+                if ctx.author.id in self.blocked:
+                    raise commands.CheckFailure(f"You have been blocked for: {self.blocked[ctx.author.id]}")
+                else:
+                    return True
+        else:
+            raise commands.CheckFailure("You can't use the bot here.")
   
 
 loop = asyncio.get_event_loop()
