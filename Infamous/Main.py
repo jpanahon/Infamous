@@ -117,7 +117,7 @@ class Bot(commands.Bot):
     async def playing_status(self):
         await self.wait_until_ready()
         await self.change_presence(activity=discord.Game(
-                name=f'beta help'
+                name=f'>help'
             ))
 
     async def on_ready(self):
