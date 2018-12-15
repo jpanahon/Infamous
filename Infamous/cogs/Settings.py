@@ -37,7 +37,7 @@ class Settings:
 
     @prefix_.command()
     async def reset(self, ctx):
-        """Reset to default prefix"""
+        """Reset to default prefix."""
 
         self.bot.prefixes[ctx.guild.id] = None
 
@@ -48,7 +48,7 @@ class Settings:
 
     @commands.command()
     async def disable(self, ctx, *, command):
-        """Disables a command"""
+        """Disables a command."""
 
         try:
             command_ = ctx.bot.get_command(command.lower())
@@ -73,7 +73,7 @@ class Settings:
 
     @commands.command()
     async def enable(self, ctx, *, command):
-        """Enables a command"""
+        """Enables a disabled command."""
 
         try:
             command_ = ctx.bot.get_command(command.lower())
@@ -95,8 +95,35 @@ class Settings:
 
     @commands.command()
     async def disabled(self, ctx):
+        """Shows the currently disabled commands for this guild."""
         await ctx.send(
             f"Commands disabled for **{ctx.guild.name}**: {', '.join(self.bot.disabled_commands[ctx.guild.id])}")
+
+    @commands.group(invoke_without_command=True)
+    async def alerts(self, ctx):
+        """Checks if alerts for rpg are enabled or disabled."""
+        if self.bot.alerts[ctx.guild.id] is True:
+            await ctx.send("Alerts for RPG are enabled.")
+        else:
+            await ctx.send("Alerts for RPG have been disabled.")
+
+    @alerts.command(name="enable")
+    async def __enable(self, ctx):
+        """Enables alerts."""
+        self.bot.alerts[ctx.guild.id] = True
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("UPDATE settings SET alerts=TRUE WHERE guild=$1", ctx.guild.id)
+
+        await ctx.send("Alerts have been enabled.")
+
+    @alerts.command(name="disable")
+    async def __disable(self, ctx):
+        """Disable alerts."""
+        self.bot.alerts[ctx.guild.id] = False
+        async with ctx.bot.db.acquire() as db:
+            await db.execute("UPDATE settings SET alerts=FALSE WHERE guild=$1", ctx.guild.id)
+
+        await ctx.send("Alerts have been disabled.")
 
 
 def setup(bot):
