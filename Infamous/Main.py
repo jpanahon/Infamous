@@ -125,7 +125,8 @@ class Bot(commands.Bot):
         print(f'Bot Online\n'
               f'Name: {self.user.name}\n'
               f'ID: {self.user.id}\n'
-              f'{discord.__version__}')
+              f'{discord.__version__} \n'
+              f'Last Updated: 15/12/18')
 
     async def on_message(self, message):
         if message.author.bot:
