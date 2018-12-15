@@ -134,3 +134,25 @@ def no_guild():
         else:
             return True
     return commands.check(predicate)
+
+
+class GuildFinder(commands.Converter):
+    async def convert(self, ctx, argument):
+        async with ctx.bot.db.acquire() as db:
+            guild_ = await db.fetchval("SELECT guild FROM guilds WHERE id=$1", argument)
+
+        if not guild_:
+            raise commands.BadArgument(f"{ctx.author.mention} choose an existing guild.")
+        else:
+            return guild_
+
+
+def in_testing():
+    async def predicate(ctx):
+        if ctx.guild.id != 334164625102995459:
+            raise commands.CheckFailure("Sorry this is restricted to https://discord.gg/JyJTh4H, to prevent errors.")
+        else:
+            return True
+
+    return commands.check(predicate)
+
