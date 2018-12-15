@@ -482,7 +482,6 @@ class HelpPaginator(Pages):
         cog_name = cog.__class__.__name__
 
         entries = sorted(ctx.bot.get_cog_commands(cog_name), key=lambda c: c.name)
-
         entries = [cmd for cmd in entries if (await _can_run(cmd, ctx)) and not cmd.hidden]
 
         self = cls(ctx, entries)
@@ -546,6 +545,10 @@ class HelpPaginator(Pages):
 
     def get_bot_page(self, page):
         cog, description, commands = self.entries[page - 1]
+        new_name = {"Rpg2": "Infamous RPG v2", "Imagem": "Image Manipulation"}
+        if cog in new_name.keys():
+            cog = new_name[cog]
+
         self.title = f"{cog} Commands"
         self.description = description
         return commands
