@@ -210,8 +210,5 @@ class Imagem:
             await ctx.send(file=file)
 
 
-Imagem.__name__ = "Image Manipulation"
-
-
 def setup(bot: commands.Bot):
     bot.add_cog(Imagem(bot))
