@@ -1,7 +1,5 @@
-import asyncio
 import io
 import logging
-import random
 import textwrap
 import time
 import traceback
@@ -220,7 +218,8 @@ class Utility:
 
         links = (f'**[[Invite Bot]]({invite})** \n'
                  '**[[Fame Discord]](https://discord.gg/NY2MSA3)** \n'
-                 '**[[Discord.py]](https://github.com/Rapptz/discord.py/tree/rewrite)**')
+                 '**[[Discord.py]](https://github.com/Rapptz/discord.py/tree/rewrite)** \n'
+                 '**[[Support]](https://discord.gg/JyJTh4H)**')
 
         # From Modelmat
         cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
@@ -228,21 +227,22 @@ class Utility:
 
         embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
-        embed.description = 'A Community Bot for ★ Fame ★.'
+        embed.description = 'A multi-purpose bot with image manipulation, wiki pages and it\'s own rpg; originally a ' \
+                            'community bot for ★ Fame ★'
         embed.set_thumbnail(
             url=self.bot.user.avatar_url)
 
         embed.add_field(name='About', value=about, inline=False)
 
         embed.add_field(name='Statistics 📈',
-                        value=(f'**{len(self.bot.guilds)} guilds.**\n '
+                        value=(f'**{len(self.bot.guilds)} guilds.**\n'
                                f'**{channels} channels.**\n'
                                f'**{users} users.** \n'
                                f'**{self.bot.lines} lines**'), inline=True)
 
-        embed.add_field(name='Uptime ⏰', value=(f'**{uptime[0]} days.** \n '
-                                                f'**{uptime[1]} hours.** \n '
-                                                f'**{uptime[2]} minutes.** \n '
+        embed.add_field(name='Uptime ⏰', value=(f'**{uptime[0]} days.** \n'
+                                                f'**{uptime[1]} hours.** \n'
+                                                f'**{uptime[2]} minutes.** \n'
                                                 f'**{uptime[3]} seconds.**'), inline=True)
 
         embed.add_field(name='Developer 🕵', value=author)
@@ -276,8 +276,9 @@ class Utility:
         embed = discord.Embed(color=user.colour, timestamp=datetime.utcnow())
         embed.set_author(name=f"Name: {user.name}")
         embed.add_field(name="Nick", value=user.nick, inline=True)
-        embed.add_field(name=":id:", value=user.id, inline=True)
+        embed.add_field(name="ID", value=user.id, inline=True)
         embed.add_field(name=f"Status {status[1]}", value=status[0], inline=True)
+        embed.add_field(name=f"On Mobile", value=user.is_on_mobile())
         activity_ = func.activity(user.activity)
         if activity_:
             embed.add_field(name=f'{activity_[0]} {activity_[1]}', value=user.activity.name, inline=True)
@@ -394,11 +395,13 @@ class Utility:
         await channel.send(embed=discord.Embed(color=self.bot.embed_color,
                                                description=string)
                            .set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
+                           .set_footer(text=f"From {ctx.guild.name}")
                            )
 
+        await ctx.send(f"Your suggestion has been sent!")
 
-    @commands.command(name="help")
-    async def _help(self, ctx, *, command: str = None):
+    @commands.command()
+    async def help(self, ctx, *, command: str = None):
         """Shows help about a command or the bot"""
         try:
             if command is None:
