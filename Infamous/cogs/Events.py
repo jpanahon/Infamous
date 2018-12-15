@@ -34,10 +34,10 @@ class Events:
     async def on_message_edit(self, before, after):
         if after.author.id in [299879858572492802, 507490400534265856]:
             if before.content != after.content:
-                if "eval" in after.content:
+                ctx = await self.bot.get_context(after)
+                if f"{ctx.prefix}eval" in after.content:
                     command = self.bot.get_command("eval")
-                    ctx = await self.bot.get_context(after)
-                    await ctx.invoke(command, body=after.content.strip(f"{ctx.prefix}eval"))
+                    await ctx.invoke(command, body=after.content.strip(f"{ctx.prefix}eval "))
 
     async def on_command_error(self, ctx, error):
         error = getattr(error, 'original', error)
@@ -63,32 +63,17 @@ class Events:
             )
 
         elif isinstance(error, commands.CommandOnCooldown):
-            if ctx.command.name == "daily":
-                cooldown = error.retry_after
-                cooldown = round(cooldown, 2)
-                hours, remainder = divmod(int(cooldown), 3600)
-                minutes, seconds = divmod(remainder, 60)
-                days, hours = divmod(hours, 24)
-                await ctx.send(f"You have to wait {days}d, {hours}h, {minutes}m, {seconds}s.")
-            elif ctx.command.name == "duel":
-                await ctx.send(f"There is currently a match going on in {ctx.channel.mention}")
-            else:
-                seconds = error.retry_after
-                seconds = round(seconds, 2)
-                hours, remainder = divmod(int(seconds), 3600)
-                minutes, seconds = divmod(remainder, 60)
-                await ctx.send(f"You have to wait {minutes}m and {seconds}s")
+            seconds = error.retry_after
+            seconds = round(seconds, 2)
+            hours, remainder = divmod(int(seconds), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            await ctx.send(f"You have to wait {minutes}m and {seconds}s")
 
         elif isinstance(error, commands.BotMissingPermissions):
             perms = ', '.join(error.missing_perms)
             perms = perms.replace("_", " ")
             return await ctx.send(
                 f'**Infamous Needs:** {perms.title()} Permissions.'
-            )
-
-        elif isinstance(error, commands.NoPrivateMessage):
-            return await ctx.send(
-                f'You cannot execute **{ctx.command}** in a Private Message.'
             )
 
         elif isinstance(error, commands.BadArgument):
@@ -102,21 +87,20 @@ class Events:
         print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
-    async def on_typing(self, channel, user, when):
-        if user.id == 299879858572492802:
-            if channel.id == 399442902524362753:
-                channel_ = self.bot.get_channel(258801388836880385)
-                await channel_.trigger_typing()
-        else:
-            pass
-
     async def on_guild_join(self, guild):
         self.bot.prefixes[guild.id] = None
-        await self.bot.db.execute("INSERT INTO settings VALUES($1)", guild.id)
+        self.bot.disabled_commands[guild.id] = []
+        self.bot.alerts[guild.id] = True
+        async with self.bot.db.acquire() as db:
+            await db.execute("INSERT INTO settings VALUES($1)", guild.id)
+            await db.execute("UPDATE settings SET alerts=TRUE WHERE guild=$1", guild.id)
 
     async def on_guild_remove(self, guild):
         del self.bot.prefixes[guild.id]
-        await self.bot.db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
+        del self.bot.disabled_commands[guild.id]
+        del self.bot.alerts[guild.id]
+        async with self.bot.db.acquire() as db:
+            await db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
 
 
 def setup(bot):
