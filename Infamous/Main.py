@@ -81,9 +81,7 @@ class Bot(commands.Bot):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_prefix_(self, bot, message):
-        if not message.guild:
-            prefix = ['beta ']
-        elif self.prefixes[message.guild.id]:
+        if self.prefixes[message.guild.id]:
             prefix = [self.prefixes[message.guild.id]]
         else:
             prefix = ['beta ']
