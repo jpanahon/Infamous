@@ -65,6 +65,15 @@ class Rpg2:
     def __init__(self, bot):
         self.bot = bot
 
+    async def __before_invoke(self, ctx):
+        if self.bot.alerts[ctx.guild.id] is True:
+            await ctx.send(
+                f"This RPG is being actively developed, which means there could be some errors that "
+                f"haven't been discovered or I haven't noticed in the code. Please report it via "
+                f"`{ctx.prefix}suggest`, you can also join <https://discord.gg/JyJTh4H> to beta test new "
+                f"features that are going to be implemented. You can disable these notifications via "
+                f"`{ctx.prefix}alerts disable`")
+
     @commands.command()
     @checks.unregistered2()
     async def register(self, ctx):
@@ -111,7 +120,7 @@ class Rpg2:
     async def adventure(self, ctx):
         """Patrol the streets to get rewards."""
 
-        mission_ = ['mission']
+        mission_ = ['mission', 'odyssey']
         for i in mission_:
             cmd = self.bot.get_command(i)
             if cmd.is_on_cooldown(ctx):
@@ -137,6 +146,14 @@ class Rpg2:
     @commands.command()
     @commands.cooldown(1, 3600, commands.BucketType.user)
     async def odyssey(self, ctx):
+        mission_ = ['mission', 'adventure']
+        for i in mission_:
+            cmd = self.bot.get_command(i)
+            if cmd.is_on_cooldown(ctx):
+                await ctx.send(f"You can't use `{ctx.prefix}mission` and `{ctx.prefix}adventure` at the same time.")
+                ctx.command.reset_cooldown(ctx)
+                return
+
         await ctx.send("You have to find the oldest and purebred superhuman in existence who was said to have had "
                        "the gift of immortality; making her ageless. She also possesses the power of super speed and "
                        "is one of the fastest speedsters.")
@@ -181,7 +198,7 @@ class Rpg2:
     async def mission(self, ctx):
         """Participate in an assigned mission."""
 
-        adventure_ = ['adventure']
+        adventure_ = ['adventure', 'odyssey']
         for i in adventure_:
             cmd = self.bot.get_command(i)
             if cmd.is_on_cooldown(ctx):
@@ -258,7 +275,7 @@ class Rpg2:
     async def loot(self, ctx):
         """Get hourly loot."""
 
-        loot_ = ['adventure', 'mission']
+        loot_ = ['adventure', 'mission', 'odyssey']
         for i in loot_:
             cmd = self.bot.get_command(i)
             if cmd.is_on_cooldown(ctx):
@@ -275,7 +292,7 @@ class Rpg2:
     @commands.cooldown(1, 84600, commands.BucketType.user)
     async def daily(self, ctx):
         """Get daily loot."""
-        daily_ = ['adventure', 'mission']
+        daily_ = ['adventure', 'mission', 'odyssey']
         for i in daily_:
             cmd = self.bot.get_command(i)
             if cmd.is_on_cooldown(ctx):
@@ -285,6 +302,16 @@ class Rpg2:
         await ctx.send("You have been given $500 and 500xp")
         await rpg.level2(ctx, 500, 500)
         await rpg.guild_level(ctx, 500)
+
+    @daily.error
+    async def daily_handler(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            cooldown = error.retry_after
+            cooldown = round(cooldown, 2)
+            hours, remainder = divmod(int(cooldown), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            days, hours = divmod(hours, 24)
+            await ctx.send(f"You have to wait {days}d, {hours}h, {minutes}m, {seconds}s.")
 
     @commands.command()
     @checks.registered2()
@@ -633,10 +660,10 @@ class Rpg2:
             xp = random.randint(100, 200)
             mon = random.randint(100, 200)
             if choice == ctx.author:
-                await ctx.send(f"{ctx.author.mention} wins the drinking contest!")
+                await ctx.send(f"{ctx.author.mention} wins the drinking contest! They earn {xp}xp and ${mon}")
                 await rpg.level2(ctx, mon, xp)
             else:
-                await ctx.send(f"{user.mention} wins the drinking contest!")
+                await ctx.send(f"{user.mention} wins the drinking contest! They earn {xp}xp and ${mon}")
                 await rpg.level2(ctx, mon, xp, user)
             ctx.command.reset_cooldown(ctx)
         else:
@@ -744,6 +771,7 @@ class Rpg2:
 
     @guild.command()
     @checks.no_guild()
+    @checks.registered2()
     async def transfer(self, ctx, user: discord.Member = None):
         """Transfer leadership of guild."""
         async with ctx.bot.db.acquire() as db:
@@ -782,16 +810,18 @@ class Rpg2:
         if not leader:
             leader = ctx.bot.get_user(guild_[1])
 
-        await ctx.send(embed=discord.Embed(description=f"Current Leader: {leader.display_name or leader.name}")
+        await ctx.send(embed=discord.Embed(color=self.bot.embed_color,
+                                           description=f"Current Leader: {leader.display_name or leader.name}")
                        .set_author(name=guild_[0])
-                       .set_image(url=guild_[4] or "https://imgur.com/Xy8i2UB")
+                       .set_image(url=guild_[4] or "https://imgur.com/Xy8i2UB.png")
                        .add_field(name="Stats", value=f"**Level:** {guild_[2]} \n"
                                                       f"**XP:** {guild_[3]}")
-                       .add_field(name="Members", value=p)
+                       .add_field(name="Members", value='\n'.join(p))
                        )
 
     @guild.command()
     @checks.no_guild()
+    @checks.registered2()
     async def icon(self, ctx, *, icon=None):
         if not icon:
             if ctx.message.attachments:
@@ -805,11 +835,47 @@ class Rpg2:
             if leader != ctx.author.id:
                 return await ctx.send("You are not the leader of **{guild_}**")
             else:
-                await db.execute("UPDATE guilds SET icon = $1 WHERE name=$2", icon, guild_)
+                await db.execute("UPDATE guilds SET icon = $1 WHERE guild=$2", icon, guild_)
                 await ctx.send(f"Changed the icon of **{guild_}** to: {icon}")
 
+    @guild.command()
+    @checks.no_guild()
+    @checks.registered2()
+    @commands.cooldown(1, 43200, commands.BucketType.default)
+    async def battle(self, ctx, name: checks.GuildFinder):
+        async with ctx.bot.db.acquire() as db:
+            user = await db.fetchval("SELECT leader FROM guilds WHERE guild=$1", name)
+            guild_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", ctx.author.id)
+            leader_ = await db.fetchval("SELECT leader FROM guilds WHERe id=$1", guild_)
+            members = await db.fetch("SELECT * FROM profiles WHERE guild=$1", guild_)
+            members_ = await db.fetch("SELECT * FROM profiles WHERE guild=$1", name)
 
-Rpg2.__name__ = "Infamous RPG v2"
+        if leader_ != ctx.author.id:
+            return await ctx.send(f"You are not the leader of {guild_}")
+
+        await ctx.send(f"Do you {self.bot.get_user(user).mention}, wage war against {name}?")
+        yon = await rpg.yon(ctx)
+        if yon == "Yes":
+            await ctx.send(f"{guild_} and {name} are at war; the war will end in 12 hours.")
+            await asyncio.sleep(43200)
+            choice = random.choice(guild_, name)
+            if choice == guild_:
+                await ctx.send(f"{guild_} won the war against {name}; all of it's members earn $1000 and 1000xp'")
+                for i in members:
+                    users = ctx.guild.get_member(i[0]) or ctx.bot.get_user(i[0])
+                    await rpg.level2(ctx, 1000, 1000, user=users)
+            else:
+                await ctx.send(f"{name} won the war against {guild_}; all of it's members earn $1000 and 1000xp'")
+                for i in members_:
+                    users = ctx.guild.get_member(i[0]) or ctx.bot.get_user(i[0])
+                    await rpg.level2(ctx, 1000, 1000, user=users)
+        else:
+            return await ctx.send(f"I guess you don't want to wage war against {name}")
+
+    @battle.error
+    async def battle_handler(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            return await ctx.send("There is currently a guild war going on in another server.")
 
 
 def setup(bot):
