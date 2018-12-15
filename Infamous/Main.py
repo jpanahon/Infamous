@@ -81,10 +81,12 @@ class Bot(commands.Bot):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_prefix_(self, bot, message):
-        if self.prefixes[message.guild.id]:
+        if not message.guild:
+            prefix = ['>']
+        elif self.prefixes[message.guild.id]:
             prefix = [self.prefixes[message.guild.id]]
         else:
-            prefix = ['beta ']
+            prefix = ['>']
         return commands.when_mentioned_or(*prefix)(bot, message)
 
     async def load_all_extensions(self):
