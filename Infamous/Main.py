@@ -6,7 +6,6 @@ import traceback
 import aiohttp
 import asyncpg
 import discord
-import random
 from discord.ext import commands
 
 
@@ -99,9 +98,8 @@ class Bot(commands.Bot):
             except Exception:
                 print(f'Failed to load extension {extension}.', file=sys.stderr)
                 traceback.print_exc()
-    
+
     def lines_of_code(self):
-        # From Scragly
         count_dict = {}
         total_count = 0
         for root, dirs, files in os.walk(os.path.join(self.path)):
@@ -119,8 +117,8 @@ class Bot(commands.Bot):
     async def playing_status(self):
         await self.wait_until_ready()
         await self.change_presence(activity=discord.Game(
-            name='>help'
-        ))
+                name=f'beta help'
+            ))
 
     async def on_ready(self):
         self.app_info = await self.application_info()
@@ -133,7 +131,7 @@ class Bot(commands.Bot):
         if message.author.bot:
             return
         await self.process_commands(message)
-    
+
     async def check_if_disabled(self, ctx):
         if ctx.guild:
             if ctx.guild.id in self.disabled_commands:
@@ -149,7 +147,7 @@ class Bot(commands.Bot):
                     return True
         else:
             raise commands.CheckFailure("You can't use the bot here.")
-  
+
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(run())
