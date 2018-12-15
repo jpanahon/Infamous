@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 class Original:
     """Fun commands that were made with an original concept."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot):
         self.bot = bot
 
     # Annoy
