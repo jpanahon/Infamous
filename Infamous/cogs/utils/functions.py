@@ -2,7 +2,7 @@ import datetime
 import discord
 
 
-embed_color = 0x0f0f0f
+embed_color = 0x101010
 
 
 def time_(time):
