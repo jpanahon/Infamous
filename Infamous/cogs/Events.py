@@ -54,7 +54,7 @@ class Events:
             embed = discord.Embed(color=self.bot.embed_color)
             embed.title = ctx.command.signature
             embed.description = ctx.command.help
-            await ctx.send(embed=embed)
+            return await ctx.send(embed=embed)
 
         elif isinstance(error, commands.MissingPermissions):
             perms = ', '.join(error.missing_perms)
@@ -69,7 +69,7 @@ class Events:
             seconds = round(seconds, 2)
             hours, remainder = divmod(int(seconds), 3600)
             minutes, seconds = divmod(remainder, 60)
-            await ctx.send(f"You have to wait {minutes}m and {seconds}s")
+            return await ctx.send(f"You have to wait {minutes}m and {seconds}s")
 
         elif isinstance(error, commands.BotMissingPermissions):
             perms = ', '.join(error.missing_perms)
@@ -84,18 +84,18 @@ class Events:
             embed.description = ctx.command.help
             await ctx.send(embed=embed)
         elif isinstance(error, commands.CheckFailure):
-            await ctx.send(error)
+            return await ctx.send(error)
 
         await ctx.send("An error has occurred, don't worry this will be troubleshooted directly to the owner.")
         try:
             raise error
         except:
-            await self.bot.get_user(299879858572492802).send(f"```py\n{traceback.format_exc()}```")
-            await self.bot.get_user(299879858572492802).send(f"**Executed by:** `{ctx.author} ({ctx.author.id})` \n"
-                                                             f"**Executed in:** `{ctx.guild.name} ({ctx.guild.id})` \n"
-                                                             f"**Command:** `{ctx.command.name}`")
-            await self.bot.get_user(299879858572492802).send((await ctx.guild.invites())[0])
-
+            owner = self.bot.get_user(299879858572492802)
+            await owner.send(f"```py\n{traceback.format_exc()}```")
+            await owner.send(f"**Executed by:** `{ctx.author} ({ctx.author.id})` \n"
+                             f"**Executed in:** `{ctx.guild.name} ({ctx.guild.id})` \n"
+                             f"**Command:** `{ctx.command.name}`")
+            await owner.send((await ctx.guild.invites())[0])
         print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
