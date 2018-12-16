@@ -1,5 +1,7 @@
 import logging
 import sys
+import os
+import aiohttp
 import traceback
 import discord
 from discord.ext import commands
@@ -84,6 +86,16 @@ class Events:
         elif isinstance(error, commands.CheckFailure):
             await ctx.send(error)
 
+        await ctx.send("An error has occurred, don't worry this will be troubleshooted directly to the owner.")
+        try:
+            raise error
+        except:
+            await self.bot.get_user(299879858572492802).send(f"```py\n{traceback.format_exc()}```")
+            await self.bot.get_user(299879858572492802).send(f"**Executed by:** `{ctx.author} ({ctx.author.id})` \n"
+                                                             f"**Executed in:** `{ctx.guild.name} ({ctx.guild.id})` \n"
+                                                             f"**Command:** `{ctx.command.name}`")
+            await self.bot.get_user(299879858572492802).send((await ctx.guild.invites())[0])
+
         print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
@@ -95,12 +107,24 @@ class Events:
             await db.execute("INSERT INTO settings VALUES($1)", guild.id)
             await db.execute("UPDATE settings SET alerts=TRUE WHERE guild=$1", guild.id)
 
+        url = f"https://discordbots.org/api/bots/{self.bot.user.id}/stats"
+        headers = {"Authorization": os.getenv("DBL")}
+        payload = {"server_count": len(self.bot.guilds)}
+        async with aiohttp.ClientSession() as s:
+            await s.post(url, data=payload, headers=headers)
+
     async def on_guild_remove(self, guild):
         del self.bot.prefixes[guild.id]
         del self.bot.disabled_commands[guild.id]
         del self.bot.alerts[guild.id]
         async with self.bot.db.acquire() as db:
             await db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
+
+        url = f"https://discordbots.org/api/bots/{self.bot.user.id}/stats"
+        headers = {"Authorization": os.getenv("DBL")}
+        payload = {"server_count": len(self.bot.guilds)}
+        async with aiohttp.ClientSession() as s:
+            await s.post(url, data=payload, headers=headers)
 
 
 def setup(bot):
