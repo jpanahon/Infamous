@@ -146,6 +146,8 @@ class Rpg2:
     @commands.command()
     @commands.cooldown(1, 3600, commands.BucketType.user)
     async def odyssey(self, ctx):
+        """Go on a long journey."""
+
         mission_ = ['mission', 'adventure']
         for i in mission_:
             cmd = self.bot.get_command(i)
@@ -254,7 +256,7 @@ class Rpg2:
         if user[3] >= shop_items[ability.title()][0]:
             async with ctx.bot.db.acquire() as db:
                 await db.execute("INSERT INTO abilities VALUES($1, $2, $3, $4, $5, $6)",
-                                 ctx.author.id, ability.title(), shop_items[ability.title()][3],
+                                 ctx.author.id, ability.title(), 1, 0, shop_items[ability.title()][3],
                                  shop_items[ability.title()][4])
 
                 await db.execute("UPDATE profiles SET bal = bal - $1 WHERE id=$2",
@@ -358,7 +360,7 @@ class Rpg2:
         """Shows all the active cooldowns."""
 
         p = []
-        for command in self.bot.get_cog_commands("Rpg2"):
+        for command in self.bot.get_cog_commands("Infamous RPG v2"):
             if command.is_on_cooldown(ctx):
                 p.append(command.name)
 
@@ -626,10 +628,7 @@ class Rpg2:
         p = []
         number = 0
         for user in lb:
-            user_ = ctx.guild.get_member(user[0])
-            if not user_:
-                user_ = ctx.bot.get_user(user[0])
-
+            user_ = ctx.guild.get_member(user[0]) or ctx.bot.get_user(user[0])
             number += 1
             p.append(discord.Embed(color=self.bot.embed_color, description=f"**Level:** {user[1]} \n"
                                                                            f"**Total XP:** {user[2]} \n"
@@ -876,6 +875,78 @@ class Rpg2:
     async def battle_handler(self, ctx, error):
         if isinstance(error, commands.CommandOnCooldown):
             return await ctx.send("There is currently a guild war going on in another server.")
+
+    @commands.command()
+    @checks.registered2()
+    @commands.cooldown(1, 84600, commands.BucketType.user)
+    async def raffle(self, ctx):
+        await ctx.send("Pick a number between 1-10 to win a prize")
+
+        def check(m):
+            return m.author == ctx.author and m.content.isdigit()
+
+        try:
+            msg = int((await ctx.bot.wait_for('message', check=check, timeout=20)).content)
+        except asyncio.TimeoutError:
+            return await ctx.send("I guess you don't want to participate in the raffle.")
+
+        if msg:
+            prize = random.choice(["Money", "Ability", "Master", "Level"])
+            if prize == "Money":
+                mon = random.randint(100, 200)
+                xp = random.randint(100, 200)
+                await ctx.send(f"You earned ${mon} and {xp}xp.")
+                await rpg.level2(ctx, mon, xp)
+            elif prize == "Ability":
+                abilities = await rpg.fetch_abilities(ctx)
+                ability = random.choice([x for x in shop_items if x not in abilities])
+                await ctx.send(f"You have acquired **{ability}**")
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("INSERT INTO abilities VALUES($1, $2, $3, $4, $5, $6)",
+                                     ctx.author.id, ability, 1, 0, shop_items[ability][3],
+                                     shop_items[ability][4])
+            elif prize == "Master":
+                ability = random.choice(await rpg.fetch_abilities(ctx))
+                xp = random.randint(10, 100)
+                await ctx.send(f"{ability} had been upgraded.")
+                await rpg.ability_level(ctx, xp, 100, 100, ability)
+
+            else:
+                await rpg.level2(ctx, 2000, 2000)
+
+    @raffle.error
+    async def raffle_handler(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            cooldown = error.retry_after
+            cooldown = round(cooldown, 2)
+            hours, remainder = divmod(int(cooldown), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            days, hours = divmod(hours, 24)
+            await ctx.send(f"You have to wait {days}d, {hours}h, {minutes}m, {seconds}s.")
+
+    @commands.command()
+    @checks.registered2()
+    async def abilities(self, ctx, user: checks.SuperhumanFinder=None):
+        if not user:
+            user = ctx.author
+        else:
+            user = ctx.guild.get_member_named(str(user))
+
+        async with ctx.bot.db.acquire() as db:
+            ab_ = await db.fetch("SELECT * FROM abilities WHERE id=$1", user.id)
+
+        p = []
+        for i in ab_:
+            p.append(discord.Embed(color=self.bot.embed_color,
+                                   description=f"**Level**: {i[2]} \n"
+                                               f"**XP**: {i[3]} \n"
+                                               f"**DMG**: {i[4]} \n"
+                                               f"**DUR**: {i[5]}")
+                     .set_author(name=i[1])
+                     .set_image(url=shop_items[i[1]][1])
+                     )
+
+        await SimplePaginator(extras=p).paginate(ctx)
 
 
 def setup(bot):
