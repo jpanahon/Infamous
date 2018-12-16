@@ -338,6 +338,7 @@ class Utility:
 
     # Urban Dictionary
     @commands.command(aliases=['urban'])
+    @commands.is_nsfw()
     async def ud(self, ctx, *, string):
         """Looks up a word on the Urban Dictionary.
            *Also shows related definitions if any*"""
@@ -362,6 +363,8 @@ class Utility:
     async def ud_handler(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
             return await ctx.send("There were no results found on Urban Dictionary.")
+        elif isinstance(error, commands.CheckFailure):
+            return await ctx.send("According to Discord Bots List rules; urban dictionary commands are NSFW ONLY.")
 
     # User Avatar
     @commands.command(aliases=['av', 'pfp'])
