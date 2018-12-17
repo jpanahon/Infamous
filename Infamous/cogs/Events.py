@@ -124,13 +124,14 @@ class Events:
         async with aiohttp.ClientSession() as s:
             await s.post(url, data=payload, headers=headers)
 
-        try:
-            await guild.create_role(name='Muted', reason='Created by Infamous to use for muting.')
+        if not discord.utils.get(guild.roles, name="Muted"):
+            try:
+                await guild.create_role(name='Muted', reason='Created by Infamous to use for muting.')
+            except discord.Forbidden:
+                pass
             muted = discord.utils.get(guild.roles, name='Muted')
             for channel in guild.text_channels:
                 await channel.set_permissions(muted, send_messages=False)
-        except discord.Forbidden:
-            pass
 
     async def on_guild_remove(self, guild):
         del self.bot.prefixes[guild.id]
