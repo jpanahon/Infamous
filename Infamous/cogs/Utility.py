@@ -212,7 +212,7 @@ class Utility:
 
         author = self.bot.get_user(299879858572492802)
 
-        invite = 'https://discordapp.com/oauth2/authorize?client_id=347205176903335937&scope=bot&permissions=470150342'
+        invite = 'https://discordapp.com/oauth2/authorize?client_id=347205176903335937&scope=bot&permissions=470150359'
         about = ('Infamous is a actively developed bot that gets updated daily.'
                  f' It is written with passion by {author} using the Rewrite branch of the discord.py library.')
 
@@ -364,7 +364,7 @@ class Utility:
         if isinstance(error, commands.CommandInvokeError):
             return await ctx.send("There were no results found on Urban Dictionary.")
         elif isinstance(error, commands.CheckFailure):
-            return await ctx.send("According to Discord Bots List rules; urban dictionary commands are NSFW ONLY.")
+            return await ctx.send("According to Discord Bot List rules; urban dictionary commands are NSFW ONLY.")
 
     # User Avatar
     @commands.command(aliases=['av', 'pfp'])
@@ -410,6 +410,9 @@ class Utility:
             if command is None:
                 p = await HelpPaginator.from_bot(ctx)
             else:
+                new_names = {"Infamous RPG v2": "Rpg2", "Image Manipulation": "Imagem"}
+                if command in new_names.keys():
+                    command = new_names[command]
                 entity = self.bot.get_cog(command) or self.bot.get_command(command)
 
                 if entity is None:
