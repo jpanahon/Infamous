@@ -571,8 +571,7 @@ class HelpPaginator(Pages):
         if self.maximum_pages:
             self.embed.set_author(
                 name=f'Infamous | Page {page} of {self.maximum_pages}',
-                icon_url=
-                "https://cdn.discordapp.com/avatars/429461624341135361/a279705cffe9ef364163f76ec4cd1657.png?size=1024"
+                icon_url=self.bot.user.avatar_url
             )
 
         if not self.paginating:
