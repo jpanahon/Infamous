@@ -126,12 +126,11 @@ class Events:
 
         if not discord.utils.get(guild.roles, name="Muted"):
             try:
-                await guild.create_role(name='Muted', reason='Created by Infamous to use for muting.')
+                muted = await guild.create_role(name='Muted', reason='Created by Infamous to use for muting.')
+                for channel in guild.text_channels:
+                    await channel.set_permissions(muted, send_messages=False)
             except discord.Forbidden:
                 pass
-            muted = discord.utils.get(guild.roles, name='Muted')
-            for channel in guild.text_channels:
-                await channel.set_permissions(muted, send_messages=False)
 
     async def on_guild_remove(self, guild):
         del self.bot.prefixes[guild.id]
