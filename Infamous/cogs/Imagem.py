@@ -155,7 +155,7 @@ class Imagem:
             av = await r.read()
 
         text_pos = (633, 974)
-        font = ImageFont.truetype("fonts/Arial.ttf", 48)
+        font = ImageFont.truetype("Infamous/fonts/Arial.ttf", 48)
         async with ctx.typing():
             def draw_():
                 avatar = Image.open(BytesIO(av)).resize((414, 414)).convert("RGBA")
