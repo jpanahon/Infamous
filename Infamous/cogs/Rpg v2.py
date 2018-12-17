@@ -60,7 +60,22 @@ shop_items = {"Super Strength": [12000, 'https://imgur.com/vbtnxdi.png',
 
 
 class Rpg2:
-    """2nd version of Infamous RPG"""
+    """
+    The year is 2033; technology has become advanced, what was once science fiction
+    has become a reality. Years of research and experimentation have created superhumans.
+
+    In 2029 a rogue scientist by name of Angus Kleric had developed a software that created
+    pills to genetically enhance a human; many people have taken the pills and gave themselves
+    superpowers, however it caused them to become insane and use their abilities for
+    committing crime.
+
+    The drug had been discontinued, but new illegal versions of it were made.
+    This opted the U.S Government to make their own superhumans; superheroes to combat evil supervillians;
+    the term used for the ones who took the Kleric drug.
+
+    You can be a superhero or supervillian and interact in the city of Sterben
+    where you can take on other superheroes or supervillians.
+                """
 
     def __init__(self, bot):
         self.bot = bot
@@ -144,6 +159,7 @@ class Rpg2:
         await rpg.guild_level(ctx, xp)
 
     @commands.command()
+    @checks.registered2()
     @commands.cooldown(1, 3600, commands.BucketType.user)
     async def odyssey(self, ctx):
         """Go on a long journey."""
@@ -413,7 +429,7 @@ class Rpg2:
         abilities1 = await rpg.fetch_abilities(ctx)
         abilities2 = await rpg.fetch_abilities(ctx, user=user)
 
-        if len(abilities1 or abilities2) < 2:
+        if len(abilities1 or abilities2) <= 2:
             await ctx.send("One of you don't have two or more abilities")
             ctx.command.reset_cooldown(ctx)
             return
@@ -425,10 +441,10 @@ class Rpg2:
                            f"{', '.join(abilities1)}. (Type your choice like this: Super Speed, Telekinesis)")
 
             def check(m):
-                return m.author == ctx.author and m.content in abilities1
+                return m.author == ctx.author and abilities1 in m.content
 
             def check2(m):
-                return m.author == user and m.content in abilities2
+                return m.author == user and abilities1 in m.content.title()
 
             try:
                 msg = (await ctx.bot.wait_for('message', check=check, timeout=15)).content.title()
@@ -926,7 +942,7 @@ class Rpg2:
 
     @commands.command()
     @checks.registered2()
-    async def abilities(self, ctx, user: checks.SuperhumanFinder=None):
+    async def abilities(self, ctx, user: checks.SuperhumanFinder = None):
         if not user:
             user = ctx.author
         else:
@@ -947,6 +963,22 @@ class Rpg2:
                      )
 
         await SimplePaginator(extras=p).paginate(ctx)
+
+    @commands.command()
+    @checks.registered2()
+    async def unregister(self, ctx):
+        await ctx.send("Are you sure you want to unregister from the RPG? **You will lose all your data** \n"
+                       "**Yes** or **No**")
+
+        yon = await rpg.yon(ctx)
+        if yon == "Yes":
+            async with ctx.bot.db.acquire() as db:
+                await db.execute("DELETE FROM profiles WHERE id=$1", ctx.author.id)
+                await db.execute("DELETE FROM abilities WHERE id=$1", ctx.author.id)
+
+            await ctx.send(f"You have been successfully erased from the RPG database.")
+        else:
+            return await ctx.send("I guess you don't want to lose your data.")
 
 
 def setup(bot):
