@@ -5,6 +5,7 @@ import aiohttp
 import traceback
 import discord
 from discord.ext import commands
+from .utils import functions as func
 
 logging.basicConfig(level=logging.INFO)
 
@@ -107,11 +108,29 @@ class Events:
             await db.execute("INSERT INTO settings VALUES($1)", guild.id)
             await db.execute("UPDATE settings SET alerts=TRUE WHERE guild=$1", guild.id)
 
+        number = len(guild.text_channels)
+        for channel in guild.text_channels:
+            number -= 1
+            try:
+                return await channel.send(embed=func.welcome())
+            except discord.Forbidden:
+                pass
+        if number == 0:
+            return await guild.owner.send(embed=func.welcome())
+
         url = f"https://discordbots.org/api/bots/{self.bot.user.id}/stats"
         headers = {"Authorization": os.getenv("DBL")}
         payload = {"server_count": len(self.bot.guilds)}
         async with aiohttp.ClientSession() as s:
             await s.post(url, data=payload, headers=headers)
+
+        try:
+            await guild.create_role(name='Muted', reason='Created by Infamous to use for muting.')
+            muted = discord.utils.get(guild.roles, name='Muted')
+            for channel in guild.text_channels:
+                await channel.edit_permissions(muted, send_messages=False)
+        except discord.Forbidden:
+            pass
 
     async def on_guild_remove(self, guild):
         del self.bot.prefixes[guild.id]
@@ -119,6 +138,7 @@ class Events:
         del self.bot.alerts[guild.id]
         async with self.bot.db.acquire() as db:
             await db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
+            await db.execute("DELETE FROM wiki WHERE guild_id=$1", guild.id)
 
         url = f"https://discordbots.org/api/bots/{self.bot.user.id}/stats"
         headers = {"Authorization": os.getenv("DBL")}
