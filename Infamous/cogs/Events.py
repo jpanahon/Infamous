@@ -128,7 +128,7 @@ class Events:
             await guild.create_role(name='Muted', reason='Created by Infamous to use for muting.')
             muted = discord.utils.get(guild.roles, name='Muted')
             for channel in guild.text_channels:
-                await channel.edit_permissions(muted, send_messages=False)
+                await channel.set_permissions(muted, send_messages=False)
         except discord.Forbidden:
             pass
 
