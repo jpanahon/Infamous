@@ -413,7 +413,7 @@ class Rpg2:
         abilities1 = await rpg.fetch_abilities(ctx)
         abilities2 = await rpg.fetch_abilities(ctx, user=user)
 
-        if len(abilities1 or abilities2) <= 2:
+        if len(abilities1 or abilities2) < 2:
             await ctx.send("One of you don't have two or more abilities")
             ctx.command.reset_cooldown(ctx)
             return
