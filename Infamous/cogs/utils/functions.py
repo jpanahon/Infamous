@@ -68,3 +68,24 @@ def ud_embed(definition_, current, max_):
         "http://a2.mzstatic.com/us/r30/Purple/v4/dd/ef/75/ddef75c7-d26c-ce82-4e3c-9b07ff0871a5/mzl.yvlduoxl.png"
     )
     return embed
+
+
+def welcome():
+    return (discord.Embed(color=embed_color,
+                          description="""
+Infamous is a actively developed bot that gets updated daily. It is written with passion by vσятєχтнєgнσυℓ#6346 
+using the Rewrite branch of the discord.py library. It features it's own rpg with superheroes and supervillians 
+(they are not comic book related), a wiki system where users can write about other users. For a year it had served as 
+a community bot for a server named "Fame", and now it's time for it to be released to the public.
+
+Type **>chat** for you and your friends to engage in a conversation with the bot
+
+Type **>help Infamous RPG v2** to get information about the rpg.
+
+Type **>help wiki** to get information about the wiki system.
+
+Type **>help Settings** to learn about how to change the configuration of the bot on your server.
+""")
+            .set_author(name="Message from owner...")
+            .set_image(url="https://i.imgur.com/JUGPi7r.png")
+            )
