@@ -376,7 +376,7 @@ class Rpg2:
         """Shows all the active cooldowns."""
 
         p = []
-        for command in self.bot.get_cog_commands("Infamous RPG v2"):
+        for command in self.bot.get_cog_commands("Rpg2"):
             if command.is_on_cooldown(ctx):
                 p.append(command.name)
 
