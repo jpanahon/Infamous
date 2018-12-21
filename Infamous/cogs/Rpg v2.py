@@ -444,7 +444,7 @@ class Rpg2:
                 return m.author == ctx.author and abilities1 in m.content
 
             def check2(m):
-                return m.author == user and abilities1 in m.content.title()
+                return m.author == user and abilities2 in m.content.title()
 
             try:
                 msg = (await ctx.bot.wait_for('message', check=check, timeout=15)).content.title()
