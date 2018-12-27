@@ -456,21 +456,18 @@ class Rpg2:
                        and ', ' in m.content.title()
 
             try:
-                msg = (await ctx.bot.wait_for('message', check=check, timeout=15)).content.title()
+                msg = (await ctx.bot.wait_for('message', check=check, timeout=30)).content.title()
             except asyncio.TimeoutError:
                 return await ctx.send(f"{ctx.author.mention}, you ran out of time.")
 
             await ctx.send(f"{user.mention} Which two abilities do you choose to fight with? \n"
-                           f"{', '.join(abilities1)}. (Type your choice like this: Super Speed, Telekinesis)")
+                           f"{', '.join(abilities2)}. (Type your choice like this: Super Speed, Telekinesis)")
 
             try:
-                msg2 = (await ctx.bot.wait_for('message', check=check2, timeout=15)).content.title()
+                msg2 = (await ctx.bot.wait_for('message', check=check2, timeout=30)).content.title()
             except asyncio.TimeoutError:
-                return await ctx.send(f"{ctx.author.mention}, you ran out of time.")
-
-            print(msg)
-            print(msg2)
-            print(msg.split(', ')[0])
+                return await ctx.send(f"{user.mention}, you ran out of time.")
+            
             async with ctx.bot.db.acquire() as db:
                 skill1_ = await db.fetchrow("SELECT * FROM abilities WHERE id=$1 AND ability=$2", ctx.author.id,
                                             (msg.split(', '))[0])
