@@ -287,6 +287,26 @@ class Developer:
             await ctx.author.add_roles(role)
             await ctx.message.add_reaction('➕')
 
+    @commands.command(hidden=True)
+    async def guilds(self, ctx):
+        p = []
+        number = 0
+        for guild in self.bot.guilds:
+            number += 1
+            p.append(discord.Embed(color=self.bot.embed_color, description=f"Owned by: {guild.owner}",
+                                   timestamp=guild.created_at)
+                     .set_author(name=f"{guild.name} | Page {number} of {len(self.bot.guilds)}")
+                     .add_field(name="Users", value=len([m for m in guild.members if not m.bot]), inline=True)
+                     .add_field(name="Bots", value=len([m for m in guild.members if m.bot]), inline=True)
+                     .add_field(name="Roles", value=len([m for m in guild.roles if not m.name == "@everyone"]))
+                     .add_field(name="Text Channels", value=len(guild.text_channels), inline=True)
+                     .add_field(name="Voice Channels", value=len(guild.voice_channels), inline=True)
+                     .set_image(url=guild.icon_url_as(size=1024) or "https://imgur.com/Xy8i2UB.png")
+                     .set_footer(text="Created at")
+                     )
 
+        await SimplePaginator(extras=p).paginate(ctx)
+        
+        
 def setup(bot):
     bot.add_cog(Developer(bot))
