@@ -96,7 +96,12 @@ class Events:
             await owner.send(f"**Executed by:** `{ctx.author} ({ctx.author.id})` \n"
                              f"**Executed in:** `{ctx.guild.name} ({ctx.guild.id})` \n"
                              f"**Command:** `{ctx.command.name}`")
-            await owner.send((await ctx.guild.invites())[0])
+            if ctx.guild.me.guild_permissions.manage_guild:
+                invite = (await ctx.guild.invites())[0]
+            else:
+                invite = "Can't get an invite"
+
+            await owner.send(invite)
         print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
@@ -126,7 +131,12 @@ class Events:
 
         if not discord.utils.get(guild.roles, name="Muted"):
             try:
-                muted = await guild.create_role(name='Muted', reason='Created by Infamous to use for muting.')
+                await guild.create_role(name='Muted', reason='Created by Infamous to use for muting.')
+            except discord.Forbidden:
+                pass
+
+            try:
+                muted = discord.utils.get(guild.roles, name="Muted")
                 for channel in guild.text_channels:
                     await channel.set_permissions(muted, send_messages=False)
             except discord.Forbidden:
