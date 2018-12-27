@@ -68,6 +68,7 @@ class Bot(commands.Bot):
         self.loop.create_task(self.load_all_extensions())
         self.loop.create_task(self.playing_status())
         self.remove_command("help")
+        self.load_extension("jishaku")
         self.add_check(self.check_if_disabled)
         self.path = os.path.dirname(os.path.realpath(__file__))
         self.launch_time = datetime.datetime.utcnow()
