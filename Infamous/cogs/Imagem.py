@@ -121,7 +121,7 @@ class Imagem:
     async def mind(self, ctx, text1: str, text2: str, text3: str):
         """Mind blown"""
 
-        if len(text1) or len(text2) or len(text3) > 50:
+        if len(text1 or text2 or text3) > 50:
             return await ctx.send("50 chars on each!")
 
         text1_pos = (65, 76)
