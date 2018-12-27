@@ -12,6 +12,7 @@ from discord import Webhook, AsyncWebhookAdapter
 from discord.ext import commands
 
 from .utils import checks
+from .utils.paginator import SimplePaginator
 
 logging.basicConfig(level=logging.INFO)
 
