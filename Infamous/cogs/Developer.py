@@ -28,7 +28,7 @@ class Developer:
         """Loads a cog."""
 
         try:
-            self.bot.load_extension(f'cogs.{extension_name.title()}')
+            self.bot.load_extension(f'cogs.{extension_name.capitalize()}')
         except (AttributeError, ImportError):
             await ctx.message.add_reaction(':BlurpleX:452390303698124800')
             return
@@ -40,8 +40,8 @@ class Developer:
         """Reloads a cog."""
 
         try:
-            self.bot.unload_extension(f'cogs.{module.title()}')
-            self.bot.load_extension(f'cogs.{module.title()}')
+            self.bot.unload_extension(f'cogs.{module.capitalize()}')
+            self.bot.load_extension(f'cogs.{module.capitalize()}')
         except Exception:
             await ctx.message.add_reaction(':BlurpleX:452390303698124800')
         else:
