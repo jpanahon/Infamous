@@ -266,13 +266,15 @@ async def level2(ctx, mon, xp, user=None):
     lvl_ = {"xp": lvl_[2] + xp, "lvl": lvl_[1]}
 
     if lvl_["xp"] >= lvl_["lvl"] * 2000:
-        await ctx.send(f"Congratulations {user.mention} you have leveled up to Level {lvl_['lvl'] + 1}.")
+        await ctx.send(f"Congratulations {user.mention} you have leveled up to Level {lvl_['lvl'] + 1} "
+                       f"after executing `{ctx.prefix}{ctx.command.name}`")
 
         async with ctx.bot.db.acquire() as db:
             await db.execute("UPDATE profiles SET level = level + 1, bal = bal + $1, xp = xp + $2 WHERE id=$3",
                              mon, xp, user.id)
     else:
-        await ctx.send(f"{user.mention} You have {lvl_['lvl'] * 2000 - lvl_['xp']}xp left to the next level.")
+        await ctx.send(f"{user.mention} You have {lvl_['lvl'] * 2000 - lvl_['xp']}xp left to the next level "
+                       f"after executing `{ctx.prefix}{ctx.command.name}`")
 
         async with ctx.bot.db.acquire() as db:
             await db.execute("UPDATE profiles SET bal = bal + $1, xp = xp + $2 WHERE id=$3",
@@ -322,7 +324,8 @@ async def ability_level(ctx, xp, dmg, dur, ability, user=None):
     lvl_ = {"lvl": lvl_[2], "xp": lvl_[3] + xp}
 
     if lvl_["xp"] >= lvl_["lvl"] * 2000:
-        await ctx.send(f"Congratulations {user.mention} you have leveled up {ability} to Level {lvl_['lvl'] + 1}.")
+        await ctx.send(f"Congratulations {user.mention} you have leveled up {ability} to Level {lvl_['lvl'] + 1} "
+                       f"after executing `{ctx.prefix}{ctx.command.name}`")
 
         async with ctx.bot.db.acquire() as db:
             await db.execute(
@@ -332,7 +335,7 @@ async def ability_level(ctx, xp, dmg, dur, ability, user=None):
     else:
         await ctx.send(
             f"{user.mention} You have {lvl_['lvl'] * 2000 - lvl_['xp']}xp left to upgrade your "
-            f"{ability} to the next level.")
+            f"{ability} to the next level after executing `{ctx.prefix}{ctx.command.name}`")
 
         async with ctx.bot.db.acquire() as db:
             await db.execute("UPDATE abilities SET damage=damage + $1, "
