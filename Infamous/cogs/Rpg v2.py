@@ -130,7 +130,7 @@ class Rpg2:
                 active = False
 
     @commands.command(aliases=['quest', 'adv'])
-    @commands.cooldown(1, 600, commands.BucketType.user)
+    @commands.cooldown(1, 1800, commands.BucketType.user)
     @checks.registered2()
     async def adventure(self, ctx):
         """Patrol the streets to get rewards."""
@@ -143,8 +143,8 @@ class Rpg2:
                 ctx.command.reset_cooldown(ctx)
                 return
 
-        await ctx.send("You went on a adventure; you will return in 10 minutes.")
-        await asyncio.sleep(600)
+        await ctx.send("You went on a adventure; you will return in 30 minutes.")
+        await asyncio.sleep(1800)
         money = random.randint(20, 100)
         xp = random.randint(20, 100)
         await ctx.send(random.choice([
@@ -160,7 +160,7 @@ class Rpg2:
 
     @commands.command()
     @checks.registered2()
-    @commands.cooldown(1, 3600, commands.BucketType.user)
+    @commands.cooldown(1, 5400, commands.BucketType.user)
     async def odyssey(self, ctx):
         """Go on a long journey."""
 
@@ -175,7 +175,7 @@ class Rpg2:
         await ctx.send("You have to find the oldest and purebred superhuman in existence who was said to have had "
                        "the gift of immortality; making her ageless. She also possesses the power of super speed and "
                        "is one of the fastest speedsters.")
-        await asyncio.sleep(3600)
+        await asyncio.sleep(5400)
         xp = random.randint(250, 750)
         mon = random.randint(250, 750)
         await ctx.send(
@@ -184,10 +184,14 @@ class Rpg2:
         await rpg.guild_level(ctx, xp)
 
     @commands.command(aliases=['p'])
-    async def profile(self, ctx, user: discord.Member = None):
+    @checks.registered2()
+    async def profile(self, ctx, user: checks.SuperhumanFinder=None):
         """View the stats of fellow superhumans."""
         if not user:
             user = ctx.author
+        else:
+            user = await ctx.guild.get_member_named(str(user))
+
         stats = (await rpg.fetch_user2(ctx, user))
         async with ctx.bot.db.acquire() as db:
             abilities_ = await db.fetch("SELECT * FROM abilities WHERE id=$1", user.id)
@@ -208,11 +212,12 @@ class Rpg2:
                        .add_field(name="Info", value=f"**Main Ability:** {main} \n"
                                                      f"**Balance:** {stats[3]}")
                        .add_field(name="Other Abilities", value=ability, inline=False)
+                       .add_field(name="Guild", value=stats[5])
                        )
 
     @commands.command()
     @checks.registered2()
-    @commands.cooldown(1, 900, commands.BucketType.user)
+    @commands.cooldown(1, 3600, commands.BucketType.user)
     async def mission(self, ctx):
         """Participate in an assigned mission."""
 
@@ -233,8 +238,8 @@ class Rpg2:
             "Save the life of Solaris; who was badly injured in a fight with Chronos.",
             "Stop a Kleric drug deal from happening."
         ])
-        await ctx.send(f"**You've been sent to:** {mission} \nYou will return in 15 minutes.")
-        await asyncio.sleep(900)
+        await ctx.send(f"**You've been sent to:** {mission} \nYou will return in 1 hour.")
+        await asyncio.sleep(3600)
         money = random.randint(100, 250)
         xp = random.randint(100, 250)
         await ctx.send(f"You have been awarded ${money} and {xp}xp for completing the mission.")
@@ -356,15 +361,15 @@ class Rpg2:
 
             choice = random.choice(["Low", "Middle", "Greater"])
             if choice == "Low":
-                xp = random.randint(20, 100)
+                xp = random.randint(50, 150)
                 await ctx.send(f"You earned {xp}xp and added 50 points to your {msg} stats.")
                 await rpg.ability_level(ctx, xp, 50, 50, msg)
             elif choice == "Middle":
-                xp = random.randint(100, 250)
+                xp = random.randint(150, 300)
                 await ctx.send(f"You earned {xp}xp and added 100 points to your {msg} stats.")
                 await rpg.ability_level(ctx, xp, 100, 100, msg)
             else:
-                xp = random.randint(150, 300)
+                xp = random.randint(300, 550)
                 await ctx.send(f"You earned {xp}xp and added 150 points to your {msg} stats")
                 await rpg.ability_level(ctx, xp, 150, 150, msg)
         else:
@@ -429,7 +434,7 @@ class Rpg2:
         abilities1 = await rpg.fetch_abilities(ctx)
         abilities2 = await rpg.fetch_abilities(ctx, user=user)
 
-        if len(abilities1 or abilities2) <= 2:
+        if len(abilities1 or abilities2) < 2:
             await ctx.send("One of you don't have two or more abilities")
             ctx.command.reset_cooldown(ctx)
             return
@@ -441,10 +446,14 @@ class Rpg2:
                            f"{', '.join(abilities1)}. (Type your choice like this: Super Speed, Telekinesis)")
 
             def check(m):
-                return m.author == ctx.author and abilities1 in m.content
+                return m.author == ctx.author and \
+                       any(ability in m.content.title() for ability in abilities1) \
+                       and ', ' in m.content.title()
 
             def check2(m):
-                return m.author == user and abilities2 in m.content.title()
+                return m.author == user and \
+                       any(ability in m.content.title() for ability in abilities2) \
+                       and ', ' in m.content.title()
 
             try:
                 msg = (await ctx.bot.wait_for('message', check=check, timeout=15)).content.title()
@@ -459,6 +468,9 @@ class Rpg2:
             except asyncio.TimeoutError:
                 return await ctx.send(f"{ctx.author.mention}, you ran out of time.")
 
+            print(msg)
+            print(msg2)
+            print(msg.split(', ')[0])
             async with ctx.bot.db.acquire() as db:
                 skill1_ = await db.fetchrow("SELECT * FROM abilities WHERE id=$1 AND ability=$2", ctx.author.id,
                                             (msg.split(', '))[0])
@@ -475,17 +487,18 @@ class Rpg2:
             await ctx.send(f"{ctx.author.mention} pick an ability: {msg}")
             while active:
                 def player1(m):
-                    return m.author == ctx.author and m.content in [skill1_[0], skill2_[0]]
+                    return m.author == ctx.author and m.content.title() in [skill1_[1], skill2_[1]]
 
                 def player2(m):
-                    return m.author == user and m.content in [skill1[0], skill2[0]]
+                    return m.author == user and m.content.title() in [skill1[1], skill2[1]]
 
                 try:
-                    msg_ = (await ctx.bot.wait_for('message', check=player1, timeout=30)).content
+                    msg_ = (await ctx.bot.wait_for('message', check=player1, timeout=30)).content.title()
                 except asyncio.TimeoutError:
+                    ctx.command.reset_cooldown(ctx)
                     return await ctx.send(f"{ctx.author.mention} has been disqualified. Duel is over!")
                 else:
-                    if msg_ == skill1_[0]:
+                    if msg_ == skill1_[1]:
                         dmg = random.randint(10, skill1_[4] / 2)
                         if dmg > hp2 / 2:
                             chance = random.choice(["Hit", "Miss"])
@@ -555,9 +568,10 @@ class Rpg2:
                 try:
                     msg_ = (await ctx.bot.wait_for('message', check=player2, timeout=30)).content
                 except asyncio.TimeoutError:
+                    ctx.command.reset_cooldown(ctx)
                     return await ctx.send(f"{user.mention} has been disqualified. Duel is over!")
                 else:
-                    if msg_ == skill1[0]:
+                    if msg_ == skill1[1]:
                         dmg = random.randint(10, skill1[4] / 2)
                         if dmg > hp2 / 2:
                             chance = random.choice(["Hit", "Miss"])
@@ -624,6 +638,7 @@ class Rpg2:
                             await rpg.guild_level(ctx, xp, user)
                             active = False
         else:
+            ctx.command.reset_cooldown(ctx)
             return await ctx.send("I guess you don't want to duel.")
 
     @duel.error
@@ -943,6 +958,7 @@ class Rpg2:
     @commands.command()
     @checks.registered2()
     async def abilities(self, ctx, user: checks.SuperhumanFinder = None):
+        """Shows the abilities you currently have."""
         if not user:
             user = ctx.author
         else:
@@ -979,6 +995,50 @@ class Rpg2:
             await ctx.send(f"You have been successfully erased from the RPG database.")
         else:
             return await ctx.send("I guess you don't want to lose your data.")
+
+    @commands.command()
+    @checks.registered2()
+    async def bootleg(self, ctx):
+        """Make custom abilities"""
+        user = await rpg.fetch_user2(ctx)
+
+        await ctx.send("Are you sure you want to make a custom ability? It costs $20000")
+        yon = await rpg.yon(ctx)
+        if yon == "Yes":
+            if user[3] >= 20000:
+                await ctx.send("What is the name of this custom ability")
+
+                def check(m):
+                    return m.author == ctx.author and m.content.title()
+
+                try:
+                    name = (await ctx.bot.wait_for('message', check=check, timeout=30)).content.title()
+                except asyncio.TimeoutError:
+                    return await ctx.send("Time ran out...")
+
+                if name in shop_items.keys():
+                    return await ctx.send("You can't create a custom ability already in the shop.")
+
+                await ctx.send(f"So this custom ability is called {name}. How much damage does it do?")
+
+                def check2(m):
+                    return m.author == ctx.author and m.content.isdigit() < 1000
+
+                try:
+                    dmg = int((await ctx.bot.wait_for('message', check=check2, timeout=30).content))
+                except asyncio.TimeoutError:
+                    return await ctx.send("Time ran out...")
+
+                await ctx.send(f"So this custom ability will do {dmg}dmg and is {dmg + 50}dur? \n"
+                               f"{name} is created.")
+
+                async with ctx.bot.db.acquire() as db:
+                    await db.execute("INSERT INTO abilities VALUES($1, $2, $3, $4, $5, $6)", ctx.author.id, name, 1, 0,
+                                     dmg, dmg + 50)
+            else:
+                return await ctx.send(f"You still need ${20000 - user[3]}.")
+        else:
+            return await ctx.send("I guess you don't want to spend $20000")
 
 
 def setup(bot):
