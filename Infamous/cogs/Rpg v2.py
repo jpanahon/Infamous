@@ -185,7 +185,7 @@ class Rpg2:
 
     @commands.command(aliases=['p'])
     @checks.registered2()
-    async def profile(self, ctx, user: checks.SuperhumanFinder=None):
+    async def profile(self, ctx, user: checks.SuperhumanFinder = None):
         """View the stats of fellow superhumans."""
         if not user:
             user = ctx.author
@@ -343,6 +343,11 @@ class Rpg2:
         """Upgrade your abilities."""
 
         abilities = await rpg.fetch_abilities(ctx)
+        abilities_ = ["Super Strength", "Flight", "Telekinesis",
+                      "Super Speed", "Super Intelligence", "Fast Regeneration",
+                      "Heat Vision", "Telepathy", "Invisibility",
+                      "Freeze Breath", "Sonic Scream", "Electrokinesis"]
+
         user = (await rpg.fetch_user2(ctx))
         await ctx.send(f"Choose an ability to master: {','.join(abilities)}")
 
@@ -354,6 +359,11 @@ class Rpg2:
         except asyncio.TimeoutError:
             return await ctx.send("I guess you don't want to pick an ability.")
 
+        if msg not in shop_items.keys():
+            async with ctx.bot.db.acquire() as db:
+                custom = await db.fetchrow("SELECT * FROM abilities WHERE ability=$1", msg)
+
+            shop_items[msg] = [20000, custom[6], custom[4], custom[5]]
         if user[3] >= shop_items[msg][0] / 4:
             async with ctx.bot.db.acquire() as db:
                 await db.execute("UPDATE profiles SET bal = bal - $1 WHERE id = $2",
@@ -372,6 +382,9 @@ class Rpg2:
                 xp = random.randint(300, 550)
                 await ctx.send(f"You earned {xp}xp and added 150 points to your {msg} stats")
                 await rpg.ability_level(ctx, xp, 150, 150, msg)
+
+            if msg not in abilities_:
+                del shop_items[msg]
         else:
             return await ctx.send(f"{ctx.author.mention} you need ${shop_items[msg][0] / 4 - user[3]} more to master.")
 
@@ -467,7 +480,7 @@ class Rpg2:
                 msg2 = (await ctx.bot.wait_for('message', check=check2, timeout=30)).content.title()
             except asyncio.TimeoutError:
                 return await ctx.send(f"{user.mention}, you ran out of time.")
-            
+
             async with ctx.bot.db.acquire() as db:
                 skill1_ = await db.fetchrow("SELECT * FROM abilities WHERE id=$1 AND ability=$2", ctx.author.id,
                                             (msg.split(', '))[0])
@@ -502,7 +515,7 @@ class Rpg2:
                             hp2 = hp2 - dmg
                             if chance == "Hit":
                                 await ctx.send(
-                                    f"{ctx.author.mention} Your attack using your {skill1_[0]} has dealt {dmg}dmg \n"
+                                    f"{ctx.author.mention} Your attack using your {skill1_[1]} has dealt {dmg}dmg \n"
                                     f"{user.mention} has {hp2}hp.")
                             else:
                                 hp = hp - dmg
@@ -514,7 +527,7 @@ class Rpg2:
                             hp2 = hp2 - dmg
                             if chance == "Hit":
                                 await ctx.send(
-                                    f"{ctx.author.mention} Your attack using your {skill1_[0]} has dealt {dmg}dmg \n"
+                                    f"{ctx.author.mention} Your attack using your {skill1_[1]} has dealt {dmg}dmg \n"
                                     f"{user.mention} has {hp2}hp.")
                             else:
                                 hp = hp - dmg
@@ -535,7 +548,7 @@ class Rpg2:
                             hp2 = hp2 - dmg
                             if chance == "Hit":
                                 await ctx.send(
-                                    f"{ctx.author.mention} Your attack using your {skill2_[0]} has dealt {dmg}dmg \n"
+                                    f"{ctx.author.mention} Your attack using your {skill2_[1]} has dealt {dmg}dmg \n"
                                     f"{user.mention} has {hp2}hp.")
                             else:
                                 hp = hp - dmg
@@ -547,7 +560,7 @@ class Rpg2:
                             hp2 = hp2 - dmg
                             if chance == "Hit":
                                 await ctx.send(
-                                    f"{ctx.author.mention} Your attack using your {skill2_[0]} has dealt {dmg}dmg \n"
+                                    f"{ctx.author.mention} Your attack using your {skill2_[1]} has dealt {dmg}dmg \n"
                                     f"{user.mention} has {hp2}hp.")
                             else:
                                 hp = hp - dmg
@@ -575,20 +588,20 @@ class Rpg2:
                             hp2 = hp2 - dmg
                             if chance == "Hit":
                                 await ctx.send(
-                                    f"{ctx.author.mention} Your attack using your {skill1[0]} has dealt {dmg}dmg \n"
-                                    f"{user.mention} has {hp2}hp.")
+                                    f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
+                                    f"{ctx.author.mention} has {hp2}hp.")
                             else:
                                 hp = hp - dmg
                                 await ctx.send(
-                                    f"{ctx.author.mention} missed! Causing {user.mention} to deal {dmg}dmg \n"
+                                    f"{user.mention} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
                                     f"They now have {hp}hp.")
                         else:
                             chance = random.choice(["Hit", "Miss"])
                             hp2 = hp2 - dmg
                             if chance == "Hit":
                                 await ctx.send(
-                                    f"{ctx.author.mention} Your attack using your {skill1[0]} has dealt {dmg}dmg \n"
-                                    f"{user.mention} has {hp2}hp.")
+                                    f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
+                                    f"{ctx.author.mention} has {hp2}hp.")
                             else:
                                 hp = hp - dmg
                                 await ctx.send(
@@ -608,7 +621,7 @@ class Rpg2:
                             hp2 = hp2 - dmg
                             if chance == "Hit":
                                 await ctx.send(
-                                    f"{user.mention} Your attack using your {skill2[0]} has dealt {dmg}dmg \n"
+                                    f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
                                     f"{ctx.author.mention} has {hp2}hp.")
                             else:
                                 hp = hp - dmg
@@ -620,7 +633,7 @@ class Rpg2:
                             hp2 = hp2 - dmg
                             if chance == "Hit":
                                 await ctx.send(
-                                    f"{user.mention} Your attack using your {skill2[0]} has dealt {dmg}dmg \n"
+                                    f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
                                     f"{ctx.author.mention} has {hp2}hp.")
                             else:
                                 hp = hp - dmg
@@ -965,14 +978,20 @@ class Rpg2:
             ab_ = await db.fetch("SELECT * FROM abilities WHERE id=$1", user.id)
 
         p = []
+        image = None
         for i in ab_:
+            if i not in shop_items.keys():
+                async with ctx.bot.db.acquire() as db:
+                    image = await db.fetchval("SELECT icon FROM abilities WHERE ability=$1 AND id=$2", i[1],
+                                              ctx.author.id)
+
             p.append(discord.Embed(color=self.bot.embed_color,
                                    description=f"**Level**: {i[2]} \n"
                                                f"**XP**: {i[3]} \n"
                                                f"**DMG**: {i[4]} \n"
                                                f"**DUR**: {i[5]}")
                      .set_author(name=i[1])
-                     .set_image(url=shop_items[i[1]][1])
+                     .set_image(url=image or shop_items[i[1]][1])
                      )
 
         await SimplePaginator(extras=p).paginate(ctx)
@@ -1019,19 +1038,31 @@ class Rpg2:
                 await ctx.send(f"So this custom ability is called {name}. How much damage does it do?")
 
                 def check2(m):
-                    return m.author == ctx.author and m.content.isdigit() < 1000
+                    return m.author == ctx.author and m.content.isdigit() <= 1000
 
                 try:
-                    dmg = int((await ctx.bot.wait_for('message', check=check2, timeout=30).content))
+                    dmg = int((await ctx.bot.wait_for('message', check=check2, timeout=30)).content)
                 except asyncio.TimeoutError:
                     return await ctx.send("Time ran out...")
 
                 await ctx.send(f"So this custom ability will do {dmg}dmg and is {dmg + 50}dur? \n"
-                               f"{name} is created.")
+                               f"What is the icon of the ability? You can post a link or attachment")
 
+                def check3(m):
+                    return m.author == ctx.author and m.content.startswith("http") or m.attachments
+
+                try:
+                    icon = await ctx.bot.wait_for('message', check=check3, timeout=30)
+                    icon = icon.content or icon.attachments[0].url
+                except asyncio.TimeoutError:
+                    return await ctx.send("Time ran out...")
+
+                await ctx.send(f"So the ability's icon is this: {icon}")
+                await ctx.send(f"{name} has been created.")
                 async with ctx.bot.db.acquire() as db:
-                    await db.execute("INSERT INTO abilities VALUES($1, $2, $3, $4, $5, $6)", ctx.author.id, name, 1, 0,
-                                     dmg, dmg + 50)
+                    await db.execute("INSERT INTO abilities VALUES($1, $2, $3, $4, $5, $6, $7)",
+                                     ctx.author.id, name, 1, 0, dmg, dmg + 50, icon)
+                    await db.execute("UPDATE profiles SET bal = bal - 20000 WHERE id=$1", ctx.author.id)
             else:
                 return await ctx.send(f"You still need ${20000 - user[3]}.")
         else:
