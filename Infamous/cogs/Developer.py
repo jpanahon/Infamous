@@ -81,17 +81,12 @@ class Developer:
     @commands.command(hidden=True, aliases=['rs'])
     @checks.is_admin()
     async def restart(self, ctx):
-        """Restart all cogs."""
+        """Restart bot."""
 
-        for cog in self.bot.cogs:
-            try:
-                self.bot.unload_extension(f'cogs.{cog}')
-                self.bot.load_extension(f'cogs.{cog}')
-            except Exception as e:
-                print(f'**`ERROR:`** {type(e).__name__} - {e}')
-
-        await ctx.message.add_reaction(':BlurpleCheck:452390337382449153')
-
+        await ctx.send("Restarting..")
+        os.system("python3.6 Infamous/cogs/utils/restart.py")
+        await self.bot.logout()
+        
     @commands.group(hidden=True, case_insensitive=True, invoke_without_command=True)
     async def find(self, ctx, discrim: str):
         """Find people with the same discriminator."""
