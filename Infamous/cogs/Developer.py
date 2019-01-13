@@ -248,7 +248,7 @@ class Developer:
             async with ctx.bot.db.acquire() as db:
                 await db.execute("INSERT INTO blocked VALUES($1, $2)", user.id, reason)
 
-            self.bot.blocked[ctx.author.id] = reason
+            self.bot.blocked[user.id] = reason
         except asyncpg.exceptions.UniqueViolationError:
             return await ctx.send(f"{user.name} is already blocked")
 
@@ -261,7 +261,7 @@ class Developer:
             async with ctx.bot.db.acquire() as db:
                 await db.execute("DELETE FROM blocked WHERE id=$1", user.id)
 
-            del self.bot.blocked[ctx.author.id]
+            del self.bot.blocked[user.id]
         except asyncpg.exceptions.UniqueViolationError:
             return await ctx.send(f"{user.name} was never blocked")
 
