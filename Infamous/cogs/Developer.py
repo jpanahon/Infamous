@@ -29,7 +29,7 @@ class Developer:
         """Loads a cog."""
 
         try:
-            self.bot.load_extension(f'cogs.{extension_name.capitalize()}')
+            self.bot.load_extension(f'cogs.{extension_name.title()}')
         except (AttributeError, ImportError):
             await ctx.message.add_reaction(':BlurpleX:452390303698124800')
             return
@@ -84,9 +84,9 @@ class Developer:
         """Restart bot."""
 
         await ctx.send("Restarting..")
-        os.system("python3.6 Infamous/cogs/utils/restart.py")
+        os.system("python3.6 /Users/admin/Documents/FameAssassin/cogs/utils/restart.py")
         await self.bot.logout()
-        
+
     @commands.group(hidden=True, case_insensitive=True, invoke_without_command=True)
     async def find(self, ctx, discrim: str):
         """Find people with the same discriminator."""
@@ -165,8 +165,7 @@ class Developer:
     async def imitate(self, ctx, user: discord.Member, *, text):
         """Use webhooks to imitate a user."""
         await ctx.message.delete()
-        url = 'https://discordapp.com/api/webhooks/432064261120851979/' \
-              '6Ems0Op4A2rEGSG5b0lGjVd1n1qxcYLvFJUxdweUKs3dNGDD8BKn6LgpFsAWnLkWtUb7'
+        url = os.getenv("WEBHOOK")
 
         async with aiohttp.ClientSession() as session:
             webhook = Webhook.from_url(url, adapter=AsyncWebhookAdapter(session))
@@ -179,8 +178,7 @@ class Developer:
 
         await ctx.message.delete()
         user = random.choice([x for x in ctx.guild.members if not x.bot])
-        url = 'https://discordapp.com/api/webhooks/432064261120851979/' \
-              '6Ems0Op4A2rEGSG5b0lGjVd1n1qxcYLvFJUxdweUKs3dNGDD8BKn6LgpFsAWnLkWtUb7'
+        url = os.getenv("WEBHOOK")
 
         async with aiohttp.ClientSession() as session:
             webhook = Webhook.from_url(url, adapter=AsyncWebhookAdapter(session))
@@ -193,8 +191,7 @@ class Developer:
 
         await ctx.message.delete()
         user = await self.bot.get_user_info(user)
-        url = 'https://discordapp.com/api/webhooks/432064261120851979/' \
-              '6Ems0Op4A2rEGSG5b0lGjVd1n1qxcYLvFJUxdweUKs3dNGDD8BKn6LgpFsAWnLkWtUb7'
+        url = os.getenv("WEBHOOK")
 
         async with aiohttp.ClientSession() as session:
             webhook = Webhook.from_url(url, adapter=AsyncWebhookAdapter(session))
@@ -302,7 +299,20 @@ class Developer:
                      )
 
         await SimplePaginator(extras=p).paginate(ctx)
-        
-        
+
+    @commands.command()
+    async def blocked(self, ctx):
+        p = []
+        for user in self.bot.blocked.keys():
+            user_ = ctx.guild.get_member(user) or self.bot.get_user(user)
+            p.append(f"**{user_}**: {self.bot.blocked[user]}")
+
+        await ctx.send(embed=discord.Embed(description="People who have abused the bot/exploit bugs go here.",
+                                           color=self.bot.embed_color)
+                       .set_author(name="Infamous Blacklist")
+                       .add_field(name="Blacklist", value='\n'.join(p))
+                       )
+
+
 def setup(bot):
     bot.add_cog(Developer(bot))
