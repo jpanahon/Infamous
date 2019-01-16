@@ -202,18 +202,19 @@ class Rpg2:
             if i[1] == stats[4]:
                 main = f"{i[1]} - Level {i[2]}"
             else:
-                ability.append(f"**{i[1]}** - Level {i[2]}")
+                ability.append(f"**{i[1]}** - DMG: {i[4]} DUR: {i[5]}")
 
         if ability:
             ability = '\n'.join(ability)
         else:
             ability = 'None'
         await ctx.send(embed=discord.Embed(color=self.bot.embed_color, description=f"Accumulated XP: {stats[2]}")
-                       .set_author(name=f"{user.display_name} | Level {stats[1]}", icon_url=user.avatar_url)
+                       .set_author(name=f"{user.display_name} | Level {stats[1]}")
                        .add_field(name="Info", value=f"**Main Ability:** {main} \n"
                                                      f"**Balance:** {stats[3]}")
-                       .add_field(name="Other Abilities", value=ability, inline=False)
+                       .add_field(name="Other Abilities", value=ability, inline=True)
                        .add_field(name="Guild", value=stats[5])
+                       .set_image(url=user.avatar_url)
                        )
 
     @commands.command()
@@ -593,9 +594,9 @@ class Rpg2:
                 else:
                     if msg_ == skill1[1]:
                         dmg = random.randint(10, skill1[4] / 2)
-                        if dmg > hp2 / 2:
+                        if dmg > hp / 2:
                             chance = random.choice(["Hit", "Miss"])
-                            hp2 = hp2 - dmg
+                            hp = hp - dmg
                             if chance == "Hit":
                                 await ctx.send(
                                     f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
@@ -609,7 +610,7 @@ class Rpg2:
                                     f"{ctx.author.mention} pick an ability: {msg}")
                         else:
                             chance = random.choice(["Hit", "Miss"])
-                            hp2 = hp2 - dmg
+                            hp = hp - dmg
                             if chance == "Hit":
                                 await ctx.send(
                                     f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
@@ -630,9 +631,9 @@ class Rpg2:
                             active = False
                     else:
                         dmg = random.randint(10, skill2[4] / 2)
-                        if dmg > hp2 / 2:
+                        if dmg > hp / 2:
                             chance = random.choice(["Hit", "Miss"])
-                            hp2 = hp2 - dmg
+                            hp = hp - dmg
                             if chance == "Hit":
                                 await ctx.send(
                                     f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
@@ -646,7 +647,7 @@ class Rpg2:
                                     f"{ctx.author.mention} pick an ability: {msg}")
                         else:
                             chance = random.choice(["Hit", "Miss"])
-                            hp2 = hp2 - dmg
+                            hp = hp - dmg
                             if chance == "Hit":
                                 await ctx.send(
                                     f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
@@ -999,12 +1000,13 @@ class Rpg2:
 
         p = []
         image = None
+        current = 0
         for i in ab_:
+            current += 1
             if i not in shop_items.keys():
                 async with ctx.bot.db.acquire() as db:
                     image = await db.fetchval("SELECT icon FROM abilities WHERE ability=$1 AND id=$2", i[1],
-                                              ctx.author.id)
-
+                                              user.id)
             p.append(discord.Embed(color=self.bot.embed_color,
                                    description=f"**Level**: {i[2]} \n"
                                                f"**XP**: {i[3]} \n"
@@ -1012,6 +1014,7 @@ class Rpg2:
                                                f"**DUR**: {i[5]}")
                      .set_author(name=i[1])
                      .set_image(url=image or shop_items[i[1]][1])
+                     .set_footer(text=f"Page {current} of {len(ab_)}")
                      )
 
         await SimplePaginator(extras=p).paginate(ctx)
