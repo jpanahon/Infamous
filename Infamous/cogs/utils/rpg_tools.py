@@ -265,7 +265,7 @@ async def level2(ctx, mon, xp, user=None):
 
     lvl_ = {"xp": lvl_[2] + xp, "lvl": lvl_[1]}
 
-    if lvl_["xp"] >= lvl_["lvl"] * 2000:
+    if lvl_["xp"] >= (lvl_["lvl"] * 2000) * 3:
         await ctx.send(f"Congratulations {user.mention} you have leveled up to Level {lvl_['lvl'] + 1} "
                        f"after executing `{ctx.prefix}{ctx.command.name}`")
 
@@ -273,7 +273,7 @@ async def level2(ctx, mon, xp, user=None):
             await db.execute("UPDATE profiles SET level = level + 1, bal = bal + $1, xp = xp + $2 WHERE id=$3",
                              mon, xp, user.id)
     else:
-        await ctx.send(f"{user.mention} You have {lvl_['lvl'] * 2000 - lvl_['xp']}xp left to the next level "
+        await ctx.send(f"{user.mention} You have {(lvl_['lvl'] * 2000) * 3 - lvl_['xp']}xp left to the next level "
                        f"after executing `{ctx.prefix}{ctx.command.name}`")
 
         async with ctx.bot.db.acquire() as db:
@@ -323,7 +323,7 @@ async def ability_level(ctx, xp, dmg, dur, ability, user=None):
 
     lvl_ = {"lvl": lvl_[2], "xp": lvl_[3] + xp}
 
-    if lvl_["xp"] >= lvl_["lvl"] * 2000:
+    if lvl_["xp"] >= lvl_["lvl"] * 1000:
         await ctx.send(f"Congratulations {user.mention} you have leveled up {ability} to Level {lvl_['lvl'] + 1} "
                        f"after executing `{ctx.prefix}{ctx.command.name}`")
 
