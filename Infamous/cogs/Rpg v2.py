@@ -1060,7 +1060,7 @@ class Rpg2:
                 if name in shop_items.keys():
                     return await ctx.send("You can't create a custom ability already in the shop.")
 
-                await ctx.send(f"So this custom ability is called {name}. How much damage does it do?")
+                await ctx.send(f"So this custom ability is called {name}. How much damage does it do? (Limit is 1000)")
 
                 def check2(m):
                     return m.author == ctx.author and m.content.isdigit() <= 1000
