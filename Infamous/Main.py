@@ -19,7 +19,9 @@ initial_extensions = (
     'cogs.Moderation',
     'cogs.Rpg v2',
     'cogs.Imagem',
-    'cogs.Settings'
+    'cogs.Settings',
+    'cogs.Starboard',
+    'cogs.Music'
 )
 
 
