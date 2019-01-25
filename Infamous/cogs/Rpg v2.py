@@ -659,7 +659,7 @@ class Rpg2:
                                     f"{user.mention} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
                                     f"They now have {hp}hp. "
                                     f"{ctx.author.mention} pick an ability: {msg}")
-                        if hp2 <= 0:
+                        if hp <= 0:
                             xp = random.randint(250, 500)
                             mon = random.randint(250, 500)
                             await ctx.send(f"{user.mention} wins! They earn {xp}xp and ${mon}")
@@ -1060,17 +1060,7 @@ class Rpg2:
                 if name in shop_items.keys():
                     return await ctx.send("You can't create a custom ability already in the shop.")
 
-                await ctx.send(f"So this custom ability is called {name}. How much damage does it do? (Limit is 1000)")
-
-                def check2(m):
-                    return m.author == ctx.author and m.content.isdigit() <= 1000
-
-                try:
-                    dmg = int((await ctx.bot.wait_for('message', check=check2, timeout=30)).content)
-                except asyncio.TimeoutError:
-                    return await ctx.send("Time ran out...")
-
-                await ctx.send(f"So this custom ability will do {dmg}dmg and is {dmg + 50}dur? \n"
+                await ctx.send(f"So this custom ability is called {name}. "
                                f"What is the icon of the ability? You can post a link or attachment")
 
                 def check3(m):
@@ -1087,12 +1077,199 @@ class Rpg2:
                 await ctx.send(f"{name} has been created.")
                 async with ctx.bot.db.acquire() as db:
                     await db.execute("INSERT INTO abilities VALUES($1, $2, $3, $4, $5, $6, $7)",
-                                     ctx.author.id, name, 1, 0, dmg, dmg + 50, icon)
+                                     ctx.author.id, name, 1, 0, 1000, 1050, icon)
                     await db.execute("UPDATE profiles SET bal = bal - 20000 WHERE id=$1", ctx.author.id)
             else:
                 return await ctx.send(f"You still need ${20000 - user[3]}.")
         else:
             return await ctx.send("I guess you don't want to spend $20000")
+
+    @commands.command()
+    async def brawl(self, ctx):
+        name1 = random.choice([x.display_name for x in ctx.guild.members])
+        name2 = random.choice([x.display_name for x in ctx.guild.members if x != name1])
+        name = rpg.merge(name1, name2)
+
+        ability1 = random.choice([x for x in shop_items])
+        ability2 = random.choice([x for x in shop_items if x != ability1])
+        abilities1 = await rpg.fetch_abilities(ctx)
+        level = random.randint(10, 50)
+
+        await ctx.send(f"You will be up against {name}, who is level {level} with {ability1} and {ability2} \n"
+                       f"What abilities will you choose? (Type your choice like this: Super Speed, Telekinesis) \n"
+                       f"{', '.join(abilities1)}")
+
+        def check(m):
+            return m.author == ctx.author and \
+                   any(ability in m.content.title() for ability in abilities1) \
+                   and ', ' in m.content.title()
+
+        try:
+            msg = (await ctx.bot.wait_for('message', check=check, timeout=60)).content.title()
+        except asyncio.TimeoutError:
+            return await ctx.send("You ran out of time.")
+
+        async with ctx.bot.db.acquire() as db:
+            skill1_ = await db.fetchrow("SELECT * FROM abilities WHERE id=$1 AND ability=$2", ctx.author.id,
+                                        (msg.split(', '))[0])
+            skill2_ = await db.fetchrow("SELECT * FROM abilities WHERE id=$1 AND ability=$2", ctx.author.id,
+                                        (msg.split(', '))[1])
+
+        skill1 = [(shop_items[ability1][3] + random.randint(100, 1000)),
+                  (shop_items[ability1][4] + random.randint(100, 1000))]
+
+        skill2 = [(shop_items[ability2][3] + random.randint(100, 1000)),
+                  (shop_items[ability2][4] + random.randint(100, 1000))]
+
+        hp = skill1_[5] + skill2_[5]
+        hp2 = skill1[1] + skill2[1]
+
+        active = True
+        await ctx.send(f"{ctx.author.mention} choose an ability: {msg}")
+        while active:
+            def player1(m):
+                return m.author == ctx.author and m.content.title() in [skill1_[1], skill2_[1]]
+
+            try:
+                msg_ = (await ctx.bot.wait_for('message', check=player1, timeout=30)).content.title()
+            except asyncio.TimeoutError:
+                ctx.command.reset_cooldown(ctx)
+                return await ctx.send(f"{ctx.author.mention} has been disqualified. Duel is over!")
+            else:
+                if msg_ == skill1_[1]:
+                    dmg = random.randint(10, skill1_[4] / 2)
+                    if dmg > hp2 / 2:
+                        chance = random.choice(["Hit", "Miss"])
+                        hp2 = hp2 - dmg
+                        if chance == "Hit":
+                            await ctx.send(
+                                f"{ctx.author.mention} Your attack using your {skill1_[1]} has dealt {dmg}dmg \n"
+                                f"{name} has {hp2}hp.")
+                        else:
+                            hp = hp - dmg
+                            await ctx.send(
+                                f"{ctx.author.mention} missed! Causing {name} to deal {dmg}dmg \n"
+                                f"They now have {hp}hp.")
+                    else:
+                        chance = random.choice(["Hit", "Miss"])
+                        hp2 = hp2 - dmg
+                        if chance == "Hit":
+                            await ctx.send(
+                                f"{ctx.author.mention} Your attack using your {skill1_[1]} has dealt {dmg}dmg \n"
+                                f"{name} has {hp2}hp.")
+                        else:
+                            hp = hp - dmg
+                            await ctx.send(
+                                f"{ctx.author.mention} missed! Causing {name} to deal {dmg}dmg \n"
+                                f"They now have {hp}hp.")
+                    if hp2 <= 0:
+                        xp = random.randint(250, 500)
+                        mon = random.randint(250, 500)
+                        await ctx.send(f"{ctx.author.mention} wins! They earn {xp}xp and ${mon}")
+                        await rpg.level2(ctx, mon, xp)
+                        await rpg.guild_level(ctx, xp)
+                        active = False
+                else:
+                    dmg = random.randint(10, skill2_[4] / 2)
+                    if dmg > hp2 / 2:
+                        chance = random.choice(["Hit", "Miss"])
+                        hp2 = hp2 - dmg
+                        if chance == "Hit":
+                            await ctx.send(
+                                f"{ctx.author.mention} Your attack using your {skill2_[1]} has dealt {dmg}dmg \n"
+                                f"{name} has {hp2}hp.")
+                        else:
+                            hp = hp - dmg
+                            await ctx.send(
+                                f"{ctx.author.mention} missed! Causing {name} to deal {dmg}dmg \n"
+                                f"They now have {hp}hp.")
+                    else:
+                        chance = random.choice(["Hit", "Miss"])
+                        hp2 = hp2 - dmg
+                        if chance == "Hit":
+                            await ctx.send(
+                                f"{ctx.author.mention} Your attack using your {skill2_[1]} has dealt {dmg}dmg \n"
+                                f"{name} has {hp2}hp.")
+                        else:
+                            hp = hp - dmg
+                            await ctx.send(
+                                f"{ctx.author.mention} missed! Causing {name} to deal {dmg}dmg \n"
+                                f"They now have {hp}hp.")
+                    if hp2 <= 0:
+                        xp = random.randint(250, 500)
+                        mon = random.randint(250, 500)
+                        await ctx.send(f"{ctx.author.mention} wins! They earn {xp}xp and ${mon}")
+                        await rpg.level2(ctx, mon, xp)
+                        await rpg.guild_level(ctx, xp)
+                        active = False
+
+                msg_ = random.choice([ability1, ability2])
+                if msg_ == ability1:
+                    dmg = random.randint(10, skill1[0] / 2)
+                    if dmg > hp / 2:
+                        chance = random.choice(["Hit", "Miss"])
+                        hp = hp - dmg
+                        if chance == "Hit":
+                            await ctx.send(
+                                f"{name} Your attack using your {msg_} has dealt {dmg}dmg \n"
+                                f"{ctx.author.mention} has {hp}hp. "
+                                f"{ctx.author.mention} pick an ability: {msg} ")
+                        else:
+                            hp = hp - dmg
+                            await ctx.send(
+                                f"{name} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
+                                f"They now have {hp2}hp. "
+                                f"{ctx.author.mention} pick an ability: {msg}")
+                    else:
+                        chance = random.choice(["Hit", "Miss"])
+                        hp = hp - dmg
+                        if chance == "Hit":
+                            await ctx.send(
+                                f"{name} Your attack using your {msg_} has dealt {dmg}dmg \n"
+                                f"{ctx.author.mention} has {hp}hp. "
+                                f"{ctx.author.mention} pick an ability: {msg}")
+                        else:
+                            hp = hp - dmg
+                            await ctx.send(
+                                f"{name} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
+                                f"They now have {hp2}hp. "
+                                f"{ctx.author.mention} pick an ability: {msg}")
+                    if hp <= 0:
+                        await ctx.send(f"{name} wins!")
+                        active = False
+                else:
+                    dmg = random.randint(10, skill2[0] / 2)
+                    if dmg > hp / 2:
+                        chance = random.choice(["Hit", "Miss"])
+                        hp = hp - dmg
+                        if chance == "Hit":
+                            await ctx.send(
+                                f"{name} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
+                                f"{ctx.author.mention} has {hp}hp. "
+                                f"{ctx.author.mention} pick an ability: {msg}")
+                        else:
+                            hp = hp - dmg
+                            await ctx.send(
+                                f"{name} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
+                                f"They now have {hp2}hp. "
+                                f"{ctx.author.mention} pick an ability: {msg}")
+                    else:
+                        chance = random.choice(["Hit", "Miss"])
+                        hp = hp - dmg
+                        if chance == "Hit":
+                            await ctx.send(
+                                f"{name} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
+                                f"{ctx.author.mention} has {hp2}hp. "
+                                f"{ctx.author.mention} pick an ability: {msg}")
+                        else:
+                            hp = hp - dmg
+                            await ctx.send(
+                                f"{name} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
+                                f"They now have {hp}hp. "
+                                f"{ctx.author.mention} pick an ability: {msg}")
+                    if hp <= 0:
+                        await ctx.send(f"{name} wins!")
+                        active = False
 
 
 def setup(bot):
