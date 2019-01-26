@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 class Starboard:
-    """Commands related to the starboard (Fame Only)"""
+    """(Fame Only)"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -13,7 +13,10 @@ class Starboard:
             return False
 
         if str(reaction.emoji) == "⭐":
-            if reaction.message.reactions[0].count >= 6:
+            if user == reaction.message.author:
+                return
+
+            if reaction.message.reactions[0].count >= 3:
                 channel = self.bot.get_channel(537941975706632193)
                 embed = discord.Embed(color=reaction.message.author.color, timestamp=datetime.utcnow())
                 if reaction.message.content:
@@ -44,6 +47,9 @@ class Starboard:
             return False
 
         if str(reaction.emoji) == "⭐":
+            if user == reaction.message.author:
+                return
+
             if reaction.message.id in await self.bot.db.fetch("SELECT id FROM starboard"):
                 channel = self.bot.get_channel(537941975706632193)
                 async with self.bot.db.acquire() as db:
@@ -53,7 +59,7 @@ class Starboard:
                 msg = await channel.get_message(msg[0])
                 await msg.edit(content=f"\N{WHITE MEDIUM STAR} {reaction.message.reactions[0].count} "
                                        f"{reaction.message.channel.mention}")
-            elif reaction.message.reactions[0].count < 6:
+            elif reaction.message.reactions[0].count < 3:
                 channel = self.bot.get_channel(537941975706632193)
                 async with self.bot.db.acquire() as db:
                     msg = await db.fetchrow("SELECT * FROM starboard WHERE id=$1", reaction.message.id)
