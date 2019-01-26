@@ -118,6 +118,7 @@ class Original:
 
     # Similar to Chr1s's cleverbot bot conversation except it allows multiple people.
     @commands.command()
+    @commands.cooldown(1, float('inf'), commands.BucketType.guild)
     async def chat(self, ctx):
         """Talk to a cleverbot AI"""
         await ctx.send("You are engaged in conversation with the bot. "
@@ -135,10 +136,12 @@ class Original:
                 text = await ctx.bot.wait_for('message', check=check, timeout=20)
             except asyncio.TimeoutError:
                 await ctx.send("I guess you don't want to talk to me anymore :cry:")
+                ctx.command.reset_cooldown(ctx)
                 active = False
             else:
                 if text.content == "stop":
                     await ctx.send("Stopping the conversation.")
+                    ctx.command.reset_cooldown(ctx)
                     active = False
 
                 elif text.content.lower() == "let me join":
@@ -158,6 +161,11 @@ class Original:
                                                                                       os.getenv('APIKEY')}) as req:
                             resp = await req.json()
                             await ctx.send(resp['response'])
+
+    @chat.error
+    async def chat_handler(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            return await ctx.send("There is a conversation going on here")
 
     @commands.group(invoke_without_command=True)
     @checks.in_fame()
