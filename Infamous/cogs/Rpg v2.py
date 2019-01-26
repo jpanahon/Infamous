@@ -1085,6 +1085,7 @@ class Rpg2:
             return await ctx.send("I guess you don't want to spend $20000")
 
     @commands.command()
+    @commands.cooldown(1, float('inf'), commands.BucketType.channel)
     async def brawl(self, ctx):
         name1 = random.choice([x.display_name for x in ctx.guild.members])
         name2 = random.choice([x.display_name for x in ctx.guild.members if x != name1])
@@ -1095,9 +1096,10 @@ class Rpg2:
         abilities1 = await rpg.fetch_abilities(ctx)
         level = random.randint(10, 50)
 
-        await ctx.send(f"You will be up against {name}, who is level {level} with {ability1} and {ability2} \n"
+        await ctx.send(f"You will be up against **{name}**, "
+                       f"who is **level {level}** with **{ability1}** and **{ability2}** \n"
                        f"What abilities will you choose? (Type your choice like this: Super Speed, Telekinesis) \n"
-                       f"{', '.join(abilities1)}")
+                       f"`{', '.join(abilities1)}`")
 
         def check(m):
             return m.author == ctx.author and \
@@ -1144,11 +1146,11 @@ class Rpg2:
                         if chance == "Hit":
                             await ctx.send(
                                 f"{ctx.author.mention} Your attack using your {skill1_[1]} has dealt {dmg}dmg \n"
-                                f"{name} has {hp2}hp.")
+                                f"**{name}** has {hp2}hp.")
                         else:
                             hp = hp - dmg
                             await ctx.send(
-                                f"{ctx.author.mention} missed! Causing {name} to deal {dmg}dmg \n"
+                                f"{ctx.author.mention} missed! Causing **{name}** to deal {dmg}dmg \n"
                                 f"They now have {hp}hp.")
                     else:
                         chance = random.choice(["Hit", "Miss"])
@@ -1156,11 +1158,11 @@ class Rpg2:
                         if chance == "Hit":
                             await ctx.send(
                                 f"{ctx.author.mention} Your attack using your {skill1_[1]} has dealt {dmg}dmg \n"
-                                f"{name} has {hp2}hp.")
+                                f"**{name}** has {hp2}hp.")
                         else:
                             hp = hp - dmg
                             await ctx.send(
-                                f"{ctx.author.mention} missed! Causing {name} to deal {dmg}dmg \n"
+                                f"{ctx.author.mention} missed! Causing **{name}** to deal {dmg}dmg \n"
                                 f"They now have {hp}hp.")
                     if hp2 <= 0:
                         xp = random.randint(250, 500)
@@ -1177,11 +1179,11 @@ class Rpg2:
                         if chance == "Hit":
                             await ctx.send(
                                 f"{ctx.author.mention} Your attack using your {skill2_[1]} has dealt {dmg}dmg \n"
-                                f"{name} has {hp2}hp.")
+                                f"**{name}** has {hp2}hp.")
                         else:
                             hp = hp - dmg
                             await ctx.send(
-                                f"{ctx.author.mention} missed! Causing {name} to deal {dmg}dmg \n"
+                                f"{ctx.author.mention} missed! Causing **{name}** to deal {dmg}dmg \n"
                                 f"They now have {hp}hp.")
                     else:
                         chance = random.choice(["Hit", "Miss"])
@@ -1189,11 +1191,11 @@ class Rpg2:
                         if chance == "Hit":
                             await ctx.send(
                                 f"{ctx.author.mention} Your attack using your {skill2_[1]} has dealt {dmg}dmg \n"
-                                f"{name} has {hp2}hp.")
+                                f"**{name}** has {hp2}hp.")
                         else:
                             hp = hp - dmg
                             await ctx.send(
-                                f"{ctx.author.mention} missed! Causing {name} to deal {dmg}dmg \n"
+                                f"{ctx.author.mention} missed! Causing **{name}** to deal {dmg}dmg \n"
                                 f"They now have {hp}hp.")
                     if hp2 <= 0:
                         xp = random.randint(250, 500)
@@ -1205,19 +1207,19 @@ class Rpg2:
 
                 msg_ = random.choice([ability1, ability2])
                 if msg_ == ability1:
-                    dmg = random.randint(10, skill1[0] / 2)
+                    dmg = random.randint(10, round(skill1[0] / 2))
                     if dmg > hp / 2:
                         chance = random.choice(["Hit", "Miss"])
                         hp = hp - dmg
                         if chance == "Hit":
                             await ctx.send(
-                                f"{name} Your attack using your {msg_} has dealt {dmg}dmg \n"
+                                f"**{name}** Your attack using your {msg_} has dealt {dmg}dmg \n"
                                 f"{ctx.author.mention} has {hp}hp. "
                                 f"{ctx.author.mention} pick an ability: {msg} ")
                         else:
                             hp = hp - dmg
                             await ctx.send(
-                                f"{name} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
+                                f"**{name}** missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
                                 f"They now have {hp2}hp. "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                     else:
@@ -1225,32 +1227,32 @@ class Rpg2:
                         hp = hp - dmg
                         if chance == "Hit":
                             await ctx.send(
-                                f"{name} Your attack using your {msg_} has dealt {dmg}dmg \n"
+                                f"**{name}** Your attack using your {msg_} has dealt {dmg}dmg \n"
                                 f"{ctx.author.mention} has {hp}hp. "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                         else:
                             hp = hp - dmg
                             await ctx.send(
-                                f"{name} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
+                                f"**{name}** missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
                                 f"They now have {hp2}hp. "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                     if hp <= 0:
-                        await ctx.send(f"{name} wins!")
+                        await ctx.send(f"**{name}** wins!")
                         active = False
                 else:
-                    dmg = random.randint(10, skill2[0] / 2)
+                    dmg = random.randint(10, round(skill2[0] / 2))
                     if dmg > hp / 2:
                         chance = random.choice(["Hit", "Miss"])
                         hp = hp - dmg
                         if chance == "Hit":
                             await ctx.send(
-                                f"{name} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
+                                f"**{name}** Your attack using your {msg_} has dealt {dmg}dmg \n"
                                 f"{ctx.author.mention} has {hp}hp. "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                         else:
                             hp = hp - dmg
                             await ctx.send(
-                                f"{name} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
+                                f"**{name}** missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
                                 f"They now have {hp2}hp. "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                     else:
@@ -1258,18 +1260,23 @@ class Rpg2:
                         hp = hp - dmg
                         if chance == "Hit":
                             await ctx.send(
-                                f"{name} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
+                                f"**{name}** Your attack using your {msg_} has dealt {dmg}dmg \n"
                                 f"{ctx.author.mention} has {hp2}hp. "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                         else:
                             hp = hp - dmg
                             await ctx.send(
-                                f"{name} missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
+                                f"**{name}** missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
                                 f"They now have {hp}hp. "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                     if hp <= 0:
-                        await ctx.send(f"{name} wins!")
+                        await ctx.send(f"**{name}** wins!")
                         active = False
+
+    @brawl.error
+    async def brawl_handler(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            return await ctx.send(f"There is currently a brawl in {ctx.channel.mention}")
 
 
 def setup(bot):
