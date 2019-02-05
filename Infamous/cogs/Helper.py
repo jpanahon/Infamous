@@ -7,7 +7,7 @@ class Help:
 
     def __init__(self, bot):
         self.bot = bot
-        self.icon = "https://cdn.discordapp.com/attachments/389275624163770378/541817466825736228/i-icons.png"
+        self.icon = bot.user.avatar_url
 
     def helper(self, ctx):
         """Displays all commands"""
