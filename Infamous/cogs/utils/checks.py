@@ -72,7 +72,7 @@ def in_fame():
 
 def registered2():
     async def predicate(ctx):
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             data = await db.fetchrow("SELECT * FROM profiles WHERE id=$1", ctx.author.id)
 
         if not data:
@@ -87,7 +87,7 @@ def registered2():
 
 def unregistered2():
     async def predicate(ctx):
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             data = await db.fetchrow("SELECT * FROM profiles WHERE id=$1", ctx.author.id)
 
         if data:
@@ -102,7 +102,7 @@ def unregistered2():
 
 class SuperhumanFinder(commands.Converter):
     async def convert(self, ctx, argument):
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             argument = await commands.MemberConverter().convert(ctx, argument)
             users = await db.fetchval("SELECT id FROM profiles WHERE id=$1", argument.id)
 
@@ -114,7 +114,7 @@ class SuperhumanFinder(commands.Converter):
 
 def has_guild():
     async def predicate(ctx):
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             guild_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", ctx.author.id)
 
         if guild_:
@@ -126,7 +126,7 @@ def has_guild():
 
 def no_guild():
     async def predicate(ctx):
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             guild_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", ctx.author.id)
 
         if not guild_:
@@ -138,7 +138,7 @@ def no_guild():
 
 class GuildFinder(commands.Converter):
     async def convert(self, ctx, argument):
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             guild_ = await db.fetchval("SELECT guild FROM guilds WHERE id=$1", argument)
 
         if not guild_:
