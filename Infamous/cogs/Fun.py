@@ -28,7 +28,7 @@ class Fun:
     async def quotes(self, ctx):
         """Shows a random quote from the community."""
 
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             quotes = await db.fetchrow("SELECT quote FROM quotes WHERE guild=$1 ORDER BY RANDOM() LIMIT 1",
                                        ctx.guild.id)
 
@@ -49,7 +49,7 @@ class Fun:
         if not link:
             link = ctx.message.attachments[0].url
 
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             await db.execute("INSERT INTO quotes VALUES($1, $2)", link, ctx.guild.id)
 
         await ctx.message.add_reaction(':FAXcheck:428160543975800833')
@@ -59,7 +59,7 @@ class Fun:
     async def question(self, ctx):
         """Asks community provided questions."""
 
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             question = await db.fetchrow("SELECT * FROM questions WHERE guild=$1 ORDER BY RANDOM() LIMIT 1",
                                          ctx.guild.id)
 
@@ -76,7 +76,7 @@ class Fun:
     async def add(self, ctx, *, string):
         """Adds a question to the question pool."""
 
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             await db.execute("INSERT INTO questions VALUES($1, $2)", string, ctx.guild.id)
 
         await ctx.author.add_reaction('👌')
@@ -153,7 +153,7 @@ class Fun:
                     BytesIO(member_av)) \
                     .resize((64, 64)).convert("RGBA")
 
-                i = Image.open("img/shipthing.jpg")
+                i = Image.open("Infamous/img/shipthing.jpg")
                 i.paste(av1, p1)
                 i.paste(av2, p2)
                 b = BytesIO()
