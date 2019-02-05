@@ -18,6 +18,7 @@ class Original:
 
     def __init__(self, bot):
         self.bot = bot
+        self.nicks = {}
 
     # Annoy
     @commands.command()
@@ -62,6 +63,7 @@ class Original:
         """Set's the nick of a random person, with nick of choice."""
 
         user = random.choice([x for x in ctx.guild.members if not x.bot])
+        self.nicks[user.id] = user.display_name
         try:
             await user.edit(nick=string)
             embed = discord.Embed(
@@ -77,7 +79,7 @@ class Original:
             pass
 
         await asyncio.sleep(600)
-        await user.edit(nick=None)
+        await user.edit(nick=self.nicks[user.id])
 
     @commands.command()
     @commands.guild_only()
