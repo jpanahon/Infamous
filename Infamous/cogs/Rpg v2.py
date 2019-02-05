@@ -239,13 +239,11 @@ class Rpg2:
         """Acquire new abilities"""
 
         p = []
-        number = 0
         abilities = await rpg.fetch_abilities(ctx)
         shop = [x for x in shop_items if x not in abilities]
         if shop:
-            for i in shop:
-                number += 1
-                p.append(rpg.ability_embed(ctx, shop_items, i, number, len(shop)))
+            for l, i in enumerate(shop):
+                p.append(rpg.ability_embed(ctx, shop_items, i, l+1, len(shop)))
 
             await ctx.paginate(entries=p)
         else:
@@ -509,16 +507,14 @@ class Rpg2:
             lb = await db.fetch("SELECT * FROM profiles ORDER BY xp DESC")
 
         p = []
-        number = 0
-        for user in lb:
+        for place, user in enumerate(lb):
             user_ = ctx.guild.get_member(user[0]) or ctx.bot.get_user(user[0])
-            number += 1
             p.append(discord.Embed(color=self.bot.embed_color, description=f"**Level:** {user[1]} \n"
                                                                            f"**Total XP:** {user[2]} \n"
                                                                            f"**Guild:** {user[5]}")
-                     .set_author(name=f"#{number} {user_.display_name or user_.name}")
+                     .set_author(name=f"#{place+1} {user_.display_name or user_.name}")
                      .set_image(url=user_.avatar_url_as(static_format="png", size=1024))
-                     .set_footer(text=f"Page {number} of {len(lb)}")
+                     .set_footer(text=f"Page {place+1} of {len(lb)}")
                      )
 
         await ctx.paginate(entries=p)
@@ -765,8 +761,6 @@ class Rpg2:
     @checks.registered2()
     @commands.cooldown(1, 84600, commands.BucketType.user)
     async def raffle(self, ctx):
-        """Try to win random things"""
-                           
         await ctx.send("Pick a number between 1-10 to win a prize")
 
         def check(m):
