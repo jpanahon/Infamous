@@ -30,7 +30,7 @@ class Settings:
 
         self.bot.prefixes[ctx.guild.id] = prefix
 
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             await db.execute("UPDATE settings SET prefix=$1 WHERE guild=$2", prefix, ctx.guild.id)
 
         await ctx.send(f"Set the prefix to {prefix} for **{ctx.guild.name}**")
@@ -41,7 +41,7 @@ class Settings:
 
         self.bot.prefixes[ctx.guild.id] = None
 
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             await db.execute("UPDATE settings SET prefix = NULL WHERE guild=$1", ctx.guild.id)
 
         await ctx.send("The prefix has been reset to default `>`")
@@ -55,7 +55,7 @@ class Settings:
         except discord.Forbidden:
             return await ctx.send("That's not a command.")
 
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             data = await db.fetchval("SELECT disabled FROM settings WHERE guild=$1", ctx.guild.id)
 
             if data is not None:
@@ -87,7 +87,7 @@ class Settings:
         else:
             self.bot.disabled_commands[ctx.guild.id] = None
 
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             await db.execute("UPDATE settings SET disabled = $1 WHERE guild=$2",
                              ', '.join(self.bot.disabled_commands[ctx.guild.id]), ctx.guild.id)
 
@@ -111,7 +111,7 @@ class Settings:
     async def __enable(self, ctx):
         """Enables alerts."""
         self.bot.alerts[ctx.guild.id] = True
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             await db.execute("UPDATE settings SET alerts=TRUE WHERE guild=$1", ctx.guild.id)
 
         await ctx.send("Alerts have been enabled.")
@@ -120,7 +120,7 @@ class Settings:
     async def __disable(self, ctx):
         """Disable alerts."""
         self.bot.alerts[ctx.guild.id] = False
-        async with ctx.bot.db.acquire() as db:
+        async with ctx.db.acquire() as db:
             await db.execute("UPDATE settings SET alerts=FALSE WHERE guild=$1", ctx.guild.id)
 
         await ctx.send("Alerts have been disabled.")
