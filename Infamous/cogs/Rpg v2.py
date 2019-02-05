@@ -765,6 +765,8 @@ class Rpg2:
     @checks.registered2()
     @commands.cooldown(1, 84600, commands.BucketType.user)
     async def raffle(self, ctx):
+        """Try to win random things"""
+                           
         await ctx.send("Pick a number between 1-10 to win a prize")
 
         def check(m):
@@ -910,6 +912,8 @@ class Rpg2:
     @commands.command()
     @commands.cooldown(1, float('inf'), commands.BucketType.channel)
     async def brawl(self, ctx):
+        """Battle randomly generated superhumans"""
+
         name1 = random.choice([x.display_name for x in ctx.guild.members])
         name2 = random.choice([x.display_name for x in ctx.guild.members if x != name1])
         name = rpg.merge(name1, name2)
