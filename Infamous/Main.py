@@ -7,6 +7,7 @@ import aiohttp
 import asyncpg
 import discord
 from discord.ext import commands
+from cogs.utils.functions import CustomCTX
 
 
 initial_extensions = (
@@ -21,7 +22,8 @@ initial_extensions = (
     'cogs.Imagem',
     'cogs.Settings',
     'cogs.Starboard',
-    'cogs.Music'
+    'cogs.Music',
+    'cogs.Helper'
 )
 
 
@@ -81,6 +83,7 @@ class Bot(commands.Bot):
         self.blocked = kwargs.pop("blocked")
         self.alerts = kwargs.pop("alerts")
         self.lines = self.lines_of_code()
+        self.chunk = self.chunk
         self.session = aiohttp.ClientSession(loop=self.loop)
 
     async def get_prefix_(self, bot, message):
@@ -101,6 +104,10 @@ class Bot(commands.Bot):
             except Exception:
                 print(f'Failed to load extension {extension}.', file=sys.stderr)
                 traceback.print_exc()
+    
+    def chunk(self, l, n):
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
 
     def lines_of_code(self):
         count_dict = {}
@@ -134,7 +141,8 @@ class Bot(commands.Bot):
     async def on_message(self, message):
         if message.author.bot:
             return
-        await self.process_commands(message)
+        ctx = await self.get_context(message, cls=CustomCTX)
+        await self.invoke(ctx)
 
     async def check_if_disabled(self, ctx):
         if not ctx.guild:
