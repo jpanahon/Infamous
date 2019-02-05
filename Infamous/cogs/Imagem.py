@@ -174,6 +174,8 @@ class Imagem:
 
     @commands.command()
     async def blurple(self, ctx, user: discord.Member = None):
+        """Turns your/other people's avatars blurple"""
+
         if not user:
             user = ctx.author
 
