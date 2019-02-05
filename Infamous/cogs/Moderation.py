@@ -182,7 +182,7 @@ class Moderation:
     async def purge(self, ctx, amount: int):
         """Deletes specified amount of messages."""
 
-        await ctx.channel.purge(limit=amount)
+        await ctx.channel.purge(limit=amount+1)
         await ctx.send(f'Deleted {amount} messages.', delete_after=5)
 
 
