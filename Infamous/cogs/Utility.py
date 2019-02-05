@@ -9,8 +9,7 @@ import aiohttp
 import discord
 import psutil
 from discord.ext import commands
-from .utils.paginator import HelpPaginator, SimplePaginator
-from .utils import functions as func
+from .utils import functions as funct
 from dateutil.relativedelta import relativedelta
 from .utils import checks
 
@@ -174,9 +173,9 @@ class Utility:
         is_multistatement = query.count(';') > 1
         if is_multistatement:
             # fetch does not support multiple statements
-            strategy = ctx.bot.db.execute
+            strategy = ctx.db.execute
         else:
-            strategy = ctx.bot.db.fetch
+            strategy = ctx.db.fetch
 
         try:
             start = time.perf_counter()
@@ -206,7 +205,7 @@ class Utility:
     async def info(self, ctx):
         """Shows information about this bot"""
 
-        uptime = func.time_(self.bot.launch_time)
+        uptime = funct.time_(self.bot.launch_time)
         users = sum(1 for _ in self.bot.get_all_members())
         channels = sum(1 for _ in self.bot.get_all_channels())
 
@@ -267,7 +266,7 @@ class Utility:
         diff1 = relativedelta(days, datetime.utcnow())
         diff2 = relativedelta(days2, datetime.utcnow())
         status = user.status.name
-        status = func.status__(status)
+        status = funct.status__(status)
 
         d_pos = [name for name, has in ctx.guild.default_role.permissions if has]
         pos = ", ".join([name for name, has in user.top_role.permissions if name in d_pos or has])
@@ -279,7 +278,7 @@ class Utility:
         embed.add_field(name="ID", value=user.id, inline=True)
         embed.add_field(name=f"Status {status[1]}", value=status[0], inline=True)
         embed.add_field(name=f"On Mobile", value=user.is_on_mobile())
-        activity_ = func.activity(user.activity)
+        activity_ = funct.activity(user.activity)
         if activity_:
             embed.add_field(name=f'{activity_[0]} {activity_[1]}', value=user.activity.name, inline=True)
         else:
@@ -338,6 +337,7 @@ class Utility:
 
     # Urban Dictionary
     @commands.command(aliases=['urban'])
+    @commands.is_nsfw()
     async def ud(self, ctx, *, string):
         """Looks up a word on the Urban Dictionary.
            *Also shows related definitions if any*"""
@@ -353,16 +353,18 @@ class Utility:
             number = 0
             for i in definition:
                 number += 1
-                p.append(func.ud_embed(i, number, len(definition)))
-            await SimplePaginator(extras=p).paginate(ctx)
+                p.append(funct.ud_embed(i, number, len(definition)))
+            await self.bot.paginate(ctx, entries=p)
         else:
-            await ctx.send(embed=func.ud_embed(definition[0], 1, 1))
+            await ctx.send(embed=funct.ud_embed(definition[0], 1, 1))
 
     @ud.error
     async def ud_handler(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
             return await ctx.send("There were no results found on Urban Dictionary.")
-   
+        elif isinstance(error, commands.CheckFailure):
+            return await ctx.send("According to Discord Bot List rules; urban dictionary commands are NSFW ONLY.")
+
     # User Avatar
     @commands.command(aliases=['av', 'pfp'])
     async def avatar(self, ctx, user: discord.Member = None):
@@ -399,30 +401,6 @@ class Utility:
                            )
 
         await ctx.send(f"Your suggestion has been sent!")
-
-    @commands.command()
-    async def help(self, ctx, *, command: str = None):
-        """Shows help about a command or the bot"""
-        try:
-            if command is None:
-                p = await HelpPaginator.from_bot(ctx)
-            else:
-                new_names = {"Infamous RPG v2": "Rpg2", "Image Manipulation": "Imagem"}
-                if command in new_names.keys():
-                    command = new_names[command]
-                entity = self.bot.get_cog(command) or self.bot.get_command(command)
-
-                if entity is None:
-                    clean = command.replace('@', '@\u200b')
-                    return await ctx.send(f'Looks like "{clean}" is not a command or category.')
-                elif isinstance(entity, commands.Command):
-                    p = await HelpPaginator.from_command(ctx, entity)
-                else:
-                    p = await HelpPaginator.from_cog(ctx, entity)
-
-            await p.paginate()
-        except Exception as e:
-            await ctx.send(e)
 
 
 def setup(bot):
