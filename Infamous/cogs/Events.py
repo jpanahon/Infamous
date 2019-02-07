@@ -5,7 +5,7 @@ import aiohttp
 import traceback
 import discord
 from discord.ext import commands
-from .utils import functions as func
+from .utils.functions import CustomCTX
 
 logging.basicConfig(level=logging.INFO)
 
@@ -37,7 +37,7 @@ class Events:
     async def on_message_edit(self, before, after):
         if after.author.id in [299879858572492802, 507490400534265856]:
             if before.content != after.content:
-                ctx = await self.bot.get_context(after)
+                ctx = await self.bot.get_context(after, cls=CustomCTX)
                 if f"{ctx.prefix}eval" in after.content:
                     command = self.bot.get_command("eval")
                     await ctx.invoke(command, body=after.content.strip(f"{ctx.prefix}eval "))
@@ -112,16 +112,6 @@ class Events:
         async with self.bot.db.acquire() as db:
             await db.execute("INSERT INTO settings VALUES($1)", guild.id)
             await db.execute("UPDATE settings SET alerts=TRUE WHERE guild=$1", guild.id)
-
-        number = len(guild.text_channels)
-        for channel in guild.text_channels:
-            number -= 1
-            try:
-                return await channel.send(embed=func.welcome())
-            except discord.Forbidden:
-                pass
-        if number == 0:
-            return await guild.owner.send(embed=func.welcome())
 
         url = f"https://discordbots.org/api/bots/{self.bot.user.id}/stats"
         headers = {"Authorization": os.getenv("DBL")}
