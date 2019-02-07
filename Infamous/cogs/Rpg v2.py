@@ -95,7 +95,7 @@ class Rpg2:
         active = True
         while active:
             try:
-                msg = (await self.bot.wait_for('message', check=check, timeout=60)).content.title()
+                msg = (await ctx.input('message', check=check, timeout=60)).content.title()
             except asyncio.TimeoutError:
                 return await ctx.send("Registration cancelled.")
 
@@ -243,7 +243,7 @@ class Rpg2:
         shop = [x for x in shop_items if x not in abilities]
         if shop:
             for l, i in enumerate(shop):
-                p.append(rpg.ability_embed(ctx, shop_items, i, l+1, len(shop)))
+                p.append(rpg.ability_embed(ctx, shop_items, i, l + 1, len(shop)))
 
             await ctx.paginate(entries=p)
         else:
@@ -341,7 +341,7 @@ class Rpg2:
             return m.author == ctx.author and m.content.title() in abilities
 
         try:
-            msg = (await ctx.bot.wait_for('message', check=check, timeout=15)).content.title()
+            msg = (await ctx.input('message', check=check, timeout=15)).content.title()
         except asyncio.TimeoutError:
             return await ctx.send("I guess you don't want to pick an ability.")
 
@@ -402,7 +402,7 @@ class Rpg2:
         active = True
         while active:
             try:
-                msg = (await ctx.bot.wait_for('message', check=check, timeout=15)).content
+                msg = (await ctx.input('message', check=check, timeout=15)).content
             except asyncio.TimeoutError:
                 return await ctx.send("I guess you don't want to risk it.")
 
@@ -455,7 +455,7 @@ class Rpg2:
                        and ', ' in m.content.title()
 
             try:
-                msg = (await ctx.bot.wait_for('message', check=check, timeout=30)).content.title()
+                msg = (await ctx.input('message', check=check, timeout=30)).content.title()
             except asyncio.TimeoutError:
                 return await ctx.send(f"{ctx.author.mention}, you ran out of time.")
 
@@ -463,7 +463,7 @@ class Rpg2:
                            f"{', '.join(abilities2)}. (Type your choice like this: Super Speed, Telekinesis)")
 
             try:
-                msg2 = (await ctx.bot.wait_for('message', check=check2, timeout=30)).content.title()
+                msg2 = (await ctx.input('message', check=check2, timeout=30)).content.title()
             except asyncio.TimeoutError:
                 return await ctx.send(f"{user.mention}, you ran out of time.")
 
@@ -508,14 +508,15 @@ class Rpg2:
 
         p = []
         for place, user in enumerate(lb):
-            user_ = ctx.guild.get_member(user[0]) or ctx.bot.get_user(user[0])
-            p.append(discord.Embed(color=self.bot.embed_color, description=f"**Level:** {user[1]} \n"
-                                                                           f"**Total XP:** {user[2]} \n"
-                                                                           f"**Guild:** {user[5]}")
-                     .set_author(name=f"#{place+1} {user_.display_name or user_.name}")
-                     .set_image(url=user_.avatar_url_as(static_format="png", size=1024))
-                     .set_footer(text=f"Page {place+1} of {len(lb)}")
-                     )
+            user_ = ctx.grab(user[0])
+            p.append((discord.Embed(color=self.bot.embed_color,
+                                    description=f"**Level:** {user[1]} \n"
+                                                f"**Total XP:** {user[2]} \n"
+                                                f"**Guild:** {user[5]}")
+                      .set_author(name=f"#{place+1} {user_.display_name or user_.name}")
+                      .set_image(url=user_.avatar_url_as(static_format="png", size=1024))
+                      .set_footer(text=f"Page {place+1} of {len(lb)}")
+                      ))
 
         await ctx.paginate(entries=p)
 
@@ -617,7 +618,7 @@ class Rpg2:
         def check(m):
             return m.author == leader and m.channel == leader or ctx.channel and m.content.capitalize() in ["Yes", "No"]
 
-        msg = (await ctx.bot.wait_for('message', check=check)).content.capitalize()
+        msg = (await ctx.input('message', check=check)).content.capitalize()
         if msg == "Yes":
             async with ctx.db.acquire() as db:
                 await db.execute("UPDATE profiles SET guild=$1 WHERE id=$2", name, ctx.author.id)
@@ -767,7 +768,7 @@ class Rpg2:
             return m.author == ctx.author and m.content.isdigit()
 
         try:
-            msg = int((await ctx.bot.wait_for('message', check=check, timeout=20)).content)
+            msg = int((await ctx.input('message', check=check, timeout=20)).content)
         except asyncio.TimeoutError:
             return await ctx.send("I guess you don't want to participate in the raffle.")
 
@@ -872,7 +873,7 @@ class Rpg2:
                     return m.author == ctx.author and m.content.title()
 
                 try:
-                    name = (await ctx.bot.wait_for('message', check=check, timeout=30)).content.title()
+                    name = (await ctx.input('message', check=check, timeout=30)).content.title()
                 except asyncio.TimeoutError:
                     return await ctx.send("Time ran out...")
 
@@ -887,7 +888,7 @@ class Rpg2:
                            and m.channel == ctx.channel
 
                 try:
-                    icon = await ctx.bot.wait_for('message', check=check3, timeout=30)
+                    icon = await ctx.input('message', check=check3, timeout=30)
                     icon = icon.content or icon.attachments[0].url
                 except asyncio.TimeoutError:
                     return await ctx.send("Time ran out...")
@@ -928,7 +929,7 @@ class Rpg2:
                    and ', ' in m.content.title()
 
         try:
-            msg = (await ctx.bot.wait_for('message', check=check, timeout=60)).content.title()
+            msg = (await ctx.input('message', check=check, timeout=60)).content.title()
         except asyncio.TimeoutError:
             return await ctx.send("You ran out of time.")
 
