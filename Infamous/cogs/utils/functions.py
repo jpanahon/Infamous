@@ -102,7 +102,7 @@ class Paginator:
             except (AttributeError, TypeError):
                 await self.channel.send(embed=self.entries)
 
-        if len(self.entries) == 1:
+        if len(self.entries)+1 == 1:
             return
 
         for (r, _) in self.reactions:
@@ -236,3 +236,10 @@ class CustomCTX(commands.Context):
     @property
     def db(self):
         return self.bot.db
+
+    def grab(self, member):
+        return self.guild.get_member(member) or self.bot.get_user(member)
+
+    @property
+    def input(self):
+        return self.bot.wait_for
