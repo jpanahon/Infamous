@@ -163,7 +163,7 @@ class Utility:
                 if "bot.http.token" in body:
                     await ctx.send(f"```py\n" + "*" * 59 + "```")
                 else:
-                    await ctx.send(f'```py\n{value}{ret}\n```')
+                    await ctx.send('```py\n{value}{ret}\n```')
 
     # From Rapptz
     @commands.command(hidden=True)
@@ -337,33 +337,20 @@ class Utility:
 
     # Urban Dictionary
     @commands.command(aliases=['urban'])
-    @commands.is_nsfw()
     async def ud(self, ctx, *, string):
         """Looks up a word on the Urban Dictionary.
            *Also shows related definitions if any*"""
 
         link = '+'.join(string.split())
-        async with aiohttp.ClientSession() as session:
-            async with session.get("http://api.urbandictionary.com/v0/define?term=" + link) as resp:
-                json_data = await resp.json()
-                definition = json_data['list']
+        async with ctx.bot.session.get("http://api.urbandictionary.com/v0/define?term=" + link) as resp:
+            json_data = await resp.json()
+            definition = json_data['list']
 
         if len(definition) > 1:
-            p = []
-            number = 0
-            for i in definition:
-                number += 1
-                p.append(funct.ud_embed(i, number, len(definition)))
-            await self.bot.paginate(ctx, entries=p)
+            p = [funct.ud_embed(i, n+1, len(definition)) for n, i in enumerate(definition)]
+            await ctx.paginate(entries=p)
         else:
             await ctx.send(embed=funct.ud_embed(definition[0], 1, 1))
-
-    @ud.error
-    async def ud_handler(self, ctx, error):
-        if isinstance(error, commands.CommandInvokeError):
-            return await ctx.send("There were no results found on Urban Dictionary.")
-        elif isinstance(error, commands.CheckFailure):
-            return await ctx.send("According to Discord Bot List rules; urban dictionary commands are NSFW ONLY.")
 
     # User Avatar
     @commands.command(aliases=['av', 'pfp'])
