@@ -220,7 +220,7 @@ async def yon(ctx, user=None):
         return m.author == user and m.content.capitalize() in ["Yes", "No"]
 
     try:
-        check_ = (await ctx.bot.wait_for('message', check=check, timeout=30)).content.capitalize()
+        check_ = (await ctx.input('message', check=check, timeout=30)).content.capitalize()
         return check_
     except asyncio.TimeoutError:
         pass
@@ -234,7 +234,7 @@ async def choose(ctx, choice: list, user=None):
         return m.author == user and m.content.capitalize() in choice
 
     try:
-        check_ = (await ctx.bot.wait_for('message', check=check, timeout=30)).content.capitalize()
+        check_ = (await ctx.input('message', check=check, timeout=30)).content.capitalize()
         return check_
     except asyncio.TimeoutError:
         pass
@@ -385,7 +385,7 @@ async def turn(ctx, skill1, skill2, health, health2, enemy, user=None):
         return m.author == user and m.content.title() in [skill1[1], skill2[1]]
 
     try:
-        msg_ = (await ctx.bot.wait_for('message', check=player1, timeout=30)).content.title()
+        msg_ = (await ctx.input('message', check=player1, timeout=30)).content.title()
     except asyncio.TimeoutError:
         await ctx.send(f"{user.mention} has been disqualified. Duel is over!")
         raise MatchEnd
