@@ -187,7 +187,7 @@ class Wiki:
                 contributors = await db.fetch("SELECT * FROM contributors WHERE id=$1 AND guild=$2 AND page=$3",
                                               self.author.id, self.guild.id, self.page)
 
-            c = [x[0] for x in contributors]
+            c = [x[2] for x in contributors]
             await self.channel.send("What field do you want to edit? Image, quote, about and color.")
 
             try:
