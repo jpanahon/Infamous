@@ -102,7 +102,7 @@ class Paginator:
             except (AttributeError, TypeError):
                 await self.channel.send(embed=self.entries)
 
-        if len(self.entries)+1 == 1:
+        if len(self.entries) == 1:
             return
 
         for (r, _) in self.reactions:
