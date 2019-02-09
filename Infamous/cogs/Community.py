@@ -22,7 +22,7 @@ class Wiki:
         self.input = ctx.input
         self.prefix = ctx.prefix
         self.context = ctx
-        self.reset = ctx.command.reset_cooldown(ctx)
+        self.command = ctx.command
         self.colors = {"Blue": 0x0000FF, "Red": 0xFF0000,
                        "Orange": 0xFF7F00, "Yellow": 0xFFFF00,
                        "Green": 0x00FF00, "Violet": 0x8B00FF,
@@ -46,9 +46,16 @@ class Wiki:
         if m.channel != self.channel:
             return False
 
-        if m.mentions or m.content.startswith('https') or m.attachments:
-            self.user = m.mentions[0].avatar_url or m.content or m.attachments[0].url
+        if m.mentions:
+            self.image = m.mentions[0].avatar_url
             return True
+
+        elif m.content.endswith(('.png', '.jpg')):
+            self.image = m.content
+            return True
+        elif m.attachments:
+            return True
+
         return False
 
     def _about_check(self, m):
@@ -103,16 +110,20 @@ class Wiki:
                                     f"Can you give us a picture of them? You can mention them, send a link or send an "
                                     f"attachment.")
             try:
-                await self.input('message', check=self._image_check, timeout=300)
+                msg = await self.input('message', check=self._image_check, timeout=300)
             except asyncio.TimeoutError:
                 return await self.channel.send("You ran out of time.")
 
-            await self.channel.send(f"So they look like this? {self.user} \n"
+            if msg.attachments:
+                self.image = msg.attachments[0].url
+
+            await self.channel.send(f"So they look like this? {self.image} \n"
                                     f"Can you tell us about them? In 50 or more characters please.")
 
             try:
                 about = (await self.input('message', check=self._about_check, timeout=300)).content
             except asyncio.TimeoutError:
+                self.command.reset_cooldown(self.context)
                 return await self.channel.send("You ran out of time.")
 
             await self.channel.send(f"Is this what you wanted? \n```ini\n{about}``` What is some of the things they "
@@ -121,6 +132,7 @@ class Wiki:
             try:
                 quote = (await self.input('message', check=self._quote_check, timeout=300)).content
             except asyncio.TimeoutError:
+                self.command.reset_cooldown(self.context)
                 return await self.channel.send("You ran out of time.")
 
             await self.channel.send(f"```ini\n{quote}``` Did they really say that? Anyways can you tell us what their "
@@ -130,19 +142,20 @@ class Wiki:
             try:
                 color = (await self.input('message', check=self._color_check, timeout=300)).content.capitalize()
             except asyncio.TimeoutError:
+                self.command.reset_cooldown(self.context)
                 return await self.channel.send("You ran out of time.")
 
             await self.channel.send("Here's what we have so far. Type **Yes** or **No** to confirm and publish.",
-                                    embed=self.constructor(self.page, self.user, about, quote, color))
+                                    embed=self.constructor(self.page, self.image, about, quote, color))
 
             y = await yon(self.context)
             if y == "Yes":
                 await self.channel.send("The wiki page has been created.")
                 async with self.db.acquire() as db:
                     await db.execute("INSERT INTO wiki VALUES($1, $2, $3, $4, $5, $6, $7, $8)", self.page,
-                                     self.guild.id, self.user, quote, about, color, self.author.id,
+                                     self.guild.id, self.image, quote, about, color, self.author.id,
                                      datetime.datetime.utcnow())
-                self.reset()
+                self.command.reset_cooldown(self.context)
             else:
                 return await self.channel.send("I guess this isn't what you wanted.")
         else:
@@ -155,9 +168,11 @@ class Wiki:
                 info = await db.fetchrow("SELECT * FROM wiki WHERE page=$1 AND guild=$2", self.page, self.guild.id)
                 contributors = await db.fetch("SELECT * FROM contributors WHERE page=$1 AND guild=$2", self.page,
                                               self.guild.id)
+            list_ = []
+            for user in contributors:
+                list_.append(f"**{(self.guild.get_member(user[2])).display_name}**")
 
-            list_ = [f"**{(self.guild.get_member(x[0])).display_name}**" for x in contributors]
-            embed = self.constructor(info[0], info[2], info[4], info[3], info[5], list_)
+            embed = self.constructor(info[0], info[2], info[4], info[3], info[5], '\n'.join(list_))
             embed.set_footer(text="Last Updated at")
             embed.timestamp = info[7]
             await self.channel.send(embed=embed)
@@ -223,8 +238,13 @@ class Community:
 
     @wiki.command(name="create")
     @commands.cooldown(1, float('inf'), commands.BucketType.channel)
-    async def _create_(self, ctx, *, name):
+    async def _create_(self, ctx, *, name=None):
         """Creates a wiki page"""
+        if not name:
+            await ctx.send(embed=discord.Embed(title=ctx.command.signature, color=self.bot.embed_color,
+                                               description=ctx.command.help))
+            ctx.command.reset_cooldown(ctx)
+            return
 
         w = Wiki(ctx, page=name.lower(), guild=ctx.guild)
         await w.create()
@@ -232,13 +252,16 @@ class Community:
     @wiki.command(name="edit")
     async def _edit_(self, ctx, *, name):
         """Edits an already existing page"""
+        if not name:
+            await ctx.send(embed=discord.Embed(title=ctx.command.signature, color=self.bot.embed_color,
+                                               description=ctx.command.help))
 
         w = Wiki(ctx, name.lower(), ctx.guild)
         await w.edit()
 
     @wiki.command(name="list")
     async def _list_(self, ctx):
-        """Shows all the available wiki pages"""
+        """Shows all the available wiki pages for the server """
 
         async with ctx.db.acquire() as db:
             pages = await db.fetch("SELECT * FROM wiki WHERE guild=$1", ctx.guild.id)
@@ -246,7 +269,7 @@ class Community:
         if pages:
             p = []
             for x, y in enumerate(pages):
-                c = '\n'.join([f"**{(ctx.guild.get_member(i[0])).display_name}**" for i in contributors if i[0] ==
+                c = '\n'.join([f"**{(ctx.guild.get_member(i[2])).display_name}**" for i in contributors if i[0] ==
                                y[0]])
                 p.append(discord.Embed(color=self.bot.embed_color,
                                        description=f"Created by {(ctx.guild.get_member(y[6])).mention}",
@@ -271,7 +294,7 @@ class Community:
             p = []
             for x, y in enumerate(pages):
                 guild = ctx.bot.get_guild(y[1])
-                c = '\n'.join([f"**{(guild.get_member(i[0])).display_name}**" for i in contributors if i[0] ==
+                c = '\n'.join([f"**{(guild.get_member(i[2])).display_name}**" for i in contributors if i[2] ==
                                y[0]])
                 p.append(discord.Embed(color=self.bot.embed_color,
                                        description=f"Created by {(guild.get_member(y[6])).mention}",
