@@ -43,7 +43,7 @@ class Help:
                     .set_author(name="ERROR \N{NO ENTRY SIGN}", icon_url=self.icon))
 
         for i in list(self.bot.chunk(list(cmd), 6)):
-            embed = discord.Embed(color=discord.Color.blurple())  # can be any color
+            embed = discord.Embed(color=self.bot.embed_color)  
             embed.set_author(name=name, icon_url=self.icon)
             embed.description = cog.__doc__
             for x in i:
