@@ -23,7 +23,6 @@ class Original:
     # Annoy
     @commands.command()
     @commands.cooldown(1, 1500, commands.BucketType.user)
-    @commands.guild_only()
     async def annoy(self, ctx, user: discord.Member, *, string=None):
         """Annoys a specific person"""
         if not string:
@@ -58,7 +57,6 @@ class Original:
     @commands.command()
     @commands.cooldown(2, 600, commands.BucketType.user)
     @commands.bot_has_permissions(manage_nicknames=True)
-    @commands.guild_only()
     async def nick(self, ctx, *, string):
         """Set's the nick of a random person, with nick of choice."""
 
@@ -82,7 +80,6 @@ class Original:
         await user.edit(nick=self.nicks[user.id])
 
     @commands.command()
-    @commands.guild_only()
     async def guess(self, ctx):
         """Guess who this person is."""
 
@@ -155,7 +152,7 @@ class Original:
                     if not (3 <= len(text.content) <= 60):
                         await ctx.send("Text must be longer than 3 chars and shorter than 60.")
                     else:
-                        payload = {"text": text.content}
+                        payload = {"text": text.content, "context": [text.content, text.author.display_name]}
                         async with ctx.channel.typing(), ctx.bot.session.post("https://public-api.travitia.xyz/talk",
                                                                               json=payload,
                                                                               headers={
