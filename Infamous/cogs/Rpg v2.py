@@ -61,8 +61,6 @@ shop_items = {"Super Strength": [12000, 'https://imgur.com/vbtnxdi.png',
 class Rpg2:
     def __init__(self, bot):
         self.bot = bot
-        self.hp1 = 0
-        self.hp2 = 0
         self.__doc__ = monologue
 
     async def __before_invoke(self, ctx):
@@ -987,7 +985,7 @@ class Rpg2:
                                 f"{ctx.author.mention} pick an ability: {msg}")
                     if self.hp1 <= 0:
                         await ctx.send(f"**{name}** wins!")
-                        active = False
+                        raise rpg.MatchEnd
                 else:
                     dmg = random.randint(10, round(skill2[0] / 2))
                     if dmg > self.hp1 / 2:
@@ -1020,7 +1018,7 @@ class Rpg2:
                                 f"{ctx.author.mention} pick an ability: {msg}")
                     if self.hp1 <= 0:
                         await ctx.send(f"**{name}** wins!")
-                        active = False
+                        raise rpg.MatchEnd
         except rpg.MatchEnd:
             ctx.command.reset_cooldown(ctx)
 
