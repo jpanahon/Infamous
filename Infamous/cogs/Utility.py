@@ -5,7 +5,7 @@ import time
 import traceback
 from contextlib import redirect_stdout
 from datetime import datetime
-import aiohttp
+
 import discord
 import psutil
 from discord.ext import commands
@@ -163,7 +163,7 @@ class Utility:
                 if "bot.http.token" in body:
                     await ctx.send(f"```py\n" + "*" * 59 + "```")
                 else:
-                    await ctx.send('```py\n{value}{ret}\n```')
+                    await ctx.send(f'```py\n{value}{ret}\n```')
 
     # From Rapptz
     @commands.command(hidden=True)
