@@ -34,19 +34,6 @@ class Events:
                 except discord.Forbidden:
                     await message.channel.send("Don't post invite links.")
 
-            if any(word in message.content.lower() for word in ['obese', 'fat', 'overweight']):
-                await message.delete()
-                try:
-                    await message.author.send("Congratulations, you have driven the owner mad, because of obsessive "
-                                              "use of `obese, fat and overweight`, he now thinks whenever you say any "
-                                              "of those words you are referring to him. "
-                                              "Even if you're not he doesn't give a shit.")
-                except discord.Forbidden:
-                    await message.channel.send(f"{message.author.mention} Congratulations, you have driven the owner "
-                                               f"mad, because of obsessive use of `obese, fat and overweight`, he now "
-                                               f"thinks whenever you say any of those words you are referring "
-                                               f"to him. Even if you're not he doesn't give a shit.", delete_after=10)
-
             if message.author.id == 316540331954798592:
                 if message.attachments:
                     await message.delete()
