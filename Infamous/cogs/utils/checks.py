@@ -155,4 +155,3 @@ def in_testing():
             return True
 
     return commands.check(predicate)
-
