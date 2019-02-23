@@ -2,7 +2,7 @@ import asyncio
 import random
 import discord
 
-embed_color = 0x101010
+embed_color = 0x740f10
 
 
 async def lvl(ctx, mon, msg1, msg2, user=None):
@@ -217,10 +217,14 @@ async def yon(ctx, user=None):
         user = ctx.author
 
     def check(m):
-        return m.author == user and m.content.capitalize() in ["Yes", "No"]
+        if m.author == user:
+            return True
+        if any(word in m.content.lower() for word in ["yes", "y", "n", "no"]):
+            return True
+        return False
 
     try:
-        check_ = (await ctx.input('message', check=check, timeout=30)).content.capitalize()
+        check_ = (await ctx.input('message', check=check, timeout=30)).content.lower()
         return check_
     except asyncio.TimeoutError:
         pass
@@ -374,6 +378,21 @@ class MatchEnd(Exception):
     pass
 
 
+async def reward(ctx, enemy, health):
+    if type(enemy) == discord.Member:
+        if health <= 0:
+            xp = random.randint(250, 500)
+            mon = random.randint(250, 500)
+            await ctx.send(f"{enemy.mention} wins! They earn {xp}xp and ${mon}")
+            await level2(ctx, mon, xp, user=enemy)
+            await guild_level(ctx, xp, user=enemy)
+            raise MatchEnd  
+        
+    if health <= 0:
+        await ctx.send(f"**{enemy}** wins!")
+        raise MatchEnd
+        
+        
 async def turn(ctx, skill1, skill2, health, health2, enemy, user=None):
     if not user:
         user = ctx.author
@@ -394,29 +413,30 @@ async def turn(ctx, skill1, skill2, health, health2, enemy, user=None):
             dmg = random.randint(10, skill1[4] / 2)
             if dmg > round(health2 / 2):
                 chance = random.choice(["Hit", "Miss"])
-                health2 = health2 - dmg
                 if chance == "Hit":
+                    health2 -= dmg
                     await ctx.send(
                         f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
-                        f"**{enemy}** has {health2} health.")
+                        f"**{enemy}** has `{health2} health.")
                 else:
-                    health = health - dmg
+                    health -= dmg
                     await ctx.send(
                         f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
-                        f"They now have {health} health.")
+                        f"They now have `{health}` health.")
             else:
                 chance = random.choice(["Hit", "Miss"])
-                health2 = health2 - dmg
                 if chance == "Hit":
+                    health2 -= dmg
                     await ctx.send(
                         f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
-                        f"**{enemy}** has {health2} health.")
+                        f"**{enemy}** has `{health2}` health.")
                 else:
-                    health = health - dmg
-                    print(health)
+                    health -= dmg
                     await ctx.send(
                         f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
-                        f"They now have {health} health.")
+                        f"They now have `{health}` health.")
+                    await reward(ctx, enemy, health)
+                    
             if health2 <= 0:
                 xp = random.randint(250, 500)
                 mon = random.randint(250, 500)
@@ -428,28 +448,31 @@ async def turn(ctx, skill1, skill2, health, health2, enemy, user=None):
             dmg = random.randint(10, skill2[4] / 2)
             if dmg > round(health2 / 2):
                 chance = random.choice(["Hit", "Miss"])
-                health2 = health2 - dmg
                 if chance == "Hit":
+                    health2 -= dmg
                     await ctx.send(
                         f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
-                        f"**{enemy}** has {health2} health.")
+                        f"**{enemy}** has `{health2}` health.")
                 else:
-                    health = health - dmg
+                    health -= dmg
                     await ctx.send(
                         f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
-                        f"They now have {health} health.")
+                        f"They now have `{health}` health.")
+                    await reward(ctx, enemy, health)
             else:
                 chance = random.choice(["Hit", "Miss"])
-                health2 = health2 - dmg
                 if chance == "Hit":
+                    health2 -= dmg
                     await ctx.send(
                         f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
-                        f"**{enemy}** has {health2} health.")
+                        f"**{enemy}** has `{health2}` health.")
                 else:
-                    health = health - dmg
+                    health -= dmg
                     await ctx.send(
                         f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
-                        f"They now have {health} health.")
+                        f"They now have `{health}` health.")
+                    await reward(ctx, enemy, health)
+                    
             if health2 <= 0:
                 xp = random.randint(250, 500)
                 mon = random.randint(250, 500)
@@ -457,4 +480,3 @@ async def turn(ctx, skill1, skill2, health, health2, enemy, user=None):
                 await level2(ctx, mon, xp)
                 await guild_level(ctx, xp)
                 raise MatchEnd
-
