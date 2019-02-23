@@ -1,5 +1,5 @@
 import discord
-import asyncpg
+from discord.ext import commands
 from datetime import datetime
 from .utils.functions import CustomCTX
 
@@ -13,6 +13,7 @@ class Starboard:
         self.starboard = ctx.guild.get_channel(537941975706632193)
         self.db = ctx.db
         self.starrer = user
+        self.starred = []
         self.reaction = reaction
         self.server = self.bot.get_guild(258801388836880385)
 
@@ -35,12 +36,17 @@ class Starboard:
             embed.timestamp = datetime.utcnow()
             msg = await self.starboard.send(content=f"{self.star} 3 {self.channel.mention}", embed=embed)
             async with self.db.acquire() as db:
-                await db.execute("INSERT INTO starboard VAlUES($1, $2, $3, $4)", msg.id, self.msg.id, 3,
+                await db.execute("INSERT INTO starboard VALUES($1, $2, $3, $4)", msg.id, self.msg.id, 3,
                                  self.channel.id)
+                for u in self.reaction.users:
+                    await db.execute("INSERT INTO starboard VALUES($1, $2)", u.id, self.msg.id)
         else:
             async with self.db.acquire() as db:
                 thing = await db.fetch("SELECT * FROM starboard WHERE original=$1", self.msg.id)
                 await db.execute("UPDATE starboard SET stars=$1 WHERE original=$2", self.reaction.count, self.msg.id)
+                for u in self.reaction.users:
+                    await db.execute("INSERT INTO starboard VALUES($1, $2)", u.id, self.msg.id)
+
             edit = await self.starboard.get_message(thing)
             reactions = self.reaction.count
             await edit.edit(content=f"{self.star} {reactions} {self.channel.mention}")
@@ -52,10 +58,21 @@ class Starboard:
         channel = self.server.get_channel(original[3])
         await self.msg.edit(content=f"{self.star} {original[2]+1} {channel.mention}")
 
+    async def starr(self):
+        async with self.db.acquire() as db:
+            self.starred = await db.fetch("SELECT * FROM starrers WHERE msg=$1", self.msg.id)
+
+        if p:
+            if self.starrer.id in p:
+                return
+            async with self.db.acquire() as db:
+                await db.execute("INSERT INTO starrers VALUES($1, $2)", self.starrer.id, self.msg.id)
+
     async def _edit_board(self):
         async with self.db.acquire() as db:
             original = await db.fetchrow("SELECT * FROM starboard WHERE id=$1", self.msg.id)
             await db.execute("UPDATE starboard SET stars=stars-1 WHERE id=$1", self.msg.id)
+        await self.starr()
         channel = self.server.get_channel(original[3])
         await self.msg.edit(content=f"{self.star} {original[2]-1} {channel.mention}")
 
@@ -80,7 +97,8 @@ class Starboard:
         if self.reaction.emoji == self.star:
             if self.reaction.message.channel.id != self.starboard.id:
                 if self.reaction.count >= 3:
-                    await self.setup()
+                    if self.starrer != self.msg.author or self.starrer in self.starred:
+                        await self.setup()
 
             else:
                 await self.edit_board()
@@ -92,17 +110,23 @@ class Starboard:
                     await self.reaction.message.delete()
 
 
-class Stars:
+class Stars(commands.Cog):
     """Starboard Only for Fame"""
     def __init__(self, bot):
         self.bot = bot
 
     async def on_reaction_add(self, reaction, user):
+        if user.guild is None or user.guild.id != 258801388836880385:
+            return
+
         ctx = await self.bot.get_context(reaction.message, cls=CustomCTX)
         s = Starboard(ctx, reaction.message, user, reaction)
         await s.start()
 
     async def on_reaction_remove(self, reaction, user):
+        if user.guild is None or user.guild.id != 258801388836880385:
+            return
+
         ctx = await self.bot.get_context(reaction.message, cls=CustomCTX)
         s = Starboard(ctx, reaction.message, user, reaction)
         await s.remover()
