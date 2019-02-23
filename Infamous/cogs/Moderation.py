@@ -136,7 +136,8 @@ class Moderation(commands.Cog):
 
         if d is False:
             async with ctx.db.acquire() as db:
-                await db.execute("UPDATE settings SET logging=TRUE, logchannel=$1", channel.id)
+                await db.execute("UPDATE settings SET logging=TRUE, logchannel=$1 WHERE guild=$2", channel.id,
+                                 ctx.guild.id)
             self.bot.logging[ctx.guild.id] = [True, channel.id]
             await ctx.send(f"Logging all actions to {channel.mention}")
         else:
