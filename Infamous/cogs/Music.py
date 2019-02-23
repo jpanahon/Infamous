@@ -73,7 +73,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             # take first item from a playlist
             data = data['entries'][0]
 
-        await ctx.send(f'```ini\n[Added {data["title"]} to the Queue.]\n```', delete_after=15)
+        await ctx.send(f'```ini\n[Added {data["title"]} to the Queue.]\n```')
 
         if download:
             source = ytdl.prepare_filename(data)
@@ -166,7 +166,7 @@ class MusicPlayer:
         return self.bot.loop.create_task(self._cog.cleanup(guild))
 
 
-class Music:
+class Music(commands.Cog):
     """Music related commands."""
 
     __slots__ = ('bot', 'players')
@@ -186,13 +186,13 @@ class Music:
         except KeyError:
             pass
 
-    async def __local_check(self, ctx):
+    async def cog_check(self, ctx):
         """A local check which applies to all commands in this cog."""
         if not ctx.guild:
             raise commands.NoPrivateMessage
         return True
 
-    async def __error(self, ctx, error):
+    async def cog_command_error(self, ctx, error):
         """A local error handler for all errors arising from commands in this cog."""
         if isinstance(error, commands.NoPrivateMessage):
             try:
