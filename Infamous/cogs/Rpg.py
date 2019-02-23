@@ -1,3 +1,7 @@
+"""
+THIS IS THE CODE USED FOR INFAMOUS RPG V1
+"""
+
 import asyncio
 import logging
 import random
