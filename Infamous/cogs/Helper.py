@@ -2,17 +2,33 @@ import discord
 from discord.ext import commands
 
 
-class Help:
+class Help(commands.Cog):
     """Help command"""
 
     def __init__(self, bot):
         self.bot = bot
         self.icon = bot.user.avatar_url
 
+    def information(self):
+        embed = discord.Embed(color=self.bot.embed_color)
+        embed.set_author(name='Infamous Helper', icon_url=self.icon)
+        embed.description = 'Welcome to the Infamous help pages. React :information_source: for information on how ' \
+                            'the reactions below work.'
+        embed.add_field(name='Syntax', value='When you see **<>** encased around a word, this means it is a '
+                                             '**__required__** argument. The bot will tell you if you have missed an '
+                                             'argument. \n\nWhen you see **[]** encased around a word this means it '
+                                             'is a **__optional__** argument. This means you do not have to put an '
+                                             'argument. \n\nWhen you see **[]** with **|** inside the brackets, '
+                                             'this means the command has more than one name.')
+
+        embed.add_field(name='Support', value='If you stumble upon a error/have suggestions you can join the support '
+                                              'server right [here.](https://discord.gg/JyJTh4H)')
+        return embed
+
     def helper(self, ctx):
         """Displays all commands"""
 
-        cmds_ = []
+        cmds_ = [self.information()]
         cogs = ctx.bot.cogs
         for i in cogs:
             cmd_ = ctx.bot.get_cog_commands(i)
@@ -43,8 +59,8 @@ class Help:
                     .set_author(name="ERROR \N{NO ENTRY SIGN}", icon_url=self.icon))
 
         for i in list(self.bot.chunk(list(cmd), 6)):
-            embed = discord.Embed(color=self.bot.embed_color)  
-            embed.set_author(name=name, icon_url=self.icon)
+            embed = discord.Embed(color=self.bot.embed_color)
+            embed.set_author(name=f"{name} Commands ({len(cmd)})", icon_url=self.icon)
             embed.description = cog.__doc__
             for x in i:
                 embed.add_field(name=x.signature, value=x.help, inline=False)
@@ -73,7 +89,7 @@ class Help:
                 y.set_footer(text=f"Page {x+1} of {len(cmds_)}")
             return cmds_
         except AttributeError:
-            embed = discord.Embed(color=discord.Color.blurple())
+            embed = discord.Embed(color=self.bot.embed_color)
             embed.set_author(name=command.signature)
             embed.description = command.help
             return embed
