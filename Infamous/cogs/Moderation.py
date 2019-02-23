@@ -1,6 +1,6 @@
-import asyncio
+import datetime
 import logging
-
+from .utils.rpg_tools import yon as choose
 import discord
 from discord.ext import commands
 
@@ -8,182 +8,210 @@ from discord.ext import commands
 logging.basicConfig(level=logging.INFO)
 
 
-class Moderation:
+class Sinner(commands.Converter):
+    async def convert(self, ctx, argument):
+        argument = await commands.MemberConverter().convert(ctx, argument)
+        permission = argument.guild_permissions.manage_messages
+        if not permission:
+            return argument
+        else:
+            raise commands.BadArgument("You cannot punish other staff members")
+
+
+class Redeemed(commands.Converter):
+    async def convert(self, ctx, argument):
+        argument = await commands.MemberConverter().convert(ctx, argument)
+        muted = discord.utils.get(ctx.guild.roles, name="Muted")
+        if muted in argument.roles:
+            return argument
+        else:
+            raise commands.BadArgument("The user was not muted.")
+
+
+async def muted_role(ctx):
+    try:
+        return discord.utils.get(ctx.guild.roles, name="Muted")
+    except discord.HTTPException:
+        role = await ctx.guild.create_role(name="Muted", reason="To mute people")
+        for channel in ctx.guild.channels:
+            await channel.set_permissions(role, send_messages=False,
+                                          read_message_history=False,
+                                          read_messages=False)
+
+        return discord.utils.get(ctx.guild.roles, name="Muted")
+
+
+class Moderation(commands.Cog):
     """Commands to get your users in place."""
 
     def __init__(self, bot):
         self.bot = bot
 
-    # Mute
-    @commands.command(aliases=['shutup', 'stfu'])
-    @commands.has_permissions(manage_messages=True)
-    @commands.guild_only()
-    async def mute(self, ctx, user: discord.Member, *, string):
-        """Mutes mentioned user."""
+    async def cog_check(self, ctx):
+        if ctx.author.guild_permissions.manage_messages:
+            return True
+        return False
 
-        muted = discord.utils.get(ctx.guild.roles, name="Muted")
+    async def cog_command_error(self, ctx, error):
+        if isinstance(error, commands.BadArgument):
+            return await ctx.send(error)
 
-        if user.guild_permissions.manage_messages:
-            return await ctx.send("You can't mute another staff member.")
+    @commands.command()
+    async def mute(self, ctx, user: Sinner = None, reason=None):
+        """Silences a person"""
 
-        if muted in user.roles:
-            await ctx.send(f"{user.mention} is already muted! \n"
-                           f"Type `{ctx.prefix}unmute <@{user.id}>` to unmute them.")
-        else:
-            await ctx.send(f'{user.mention} has been muted for: {string}')
-            await user.add_roles(muted)
-
-        try:
-            await user.send(f'You have been muted by `{ctx.author}` for: {string}')
-            await ctx.author.send(f'Type `{ctx.prefix}unmute <@{user.id}>` to unmute.')
-        except:
-            await ctx.author.send(f'Unable to send `{user}` a DM.')
-            await ctx.author.send(f'Type `{ctx.prefix}unmute <@{user.id}>` to unmute.')
-            pass
-
-    @commands.command(aliases=['am'])
-    @commands.has_permissions(manage_messages=True)
-    @commands.guild_only()
-    async def tempmute(self, ctx, user: discord.Member, time: int, *, reason):
-        """Temporarily mutes the mentioned user."""
-
-        hours, remainder = divmod(int(time), 3600)
-        minutes, seconds = divmod(remainder, 60)
-
-        muted = discord.utils.get(ctx.guild.roles, name="Muted")
-
-        if user.guild_permissions.manage_messages:
-            return await ctx.send("You can't mute another staff member.")
-
-        if muted in user.roles:
-            await ctx.send(f'{user.mention} has been temporarily muted for: {reason} \n '
-                           f'They will be unmuted in {hours}h, {minutes}m and {seconds}s')
-
-            await user.add_roles(muted)
-
+        user = user or await ctx.send("Pick a user to mute.")
+        reason = reason or "No reason provided."
+        await ctx.send(f"Are you sure you want to mute {user.mention} for **{reason}**?")
+        yon = await choose(ctx)
+        if yon == "Yes":
             try:
-                await user.send(f'You have been temporarily muted by `{ctx.author}` for: {reason} \n'
-                                f'You may talk again in {hours}h, {minutes}m and {seconds}s')
+                await user.add_roles(await muted_role(ctx), reason=reason)
+            except discord.Forbidden:
+                await ctx.send("Did you try banning someone higher than you in role, "
+                               "or did you try to ban the server owner?")
+            else:
+                await ctx.send(f"**{user.mention}** has been muted for **{reason}**")
+        else:
+            await ctx.send("I guessed you changed your mind.")
 
-                await ctx.author.send(f'Type `{ctx.prefix}unmute <@{user.id}>` to unmute.')
-            except:
-                await ctx.author.send(f'Unable to send `{user}` a DM.')
-                await ctx.author.send(f'Type `{ctx.prefix}unmute <@{user.id}>` to unmute.')
-                pass
+    @commands.command()
+    async def unmute(self, ctx, user: Redeemed = None):
+        """Unmutes the silenced"""
 
-            await asyncio.sleep(time)
-            await user.remove_roles(muted)
-            await ctx.send(f"{user.mention} has been unmuted after {hours}h, {minutes}m and {seconds}s")
+        user = user or await ctx.send("Provide a user")
+        await user.remove_roles(await muted_role(ctx))
 
+    @commands.command()
+    async def ban(self, ctx, user: Sinner = None, reason=None):
+        """Gets rid of troublemakers"""
+
+        user = user or await ctx.send("Provide a user")
+        reason = reason or "No reason provided"
+
+        await ctx.send(f"Are you sure you want to ban {user.mention} for **{reason}**")
+        yon = await choose(ctx)
+        if yon == "Yes":
             try:
-                await user.send(f'You have been unmuted after {hours}h, {minutes}m and {seconds}s')
-            except:
-                await ctx.author.send(f'Unable to send `{user}` a DM.')
-                pass
+                await ctx.guild.ban(user, reason=f"For {reason} by {ctx.author}")
+                await user.send(f"You have been banned by {ctx.author} for {reason}")
+            except discord.Forbidden:
+                await ctx.send("Did you try banning someone higher than you in role, "
+                               "or did you try to ban the server owner?")
+            else:
+                await ctx.send(f"**{user}** has been banned from the server for **{reason}**")
+
+    @commands.command()
+    async def softban(self, ctx, user: Sinner = None, reason=None):
+        """The perfect placebo"""
+
+        user = user or await ctx.send("Provide a user")
+        reason = reason or "No reason provided"
+
+        await ctx.send(f"Are you sure you want to ban {user.mention} for **{reason}**")
+        yon = await choose(ctx)
+        if yon == "Yes":
+            try:
+                await ctx.guild.ban(user, reason=f"For {reason} by {ctx.author}")
+                await user.send(f"You have been banned by {ctx.author} for {reason}")
+                await ctx.guild.unban(user, reason=f"Was softbanned by {ctx.author} for {reason}")
+            except discord.Forbidden:
+                await ctx.send("Did you try banning someone higher than you in role, "
+                               "or did you try to softban the server owner?")
+            else:
+                await ctx.send(f"**{user}** has been softbanned from the server for **{reason}**")
+
+    @commands.command()
+    async def purge(self, ctx, amount: int, user: discord.Member = None):
+        if user:
+            await ctx.channel.purge(amount=amount + 1, check=lambda e: e.author == user)
+            await ctx.send(f"Purged {amount} messages from **{user}**.", delete_after=15)
+
+        await ctx.channel.purge(amount=amount + 1)
+        await ctx.send(f"Purged {amount} messages.", delete_after=15)
+
+    async def automod(self, ctx, channel):
+        async with ctx.db.acquire() as db:
+            d = await db.fetchval("SELECT logging FROM settings WHERE guild=$1", ctx.guild.id)
+
+        if d is False:
+            async with ctx.db.acquire() as db:
+                await db.execute("UPDATE settings SET logging=TRUE, logchannel=$1", channel.id)
+            self.bot.logging[ctx.guild.id] = [True, channel.id]
+            await ctx.send(f"Logging all actions to {channel.mention}")
         else:
-            return await ctx.send("They are already muted.")
-
-    # Unmute
-    @commands.command()
-    @commands.has_permissions(manage_messages=True)
-    @commands.guild_only()
-    async def unmute(self, ctx, user: discord.Member):
-        """Unmutes mentioned user."""
-
-        muted = discord.utils.get(ctx.guild.roles, name="Muted")
-        if muted in user.roles:
-            await user.remove_roles(muted)
-            await ctx.send(f"{user.mention} has been unmuted.")
-        else:
-            await ctx.send(f"{user.display_name} was not muted.")
-
-        try:
-            await user.send(f'You have been unmuted by `{ctx.author}`')
-        except:
-            await ctx.author.send(f'Unable to DM `{user}`.')
-            pass
-
-    # Kick
-    @commands.command()
-    @commands.has_permissions(kick_members=True)
-    @commands.guild_only()
-    async def kick(self, ctx, user: discord.Member, *, string):
-        """Kicks mentioned user from the guild."""
-
-        notice = (f'You have been kicked from {ctx.guild} for: {string} \n'
-                  'You may rejoin using: https://discord.gg/NY2MSA3')
-        try:
-            await user.send(notice)
-        except:
-            await ctx.author.send(f'Unable to send `{user}` a DM.')
-            pass
-
-        await ctx.guild.kick(user=user, reason=string)
-        await ctx.send(f'{user.mention} has been kicked from the server for: {string}')
-
-    # Ban
-    @commands.command(aliases=['gtfo'])
-    @commands.has_permissions(ban_members=True)
-    @commands.guild_only()
-    async def ban(self, ctx, user: discord.Member, *, string):
-        """Bans the mentioned user from the guild."""
-
-        notice = (f'You have been banned from {ctx.guild} for: {string} \n'
-                  f'You may contact {ctx.author.mention} for appeal.')
-        try:
-            await user.send(notice)
-            await ctx.author.send(f"You can unban the user by typing in `f.unban {user.id}`")
-        except:
-            await ctx.author.send(f'Unable to send `{user}` a DM.')
-            await ctx.author.send(f"You can unban the user by typing in `f.unban {user.id}`")
-            pass
-
-        await ctx.guild.ban(user=user, reason=f'By: {ctx.author} \nReason: {string}')
-        await ctx.send(f'<@{user.id}> has been banned from the server for: {string}')
+            async with ctx.db.acquire() as db:
+                await db.execute("UPDATE settings SET logging=FALSE, logchannel=NULL")
+            self.bot.logging[ctx.guild.id] = [False, None]
+            await ctx.send("Logging has been disabled.")
 
     @commands.command()
-    @commands.has_permissions(ban_members=True)
-    @commands.guild_only()
-    async def softban(self, ctx, user: discord.Member, *, reason):
-        """Bans and unbans users to delete messages."""
+    async def logging(self, ctx, channel: discord.TextChannel=None):
+        channel = channel or ctx.channel
+        await self.automod(ctx, channel)
 
-        await ctx.guild.ban(user=user, reason=f'By: {ctx.author} \n Reason: {reason}')
+    @commands.Cog.listener()
+    async def on_message_delete(self, message):
+        if self.bot.logging[message.guild.id][0] is True:
+            embed = discord.Embed(color=message.author.color)
+            embed.set_author(name=message.author)
+            embed.description = message.content
+            if message.attachments:
+                embed.set_image(url=message.attachments[0].url)
+            embed.set_footer(text="Message deleted at")
+            embed.timestamp = datetime.datetime.utcnow()
+            await (self.bot.get_channel(self.bot.logging[message.guild.id][1])).send(embed=embed)
 
-        notice = (f'You have been banned from {ctx.guild} for: {reason} \n'
-                  f'You may contact {ctx.author.mention} for appeal.')
-        try:
-            await user.send(notice)
-        except:
-            await ctx.author.send(f'Unable to send `{user}` a DM.')
-            pass
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if self.bot.logging[before.guild.id][0] is True:
+            embed = discord.Embed(color=before.author.color)
+            embed.set_author(name=before.author)
+            embed.title = "Before"
+            embed.description = before.content
+            embed.add_field(name="After", value=after.content, inline=False)
+            embed.set_footer(text="Message edited at")
+            embed.timestamp = datetime.datetime.utcnow()
+            if before.attachments:
+                embed.set_image(url=before.attachments[0].url)
+            await (self.bot.get_channel(self.bot.logging[before.guild.id][1])).send(embed=embed)
 
-        await ctx.guild.unban(user=user, reason="All is forgiven.")
-        await ctx.send(f"<@{user.id}> has been banned from the server for: {reason}")
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        if self.bot.logging[before.guild.id][0] is True:
+            if before.nick != after.nick:
+                embed = discord.Embed(color=before.color)
+                embed.set_author(name=before)
+                embed.title = "Before"
+                embed.description = before.nick
+                embed.add_field(name="After", value=after.nick, inline=False)
+                embed.set_footer(text="Nickname changed at")
+                embed.timestamp = datetime.datetime.utcnow()
+                await (self.bot.get_channel(self.bot.logging[before.guild.id][1])).send(embed=embed)
+            elif before.roles != after.roles:
+                embed = discord.Embed(color=after.author.color)
+                embed.set_author(name=before.author)
+                embed.title = "Before"
+                embed.description = ", ".join([x.mention for x in before.roles])
+                embed.add_field(name="After", value=", ".join([x.mention for x in after.roles]))
+                embed.set_footer(text="Roles changed at")
+                embed.timestamp = datetime.datetime.utcnow()
+                await (self.bot.get_channel(self.bot.logging[before.guild.id][1])).send(embed=embed)
 
-    @commands.command()
-    @commands.has_permissions(ban_members=True)
-    @commands.guild_only()
-    async def unban(self, ctx, identification: int):
-        """Unbans the mentioned user from the guild."""
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role):
+        if self.bot.logging[role.guild.id][0] is True:
+            embed = discord.Embed(color=role.color)
+            embed.description = f"New Role {role.mention}"
+            embed.add_field(name="Permissions", value="\n".join([x for (x, y) in role.permissions]))
+            await (self.bot.get_channel(self.bot.logging[role.guild.id][1])).send(embed=embed)
 
-        user = await self.bot.get_user_info(identification)
-        await ctx.guild.unban(user, reason='All has been forgiven.')
-
-        try:
-            await ctx.send(f'`{user}` has been unbanned from the server.')
-        except:
-            await ctx.send(f'Unable to unban `{user}`')
-            pass
-
-    @commands.command()
-    @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True)
-    @commands.guild_only()
-    async def purge(self, ctx, amount: int):
-        """Deletes specified amount of messages."""
-
-        await ctx.channel.purge(limit=amount+1)
-        await ctx.send(f'Deleted {amount} messages.', delete_after=5)
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role):
+        if self.bot.logging[role.guild.id][0] is True:
+            embed = discord.Embed(color=role.color)
+            embed.description = f"Deleted Role `{role.name}`"
+            await (self.bot.get_channel(self.bot.logging[role.guild.id][1])).send(embed=embed)
 
 
 def setup(bot):
