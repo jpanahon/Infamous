@@ -58,12 +58,13 @@ shop_items = {"Super Strength": [12000, 'https://imgur.com/vbtnxdi.png',
                                  "Harness the power of electricity.", 420, 470]}
 
 
-class Rpg2:
+class Rpg2(commands.Cog, name="Infamous RPG"):
     def __init__(self, bot):
         self.bot = bot
         self.__doc__ = monologue
+        self.hp = {"p1": 0, "p2": 0}
 
-    async def __before_invoke(self, ctx):
+    async def cog_before_invoke(self, ctx):
         if self.bot.alerts[ctx.guild.id] is True:
             await ctx.send(
                 f"This RPG is being actively developed, which means there could be some errors that "
@@ -87,8 +88,16 @@ class Rpg2:
         await ctx.send(f"Choose an ability (You will be able to gain more abilities as you acquire more money). \n"
                        f"```prolog\n{', '.join(abilities)}.```")
 
-        async def check(m):
-            return m.author == ctx.author and m.content.title() in abilities
+        def check(m):
+            if not m.author or m.author.id != ctx.author.id:
+                return False
+
+            if m.channel.id != ctx.channel.id:
+                return False
+
+            if m.content.title() in abilities:
+                return True
+            return False
 
         active = True
         while active:
@@ -185,7 +194,7 @@ class Rpg2:
             if i[1] == stats[4]:
                 main = f"{i[1]} - Level {i[2]}"
             else:
-                ability.append(f"**{i[1]}** - DMG: {i[4]} DUR: {i[5]}")
+                ability.append(f"**{i[1]}** - DMG: {i[4]} DUR: {i[5]} \u200b")
 
         if ability:
             ability = '\n'.join(ability)
@@ -438,7 +447,7 @@ class Rpg2:
 
         await ctx.send("Do you accept this challenge? `Yes` or `No`")
         yon = await rpg.yon(ctx, user=user)
-        if yon == "Yes":
+        if yon in ["Yes", "Y"]:
             await ctx.send(f"{ctx.author.mention} Which two abilities do you choose to fight with? \n"
                            f"{', '.join(abilities1)}. (Type your choice like this: Super Speed, Telekinesis)")
 
@@ -507,6 +516,9 @@ class Rpg2:
         p = []
         for place, user in enumerate(lb):
             user_ = ctx.grab(user[0])
+            if not user_:
+                continue
+
             p.append((discord.Embed(color=self.bot.embed_color,
                                     description=f"**Level:** {user[1]} \n"
                                                 f"**Total XP:** {user[2]} \n"
@@ -532,7 +544,7 @@ class Rpg2:
         user = ctx.guild.get_member_named(str(user))
         await ctx.send(f"{user.mention} Do you accept this challenge? \nYes or No?")
         yon = await rpg.yon(ctx, user=user)
-        if yon == "Yes":
+        if yon in ["Yes", "Y"]:
             choice = random.choice([ctx.author, user])
             xp = random.randint(100, 200)
             mon = random.randint(100, 200)
@@ -583,7 +595,7 @@ class Rpg2:
         await ctx.send(f"Are you sure you want to create a guild? This will cost $1000")
         user = await rpg.fetch_user2(ctx)
         yon = await rpg.yon(ctx)
-        if yon == "Yes":
+        if yon in ["Yes", "Y"]:
             if user[3] >= 10000:
                 await ctx.send(f"You are now the leader and founder of {name}")
                 async with ctx.db.acquire() as db:
@@ -639,7 +651,7 @@ class Rpg2:
             await ctx.send(f"Are you sure you want to leave {guild_}? \n"
                            f"Yes or No?")
             yon = await rpg.yon(ctx)
-            if yon == "Yes":
+            if yon in ["Yes", "Y"]:
                 async with ctx.db.acquire() as db:
                     await db.execute("UPDATE profiles SET guild = NULL WHERE id=$1", ctx.author.id)
                 await ctx.send(f"You have left **{guild_}**")
@@ -664,7 +676,7 @@ class Rpg2:
                                "Yes or No?")
 
                 yon = await rpg.yon(ctx)
-                if yon == "Yes":
+                if yon in ["Yes", "Y"]:
                     async with ctx.db.acquire() as db:
                         await db.execute("UPDATE guilds SET leader = $1 WHERE guild=$2", user.id, guild_)
 
@@ -734,7 +746,7 @@ class Rpg2:
 
         await ctx.send(f"Do you {self.bot.get_user(user).mention}, wage war against {name}?")
         yon = await rpg.yon(ctx)
-        if yon == "Yes":
+        if yon in ["Yes", "Y"]:
             await ctx.send(f"{guild_} and {name} are at war; the war will end in 12 hours.")
             await asyncio.sleep(43200)
             choice = random.choice(guild_, name)
@@ -763,8 +775,13 @@ class Rpg2:
         await ctx.send("Pick a number between 1-10 to win a prize")
 
         def check(m):
-            return m.author == ctx.author and m.content.isdigit()
+            if not m.author or m.author.id != ctx.author.id:
+                return False
 
+            if m.content.isdigit():
+                return True
+
+            return False
         try:
             msg = int((await ctx.input('message', check=check, timeout=20)).content)
         except asyncio.TimeoutError:
@@ -818,9 +835,7 @@ class Rpg2:
 
         p = []
         image = None
-        current = 0
-        for i in ab_:
-            current += 1
+        for x, i in enumerate(ab_):
             if i not in shop_items.keys():
                 async with ctx.db.acquire() as db:
                     image = await db.fetchval("SELECT icon FROM abilities WHERE ability=$1 AND id=$2", i[1],
@@ -832,7 +847,7 @@ class Rpg2:
                                                f"**DUR**: {i[5]}")
                      .set_author(name=i[1])
                      .set_image(url=image or shop_items[i[1]][1])
-                     .set_footer(text=f"Page {current} of {len(ab_)}")
+                     .set_footer(text=f"Page {x+1} of {len(ab_)}")
                      )
 
         await ctx.paginate(entries=p)
@@ -846,7 +861,7 @@ class Rpg2:
                        "**Yes** or **No**")
 
         yon = await rpg.yon(ctx)
-        if yon == "Yes":
+        if yon in ["Yes", "Y"]:
             async with ctx.db.acquire() as db:
                 await db.execute("DELETE FROM profiles WHERE id=$1", ctx.author.id)
                 await db.execute("DELETE FROM abilities WHERE id=$1", ctx.author.id)
@@ -863,7 +878,7 @@ class Rpg2:
 
         await ctx.send("Are you sure you want to make a custom ability? It costs $20000")
         yon = await rpg.yon(ctx)
-        if yon == "Yes":
+        if yon in ["Yes", "Y"]:
             if user[3] >= 20000:
                 await ctx.send("What is the name of this custom ability")
 
@@ -922,9 +937,15 @@ class Rpg2:
                        f"`{', '.join(abilities1)}`")
 
         def check(m):
-            return m.author == ctx.author and \
-                   any(ability in m.content.title() for ability in abilities1) \
-                   and ', ' in m.content.title()
+            if not m.author or m.author.id != ctx.author.id:
+                return False
+
+            if m.channel != ctx.channel:
+                return False
+
+            if any(ability in m.content.title() for ability in abilities1) and ', ' in m.content.title():
+                return True
+            return False
 
         try:
             msg = (await ctx.input('message', check=check, timeout=60)).content.title()
@@ -943,80 +964,113 @@ class Rpg2:
         skill2 = [(shop_items[ability2][3] + random.randint(100, 1000)),
                   (shop_items[ability2][4] + random.randint(100, 1000))]
 
-        self.hp1 = skill1_[5] + skill2_[5]
-        self.hp2 = skill1[1] + skill2[1]
+        self.hp['p1'] = skill1_[5] + skill2_[5]
+        self.hp['p2'] = skill1[1] + skill2[1]
 
         active = True
         await ctx.send(f"{ctx.author.mention} choose an ability: {msg}")
         try:
             while active:
-                await rpg.turn(ctx, skill1_, skill2_, self.hp1, self.hp2, name)
+                await rpg.turn(ctx, skill1_, skill2_, self.hp['p1'], self.hp['p2'], name)
 
                 msg_ = random.choice([ability1, ability2])
                 if msg_ == ability1:
                     dmg = random.randint(10, round(skill1[0] / 2))
-                    if dmg > self.hp1 / 2:
+                    if dmg > self.hp['p1'] / 2:
                         chance = random.choice(["Hit", "Miss"])
-                        self.hp1 = self.hp1 - dmg
                         if chance == "Hit":
+                            self.hp['p1'] -= dmg
                             await ctx.send(
                                 f"**{name}** Your attack using your {msg_} has dealt {dmg}dmg \n"
-                                f"{ctx.author.mention} has {self.hp1}hp. "
+                                f"{ctx.author.mention} has `{self.hp['p1']}hp`. "
                                 f"{ctx.author.mention} pick an ability: {msg} ")
                         else:
-                            self.hp1 = self.hp1 - dmg
+                            self.hp['p2'] -= dmg
                             await ctx.send(
                                 f"**{name}** missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
-                                f"They now have {self.hp2}hp. "
+                                f"They now have `{self.hp['p2']}hp.` "
                                 f"{ctx.author.mention} pick an ability: {msg}")
+
+                            if self.hp['p2'] <= 0:
+                                xp = random.randint(250, 500)
+                                mon = random.randint(250, 500)
+                                await ctx.send(f"{ctx.author.mention} wins! They earn {xp}xp and ${mon}")
+                                await rpg.level2(ctx, mon, xp)
+                                await rpg.guild_level(ctx, xp)
+                                raise rpg.MatchEnd
                     else:
                         chance = random.choice(["Hit", "Miss"])
-                        self.hp1 = self.hp1 - dmg
                         if chance == "Hit":
+                            self.hp['p1'] -= dmg
                             await ctx.send(
                                 f"**{name}** Your attack using your {msg_} has dealt {dmg}dmg \n"
-                                f"{ctx.author.mention} has {self.hp1}hp. "
+                                f"{ctx.author.mention} has `{self.hp['p1']}hp.` "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                         else:
-                            self.hp1 = self.hp1 - dmg
+                            self.hp['p2'] -= dmg
                             await ctx.send(
                                 f"**{name}** missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
-                                f"They now have {self.hp2}hp. "
+                                f"They now have `{self.hp['p2']}hp.` "
                                 f"{ctx.author.mention} pick an ability: {msg}")
-                    if self.hp1 <= 0:
+                            if self.hp['p2'] <= 0:
+                                xp = random.randint(250, 500)
+                                mon = random.randint(250, 500)
+                                await ctx.send(f"{ctx.author.mention} wins! They earn {xp}xp and ${mon}")
+                                await rpg.level2(ctx, mon, xp)
+                                await rpg.guild_level(ctx, xp)
+                                raise rpg.MatchEnd
+
+                    if self.hp['p1'] <= 0:
                         await ctx.send(f"**{name}** wins!")
                         raise rpg.MatchEnd
                 else:
                     dmg = random.randint(10, round(skill2[0] / 2))
-                    if dmg > self.hp1 / 2:
+                    if dmg > self.hp['p1'] / 2:
                         chance = random.choice(["Hit", "Miss"])
-                        self.hp1 = self.hp1 - dmg
                         if chance == "Hit":
+                            self.hp['p1'] -= dmg
                             await ctx.send(
                                 f"**{name}** Your attack using your {msg_} has dealt {dmg}dmg \n"
-                                f"{ctx.author.mention} has {self.hp1}hp. "
+                                f"{ctx.author.mention} has `{self.hp['p1']}hp.` "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                         else:
-                            self.hp2 = self.hp2 - dmg
+                            self.hp['p2'] -= dmg
                             await ctx.send(
                                 f"**{name}** missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
-                                f"They now have {self.hp2}hp. "
+                                f"They now have `{self.hp['p2']}hp.` "
                                 f"{ctx.author.mention} pick an ability: {msg}")
+
+                            if self.hp['p2'] <= 0:
+                                xp = random.randint(250, 500)
+                                mon = random.randint(250, 500)
+                                await ctx.send(f"{ctx.author.mention} wins! They earn {xp}xp and ${mon}")
+                                await rpg.level2(ctx, mon, xp)
+                                await rpg.guild_level(ctx, xp)
+                                raise rpg.MatchEnd
                     else:
                         chance = random.choice(["Hit", "Miss"])
-                        self.hp1 = self.hp1 - dmg
                         if chance == "Hit":
+                            self.hp['p1'] -= dmg
                             await ctx.send(
                                 f"**{name}** Your attack using your {msg_} has dealt {dmg}dmg \n"
-                                f"{ctx.author.mention} has {self.hp1} hp. "
+                                f"{ctx.author.mention} has `{self.hp['p1']} hp.` "
                                 f"{ctx.author.mention} pick an ability: {msg}")
                         else:
-                            self.hp2 = self.hp2 - dmg
+                            self.hp['p2'] -= dmg
                             await ctx.send(
                                 f"**{name}** missed! Causing {ctx.author.mention} to deal {dmg}dmg \n"
-                                f"They now have {self.hp2}hp. "
+                                f"They now have `{self.hp['p2']}hp.` "
                                 f"{ctx.author.mention} pick an ability: {msg}")
-                    if self.hp1 <= 0:
+
+                            if self.hp['p2'] <= 0:
+                                xp = random.randint(250, 500)
+                                mon = random.randint(250, 500)
+                                await ctx.send(f"{ctx.author.mention} wins! They earn {xp}xp and ${mon}")
+                                await rpg.level2(ctx, mon, xp)
+                                await rpg.guild_level(ctx, xp)
+                                raise rpg.MatchEnd
+
+                    if self.hp['p1'] <= 0:
                         await ctx.send(f"**{name}** wins!")
                         raise rpg.MatchEnd
         except rpg.MatchEnd:
