@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 from discord.ext import commands
 
 
-class Imagem:
+class Imagem(commands.Cog, name="Image Manipulation"):
     """Commands that edit images."""
 
     def __init__(self, bot: commands.Bot):
