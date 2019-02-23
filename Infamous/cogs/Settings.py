@@ -6,7 +6,7 @@ from discord.ext import commands
 logging.basicConfig(level=logging.INFO)
 
 
-class Settings:
+class Settings(commands.Cog):
     """Commands that changes the configuration of the bot for each server."""
 
     def __init__(self, bot):
