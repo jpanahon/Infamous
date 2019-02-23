@@ -13,7 +13,7 @@ def _splice(s1, s2):
     return s1[:len(s1) // 2] + s2[len(s2) // 2:]
 
 
-class Fun:
+class Fun(commands.Cog):
     """Commands that are made to have fun."""
 
     def __init__(self, bot):
@@ -114,7 +114,7 @@ class Fun:
             [x for x in ctx.guild.members if not x.bot]
         )
         gay2 = random.choice(
-            [x for x in ctx.guild.members if not x.bot]
+            [x for x in ctx.guild.members if not x.bot and gay]
         )
         embed = discord.Embed(title="Random Gay Couple",
                               description=f"<@{gay.id}> and <@{gay2.id}> have a gay/lesbian "
