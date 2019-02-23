@@ -80,7 +80,7 @@ class Bot(commands.Bot):
         self.launch_time = datetime.datetime.utcnow()
         self.db = kwargs.pop("db")
         self.prefixes = kwargs.pop("prefixes")
-        self.embed_color = 0x101010
+        self.embed_color = 0x740f10
         self.disabled_commands = kwargs.pop("disabled")
         self.blocked = kwargs.pop("blocked")
         self.alerts = kwargs.pop("alerts")
