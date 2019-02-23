@@ -10,13 +10,14 @@ from .utils.functions import CustomCTX
 logging.basicConfig(level=logging.INFO)
 
 
-class Events:
+class Events(commands.Cog):
     """Events."""
 
     def __init__(self, bot):
         self.bot = bot
 
     # Meant for speaking through bot
+    @commands.Cog.listener()
     async def on_message(self, message):
         if not message.guild:
             return
@@ -34,10 +35,7 @@ class Events:
                 except discord.Forbidden:
                     await message.channel.send("Don't post invite links.")
 
-            if message.author.id == 316540331954798592:
-                if message.attachments:
-                    await message.delete()
-
+    @commands.Cog.listener()
     async def on_message_edit(self, before, after):
         if after.author.id in [299879858572492802, 507490400534265856]:
             if before.content != after.content:
@@ -46,6 +44,7 @@ class Events:
                     command = self.bot.get_command("eval")
                     await ctx.invoke(command, body=after.content.strip(f"{ctx.prefix}eval "))
 
+    @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         error = getattr(error, 'original', error)
         ignored = (commands.CommandNotFound, commands.UserInputError)
@@ -91,10 +90,10 @@ class Events:
         elif isinstance(error, commands.CheckFailure):
             return await ctx.send(error)
 
-        await ctx.send("An error has occurred, don't worry this will be troubleshooted directly to the owner.")
+        await ctx.send("Oh no! Error has occurred. Action will be taken soon.")
         try:
             raise error
-        except:
+        except type(error):
             owner = self.bot.get_user(299879858572492802)
             await owner.send(f"```py\n{traceback.format_exc()}```")
             await owner.send(f"**Executed by:** `{ctx.author} ({ctx.author.id})` \n"
@@ -109,10 +108,12 @@ class Events:
         print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
+    @commands.Cog.listener()
     async def on_guild_join(self, guild):
         self.bot.prefixes[guild.id] = None
         self.bot.disabled_commands[guild.id] = []
         self.bot.alerts[guild.id] = True
+        self.bot.logging[guild.id] = [False, None]
         async with self.bot.db.acquire() as db:
             await db.execute("INSERT INTO settings VALUES($1)", guild.id)
             await db.execute("UPDATE settings SET alerts=TRUE WHERE guild=$1", guild.id)
@@ -123,26 +124,15 @@ class Events:
         async with aiohttp.ClientSession() as s:
             await s.post(url, data=payload, headers=headers)
 
-        if not discord.utils.get(guild.roles, name="Muted"):
-            try:
-                await guild.create_role(name='Muted', reason='Created by Infamous to use for muting.')
-            except discord.Forbidden:
-                pass
-
-            try:
-                muted = discord.utils.get(guild.roles, name="Muted")
-                for channel in guild.text_channels:
-                    await channel.set_permissions(muted, send_messages=False)
-            except discord.Forbidden:
-                pass
-
+    @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         del self.bot.prefixes[guild.id]
         del self.bot.disabled_commands[guild.id]
         del self.bot.alerts[guild.id]
+        del self.bot.logging[guild.id]
         async with self.bot.db.acquire() as db:
             await db.execute("DELETE FROM settings WHERE guild=$1", guild.id)
-            await db.execute("DELETE FROM wiki WHERE guild_id=$1", guild.id)
+            await db.execute("DELETE FROM wiki WHERE guild=$1", guild.id)
 
         url = f"https://discordbots.org/api/bots/{self.bot.user.id}/stats"
         headers = {"Authorization": os.getenv("DBL")}
