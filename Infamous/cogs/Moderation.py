@@ -154,7 +154,7 @@ class Moderation(commands.Cog):
     async def on_message_delete(self, message):
         if self.bot.logging[message.guild.id][0] is True:
             embed = discord.Embed(color=message.author.color)
-            embed.set_author(name=message.author)
+            embed.set_author(name=message.author, icon_url=message.author.avatar_url)
             embed.description = message.content
             if message.attachments:
                 embed.set_image(url=message.attachments[0].url)
@@ -166,7 +166,7 @@ class Moderation(commands.Cog):
     async def on_message_edit(self, before, after):
         if self.bot.logging[before.guild.id][0] is True:
             embed = discord.Embed(color=before.author.color)
-            embed.set_author(name=before.author)
+            embed.set_author(name=before.author, icon_url=before.author)
             embed.title = "Before"
             embed.description = before.content
             embed.add_field(name="After", value=after.content, inline=False)
@@ -181,7 +181,7 @@ class Moderation(commands.Cog):
         if self.bot.logging[before.guild.id][0] is True:
             if before.nick != after.nick:
                 embed = discord.Embed(color=before.color)
-                embed.set_author(name=before)
+                embed.set_author(name=before, icon_url=before.avatar_url)
                 embed.title = "Before"
                 embed.description = before.nick
                 embed.add_field(name="After", value=after.nick, inline=False)
@@ -190,7 +190,7 @@ class Moderation(commands.Cog):
                 await (self.bot.get_channel(self.bot.logging[before.guild.id][1])).send(embed=embed)
             elif before.roles != after.roles:
                 embed = discord.Embed(color=after.author.color)
-                embed.set_author(name=before.author)
+                embed.set_author(name=before, icon_url=before.avatar_url)
                 embed.title = "Before"
                 embed.description = ", ".join([x.mention for x in before.roles])
                 embed.add_field(name="After", value=", ".join([x.mention for x in after.roles]))
