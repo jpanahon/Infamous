@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 import asyncio
 
-embed_color = 0x101010
+embed_color = 0x740f10
 
 
 def time_(time):
@@ -93,6 +93,8 @@ class Paginator:
     async def setup(self):
         if self.embed is False:
             try:
+                self.entries = [x.set_footer(text=f"Page {y+1} of {len(self.entries)}") for y, x in enumerate(
+                    self.entries)]
                 self.msg = await self.channel.send(self.entries[0])
             except AttributeError:
                 await self.channel.send(self.entries)
@@ -142,7 +144,7 @@ class Paginator:
         def check(m):
             if m.author == self.user_:
                 return True
-            if m.message == self.msg:
+            if m.id == self.msg.id:
                 return True
             if int(m.content) > 1 <= self.max_pages + 1:
                 return True
