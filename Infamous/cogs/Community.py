@@ -2,10 +2,11 @@ import asyncio
 import datetime
 import logging
 import parawrap
-import aiohttp
 import discord
+import pytz
 from discord.ext import commands
 from .utils.rpg_tools import yon
+from .utils.functions import time_
 
 
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,7 @@ class Wiki:
         self.input = ctx.input
         self.prefix = ctx.prefix
         self.context = ctx
+        self.image = None
         self.command = ctx.command
         self.colors = {"Blue": 0x0000FF, "Red": 0xFF0000,
                        "Orange": 0xFF7F00, "Yellow": 0xFFFF00,
@@ -205,6 +207,10 @@ class Wiki:
             if choice == "Color":
                 new = new.capitalize()
 
+            if choice == "Image":
+                if new.attachments:
+                    new = new.attachments[0].url
+
             await self.channel.send(f"The value for {choice} has been changed to: **{new}**")
 
             if self.author.id == info[6] or self.author.id in c:
@@ -223,7 +229,7 @@ class Wiki:
                 "create.")
 
 
-class Community:
+class Community(commands.Cog):
     """Things written by the community of this bot."""
 
     def __init__(self, bot):
@@ -294,7 +300,7 @@ class Community:
             p = []
             for x, y in enumerate(pages):
                 guild = ctx.bot.get_guild(y[1])
-                c = '\n'.join([f"**{(guild.get_member(i[2])).display_name}**" for i in contributors if i[2] ==
+                c = '\n'.join([f"**{(guild.get_member(i[2])).display_name}**" for i in contributors if i[0] ==
                                y[0]])
                 p.append(discord.Embed(color=self.bot.embed_color,
                                        description=f"Created by {(guild.get_member(y[6])).mention}",
