@@ -33,6 +33,7 @@ async def run():
     prefixes = {}
     disabled = {}
     alerts = {}
+    logging = {}
 
     async with db.acquire() as conn:
         settings = await conn.fetch("SELECT * FROM settings")
@@ -45,13 +46,14 @@ async def run():
         else:
             disabled[i[0]] = i[2].split(', ')
         alerts[i[0]] = i[3]
+        logging[i[0]] = [i[4], i[5]]
 
     blocked = {}
     for i in block:
         blocked[i[0]] = i[1]
 
     bot = Bot(description='A community bot for the server Fame', db=db, prefixes=prefixes,
-              disabled=disabled, blocked=blocked, alerts=alerts)
+              disabled=disabled, blocked=blocked, alerts=alerts, logging=logging)
     try:
         await bot.start(os.getenv('TOKEN'))
     except KeyboardInterrupt:
@@ -82,6 +84,7 @@ class Bot(commands.Bot):
         self.disabled_commands = kwargs.pop("disabled")
         self.blocked = kwargs.pop("blocked")
         self.alerts = kwargs.pop("alerts")
+        self.logging = kwargs.pop("logging")
         self.lines = self.lines_of_code()
         self.chunk = self.chunk
         self.session = aiohttp.ClientSession(loop=self.loop)
