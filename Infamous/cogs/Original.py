@@ -13,7 +13,7 @@ from .utils import checks
 logging.basicConfig(level=logging.INFO)
 
 
-class Original:
+class Original(commands.Cog):
     """Fun commands that were made with an original concept."""
 
     def __init__(self, bot):
