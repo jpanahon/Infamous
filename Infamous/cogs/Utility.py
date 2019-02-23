@@ -81,7 +81,7 @@ class TabularData:
         return '\n'.join(to_draw)
 
 
-class Utility:
+class Utility(commands.Cog):
     """Commands that provide information and debugging."""
 
     def __init__(self, bot):
@@ -351,6 +351,16 @@ class Utility:
             await ctx.paginate(entries=p)
         else:
             await ctx.send(embed=funct.ud_embed(definition[0], 1, 1))
+
+    @ud.error
+    async def ud_handler(self, ctx, error):
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(color=self.bot.embed_color)
+            embed.title = ctx.command.signature
+            embed.description = ctx.command.help
+            return await ctx.send(embed=embed)
+        elif isinstance(error, commands.CommandInvokeError):
+            return await ctx.send("There are no entries found.")
 
     # User Avatar
     @commands.command(aliases=['av', 'pfp'])
