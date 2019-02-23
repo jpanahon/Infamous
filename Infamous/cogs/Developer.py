@@ -12,12 +12,11 @@ from discord import Webhook, AsyncWebhookAdapter
 from discord.ext import commands
 
 from .utils import checks
-from .utils.paginator import SimplePaginator
 
 logging.basicConfig(level=logging.INFO)
 
 
-class Developer:
+class Developer(commands.Cog):
     """Hidden Commands"""
 
     def __init__(self, bot):
@@ -59,7 +58,6 @@ class Developer:
             await ctx.message.add_reaction(':BlurpleX:452390303698124800')
         else:
             await ctx.message.add_reaction(':BlurpleCheck:452390337382449153')
-
 
     @commands.command(hidden=True)
     @checks.is_admin()
@@ -245,7 +243,7 @@ class Developer:
     @checks.is_admin()
     async def block(self, ctx, user: discord.Member, *, reason):
         try:
-            async with ctx.bot.db.acquire() as db:
+            async with ctx.db.acquire() as db:
                 await db.execute("INSERT INTO blocked VALUES($1, $2)", user.id, reason)
 
             self.bot.blocked[user.id] = reason
@@ -258,7 +256,7 @@ class Developer:
     @checks.is_admin()
     async def unblock(self, ctx, user: discord.Member):
         try:
-            async with ctx.bot.db.acquire() as db:
+            async with ctx.db.acquire() as db:
                 await db.execute("DELETE FROM blocked WHERE id=$1", user.id)
 
             del self.bot.blocked[user.id]
@@ -283,12 +281,10 @@ class Developer:
     @commands.command(hidden=True)
     async def guilds(self, ctx):
         p = []
-        number = 0
-        for guild in self.bot.guilds:
-            number += 1
+        for page, guild in enumerate(self.bot.guilds):
             p.append(discord.Embed(color=self.bot.embed_color, description=f"Owned by: {guild.owner}",
                                    timestamp=guild.created_at)
-                     .set_author(name=f"{guild.name} | Page {number} of {len(self.bot.guilds)}")
+                     .set_author(name=f"{guild.name} | Page {page+1} of {len(self.bot.guilds)}")
                      .add_field(name="Users", value=len([m for m in guild.members if not m.bot]), inline=True)
                      .add_field(name="Bots", value=len([m for m in guild.members if m.bot]), inline=True)
                      .add_field(name="Roles", value=len([m for m in guild.roles if not m.name == "@everyone"]))
@@ -298,9 +294,10 @@ class Developer:
                      .set_footer(text="Created at")
                      )
 
-        await SimplePaginator(extras=p).paginate(ctx)
+        await ctx.paginate(entries=p)
 
-    @commands.command()
+    @commands.command(hidden=True)
+    @checks.is_admin()
     async def blocked(self, ctx):
         p = []
         for user in self.bot.blocked.keys():
