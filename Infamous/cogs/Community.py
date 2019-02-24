@@ -3,7 +3,6 @@ import datetime
 import logging
 import parawrap
 import discord
-import pytz
 from discord.ext import commands
 from .utils.rpg_tools import yon
 from .utils.functions import time_
