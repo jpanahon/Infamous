@@ -31,7 +31,7 @@ class Help(commands.Cog):
         cmds_ = [self.information()]
         cogs = ctx.bot.cogs
         for i in cogs:
-            cmd_ = ctx.bot.get_cog_commands(i)
+            cmd_ = ctx.bot.get_cog(i).get_commands()
             cmd_ = [x for x in cmd_ if not x.hidden]
             for x in list(self.bot.chunk(list(cmd_), 6)):
                 embed = discord.Embed(color=self.bot.embed_color)
@@ -47,12 +47,12 @@ class Help(commands.Cog):
                 )
         return cmds_
 
-    def cog_helper(self, ctx, cog):
+    def cog_helper(self, cog):
         """Displays commands from a cog"""
 
         name = cog.__class__.__name__
         cmds_ = []
-        cmd = [x for x in ctx.bot.get_cog_commands(name) if not x.hidden]
+        cmd = [x for x in cog.get_commands() if not x.hidden]
         if not cmd:
             return (discord.Embed(color=self.bot.embed_color,
                                   description=f"{name} commands are hidden.")
@@ -106,7 +106,7 @@ class Help(commands.Cog):
             if isinstance(thing, commands.Command):
                 await ctx.paginate(entries=self.command_helper(thing))
             else:
-                await ctx.paginate(entries=self.cog_helper(ctx, thing))
+                await ctx.paginate(entries=self.cog_helper(thing))
 
 
 def setup(bot):
