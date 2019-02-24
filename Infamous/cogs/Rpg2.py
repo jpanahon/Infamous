@@ -491,7 +491,9 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
             try:
                 while active:
                     await rpg.turn(ctx, skill1_, skill2_, hp, hp2, user, user=None)
+                    await ctx.send(f"{user.mention} pick an ability: {msg2}")
                     await rpg.turn(ctx, skill1, skill2, hp2, hp, ctx.author, user=user)
+                    await ctx.send(f"{ctx.author.mention} pick an ability: {msg}")
             except rpg.MatchEnd:
                 pass
         else:
