@@ -123,6 +123,8 @@ class Moderation(commands.Cog):
 
     @commands.command()
     async def purge(self, ctx, amount: int, user: discord.Member = None):
+        """Delete x amount of messages in chat"""
+        
         if user:
             await ctx.channel.purge(amount=amount + 1, check=lambda e: e.author == user)
             await ctx.send(f"Purged {amount} messages from **{user}**.", delete_after=15)
@@ -130,9 +132,24 @@ class Moderation(commands.Cog):
         await ctx.channel.purge(amount=amount + 1)
         await ctx.send(f"Purged {amount} messages.", delete_after=15)
 
-    async def automod(self, ctx, channel):
+    @commands.group(invoke_without_command=True, case_insensitive=True)
+    async def logging(self, ctx):
+        """Checks if logging is enabled."""
+        
+        if self.bot.logging[ctx.guild.id][0] is True:
+            await ctx.send(f"Logging is enabled for **{ctx.guild.name}**")
+        else:
+            await ctx.send(f"Logging is disabled for **{ctx.guild.name}**")
+
+    @logging.command(name="enable")
+    async def enable_(self, ctx, channel: discord.TextChannel=None):
+        """Enables logging on current/specified channel"""
+
+        channel = channel or ctx.channel
+
         async with ctx.db.acquire() as db:
             d = await db.fetchval("SELECT logging FROM settings WHERE guild=$1", ctx.guild.id)
+            d_ = await db.fetchval("SELECT logchannel FROM settings WHERE guild=$1", ctx.guild.id)
 
         if d is False:
             async with ctx.db.acquire() as db:
@@ -140,16 +157,22 @@ class Moderation(commands.Cog):
                                  ctx.guild.id)
             self.bot.logging[ctx.guild.id] = [True, channel.id]
             await ctx.send(f"Logging all actions to {channel.mention}")
-        else:
+        elif channel.id != d_:
             async with ctx.db.acquire() as db:
-                await db.execute("UPDATE settings SET logging=FALSE, logchannel=NULL")
-            self.bot.logging[ctx.guild.id] = [False, None]
-            await ctx.send("Logging has been disabled.")
+                await db.execute("UPDATE settings SET logchannel=$1 WHERE guild=$2", channel.id, ctx.guild.id)
+            self.bot.logging[ctx.guild.id][1] = channel.id
+            await ctx.send(f"Changed log channel to {channel.mention}")
 
-    @commands.command()
-    async def logging(self, ctx, channel: discord.TextChannel=None):
-        channel = channel or ctx.channel
-        await self.automod(ctx, channel)
+    @logging.command(name="disable")
+    async def disable_(self, ctx):
+        """Disables logging on server"""
+        
+        if self.bot.logging[ctx.guild.id][0] is True:
+            self.bot.logging[ctx.guild.id][0] = False
+            async with ctx.db.acquire() as db:
+                await db.execute("UPDATE settings SET logging=FALSE, logchannel=NULL WHERE guild=$1", ctx.guild.id)
+            await ctx.send("Disabled logging for this server.")
+        await ctx.send("Logging is already disabled.")
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
