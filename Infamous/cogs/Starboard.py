@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from datetime import datetime
-from .utils.functions import CustomCTX
+from .utils.functions import Awareness
 
 
 class Starboard:
@@ -119,7 +119,7 @@ class Stars(commands.Cog):
         if user.guild is None or user.guild.id != 258801388836880385:
             return
 
-        ctx = await self.bot.get_context(reaction.message, cls=CustomCTX)
+        ctx = await self.bot.get_context(reaction.message, cls=Awareness)
         s = Starboard(ctx, reaction.message, user, reaction)
         await s.start()
 
@@ -127,7 +127,7 @@ class Stars(commands.Cog):
         if user.guild is None or user.guild.id != 258801388836880385:
             return
 
-        ctx = await self.bot.get_context(reaction.message, cls=CustomCTX)
+        ctx = await self.bot.get_context(reaction.message, cls=Awareness)
         s = Starboard(ctx, reaction.message, user, reaction)
         await s.remover()
 
