@@ -29,9 +29,8 @@ class Redeemed(commands.Converter):
 
 
 async def muted_role(ctx):
-    try:
-        return discord.utils.get(ctx.guild.roles, name="Muted")
-    except discord.HTTPException:
+    muted = discord.utils.get(ctx.guild.roles, name="Muted")
+    if muted is None:
         role = await ctx.guild.create_role(name="Muted", reason="To mute people")
         for channel in ctx.guild.channels:
             await channel.set_permissions(role, send_messages=False,
@@ -39,6 +38,7 @@ async def muted_role(ctx):
                                           read_messages=False)
 
         return discord.utils.get(ctx.guild.roles, name="Muted")
+    return muted
 
 
 class Moderation(commands.Cog):
@@ -57,52 +57,57 @@ class Moderation(commands.Cog):
             return await ctx.send(error)
 
     @commands.command()
-    async def mute(self, ctx, user: Sinner = None, reason=None):
+    async def mute(self, ctx, user: commands.Greedy[Sinner] = None, *, reason=None):
         """Silences a person"""
 
         user = user or await ctx.send("Pick a user to mute.")
-        reason = reason or "No reason provided."
-        await ctx.send(f"Are you sure you want to mute {user.mention} for **{reason}**?")
+        reason = reason or "No reason provided"
+        await ctx.send(f"Are you sure you want to mute {', '.join(x.mention for x in user)} for **{reason}**?")
         yon = await choose(ctx)
-        if yon == "Yes":
+        if any(w in yon for w in ["yes", "y"]):
             try:
-                await user.add_roles(await muted_role(ctx), reason=reason)
+                for user_ in user:
+                    await user_.add_roles(await muted_role(ctx), reason=reason)
             except discord.Forbidden:
                 await ctx.send("Did you try banning someone higher than you in role, "
                                "or did you try to ban the server owner?")
             else:
-                await ctx.send(f"**{user.mention}** has been muted for **{reason}**")
+                await ctx.send(f"**{', '.join(x.mention for x in user)}** has been muted for **{reason}**")
         else:
             await ctx.send("I guessed you changed your mind.")
 
     @commands.command()
-    async def unmute(self, ctx, user: Redeemed = None):
+    async def unmute(self, ctx, user: commands.Greedy[Redeemed] = None):
         """Unmutes the silenced"""
 
         user = user or await ctx.send("Provide a user")
-        await user.remove_roles(await muted_role(ctx))
+        for user_ in user:
+            await user_.remove_roles(await muted_role(ctx))
+        await ctx.send(f"Unmuted {', '.join(x.mention for x in user)}")
 
     @commands.command()
-    async def ban(self, ctx, user: Sinner = None, reason=None):
+    async def ban(self, ctx, user: commands.Greedy[Sinner] = None, *, reason=None):
         """Gets rid of troublemakers"""
 
         user = user or await ctx.send("Provide a user")
         reason = reason or "No reason provided"
 
-        await ctx.send(f"Are you sure you want to ban {user.mention} for **{reason}**")
+        await ctx.send(f"Are you sure you want to ban {', '.join(x.mention for x in user)} for **{reason}**")
         yon = await choose(ctx)
-        if yon == "Yes":
+        if any(w in yon for w in ["yes", "y"]):
             try:
-                await ctx.guild.ban(user, reason=f"For {reason} by {ctx.author}")
-                await user.send(f"You have been banned by {ctx.author} for {reason}")
+                for user_ in user:
+                    await ctx.guild.ban(user_, reason=f"For {reason} by {ctx.author}")
+                    await user_.send(f"You have been banned by {ctx.author} for {reason}")
             except discord.Forbidden:
                 await ctx.send("Did you try banning someone higher than you in role, "
                                "or did you try to ban the server owner?")
             else:
-                await ctx.send(f"**{user}** has been banned from the server for **{reason}**")
+                await ctx.send(f"**{', '.join(x.mention for x in user)}** has been banned from the server for "
+                               f"**{reason}**")
 
     @commands.command()
-    async def softban(self, ctx, user: Sinner = None, reason=None):
+    async def softban(self, ctx, user: commands.Greedy[Sinner] = None, reason=None):
         """The perfect placebo"""
 
         user = user or await ctx.send("Provide a user")
@@ -110,11 +115,12 @@ class Moderation(commands.Cog):
 
         await ctx.send(f"Are you sure you want to ban {user.mention} for **{reason}**")
         yon = await choose(ctx)
-        if yon == "Yes":
+        if any(w in yon for w in ["yes", "y"]):
             try:
-                await ctx.guild.ban(user, reason=f"For {reason} by {ctx.author}")
-                await user.send(f"You have been banned by {ctx.author} for {reason}")
-                await ctx.guild.unban(user, reason=f"Was softbanned by {ctx.author} for {reason}")
+                for user_ in user:
+                    await ctx.guild.ban(user_, reason=f"For {reason} by {ctx.author}")
+                    await user.send(f"You have been banned by {ctx.author} for {reason}")
+                    await ctx.guild.unban(user_, reason=f"Was softbanned by {ctx.author} for {reason}")
             except discord.Forbidden:
                 await ctx.send("Did you try banning someone higher than you in role, "
                                "or did you try to softban the server owner?")
@@ -123,8 +129,6 @@ class Moderation(commands.Cog):
 
     @commands.command()
     async def purge(self, ctx, amount: int, user: discord.Member = None):
-        """Delete x amount of messages in chat"""
-        
         if user:
             await ctx.channel.purge(amount=amount + 1, check=lambda e: e.author == user)
             await ctx.send(f"Purged {amount} messages from **{user}**.", delete_after=15)
@@ -135,7 +139,6 @@ class Moderation(commands.Cog):
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def logging(self, ctx):
         """Checks if logging is enabled."""
-        
         if self.bot.logging[ctx.guild.id][0] is True:
             await ctx.send(f"Logging is enabled for **{ctx.guild.name}**")
         else:
@@ -143,8 +146,6 @@ class Moderation(commands.Cog):
 
     @logging.command(name="enable")
     async def enable_(self, ctx, channel: discord.TextChannel=None):
-        """Enables logging on current/specified channel"""
-
         channel = channel or ctx.channel
 
         async with ctx.db.acquire() as db:
@@ -165,8 +166,6 @@ class Moderation(commands.Cog):
 
     @logging.command(name="disable")
     async def disable_(self, ctx):
-        """Disables logging on server"""
-        
         if self.bot.logging[ctx.guild.id][0] is True:
             self.bot.logging[ctx.guild.id][0] = False
             async with ctx.db.acquire() as db:
@@ -179,7 +178,7 @@ class Moderation(commands.Cog):
         if self.bot.logging[message.guild.id][0] is True:
             embed = discord.Embed(color=message.author.color)
             embed.set_author(name=message.author, icon_url=message.author.avatar_url)
-            embed.description = message.content
+            embed.description = message.content or "\u200b"
             if message.attachments:
                 embed.set_image(url=message.attachments[0].url)
             embed.set_footer(text="Message deleted at")
