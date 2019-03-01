@@ -7,7 +7,7 @@ import aiohttp
 import asyncpg
 import discord
 from discord.ext import commands
-from cogs.utils.functions import CustomCTX
+from cogs.utils.functions import Awareness
 
 
 initial_extensions = (
@@ -144,7 +144,7 @@ class Bot(commands.Bot):
     async def on_message(self, message):
         if message.author.bot:
             return
-        ctx = await self.get_context(message, cls=CustomCTX)
+        ctx = await self.get_context(message, cls=Awareness)
         await self.invoke(ctx)
 
     async def check_if_disabled(self, ctx):
