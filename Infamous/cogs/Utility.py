@@ -5,9 +5,10 @@ import time
 import traceback
 from contextlib import redirect_stdout
 from datetime import datetime
-
+import random
 import discord
 import psutil
+import typing
 from discord.ext import commands
 from .utils import functions as funct
 from dateutil.relativedelta import relativedelta
@@ -347,7 +348,7 @@ class Utility(commands.Cog):
             definition = json_data['list']
 
         if len(definition) > 1:
-            p = [funct.ud_embed(i, n+1, len(definition)) for n, i in enumerate(definition)]
+            p = [funct.ud_embed(i, n + 1, len(definition)) for n, i in enumerate(definition)]
             await ctx.paginate(entries=p)
         else:
             await ctx.send(embed=funct.ud_embed(definition[0], 1, 1))
@@ -398,6 +399,50 @@ class Utility(commands.Cog):
                            )
 
         await ctx.send(f"Your suggestion has been sent!")
+
+    @commands.command(aliases=['red', 're'])
+    async def reddit(self, ctx, sr: str=None, sort='hot'):
+        """Retrieve something from Reddit"""
+
+        if not sr:
+            link = f"https://www.reddit.com/r/random.json?sort={sort}"
+        else:
+            link = f"https://www.reddit.com/r/{sr}/new.json?sort={sort}"
+
+        async with ctx.bot.session.get(link) as resp:
+            json_data = await resp.json()
+            sub = json_data['data']['children']
+
+        if not sub:
+            await ctx.send(f"The subreddit `r/{sr}` does not exist.")
+
+        p = []
+        for i in sub:
+            line = i['data']
+            text = line['selftext'].replace("&amp;#x200B;", "\u200b")
+            if text:
+                n = 2048
+                pages = [text[i:i + n] for i in range(0, len(text), n)]
+                for n, x in enumerate(pages):
+                    embed = discord.Embed(color=self.bot.embed_color)
+                    embed.set_author(name=line['title'] + f' (Page {n+1} of {len(pages)})')
+                    embed.description = x
+                    if line['url']:
+                        embed.set_image(url=line['url'])
+
+                    embed.set_footer(text=f'From r/{line["subreddit"]} | Entry {sub.index(i)+1} of {len(sub)}')
+                    p.append(embed)
+
+            else:
+                e = discord.Embed(color=self.bot.embed_color)
+                e.set_author(name=line['title'])
+                e.set_image(url=line['url'])
+                e.set_footer(text=f"From r/{line['subreddit']}")
+                p.append(e)
+                for n, x in enumerate(p):
+                    x.set_footer(text=f'Page {n+1} of {len(sub)} | From r/{line["subreddit"]}')
+
+        await ctx.paginate(entries=p, embed=True, timeout=300)
 
 
 def setup(bot):
