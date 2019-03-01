@@ -5,7 +5,7 @@ import aiohttp
 import traceback
 import discord
 from discord.ext import commands
-from .utils.functions import CustomCTX
+from .utils.functions import Awareness
 
 logging.basicConfig(level=logging.INFO)
 
@@ -39,7 +39,7 @@ class Events(commands.Cog):
     async def on_message_edit(self, before, after):
         if after.author.id in [299879858572492802, 507490400534265856]:
             if before.content != after.content:
-                ctx = await self.bot.get_context(after, cls=CustomCTX)
+                ctx = await self.bot.get_context(after, cls=Awareness)
                 if f"{ctx.prefix}eval" in after.content:
                     command = self.bot.get_command("eval")
                     await ctx.invoke(command, body=after.content.strip(f"{ctx.prefix}eval "))
