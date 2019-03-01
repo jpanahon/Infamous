@@ -447,7 +447,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
 
         await ctx.send("Do you accept this challenge? `Yes` or `No`")
         yon = await rpg.yon(ctx, user=user)
-        if yon in ["Yes", "Y"]:
+        if any(w in yon for w in ["yes", "y"]):
             await ctx.send(f"{ctx.author.mention} Which two abilities do you choose to fight with? \n"
                            f"{', '.join(abilities1)}. (Type your choice like this: Super Speed, Telekinesis)")
 
@@ -546,7 +546,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
         user = ctx.guild.get_member_named(str(user))
         await ctx.send(f"{user.mention} Do you accept this challenge? \nYes or No?")
         yon = await rpg.yon(ctx, user=user)
-        if yon in ["Yes", "Y"]:
+        if any(w in yon for w in ["yes", "y"]):
             choice = random.choice([ctx.author, user])
             xp = random.randint(100, 200)
             mon = random.randint(100, 200)
@@ -597,7 +597,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
         await ctx.send(f"Are you sure you want to create a guild? This will cost $1000")
         user = await rpg.fetch_user2(ctx)
         yon = await rpg.yon(ctx)
-        if yon in ["Yes", "Y"]:
+        if any(w in yon for w in ["yes", "y"]):
             if user[3] >= 10000:
                 await ctx.send(f"You are now the leader and founder of {name}")
                 async with ctx.db.acquire() as db:
@@ -653,7 +653,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
             await ctx.send(f"Are you sure you want to leave {guild_}? \n"
                            f"Yes or No?")
             yon = await rpg.yon(ctx)
-            if yon in ["Yes", "Y"]:
+            if any(w in yon for w in ["yes", "y"]):
                 async with ctx.db.acquire() as db:
                     await db.execute("UPDATE profiles SET guild = NULL WHERE id=$1", ctx.author.id)
                 await ctx.send(f"You have left **{guild_}**")
@@ -678,7 +678,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
                                "Yes or No?")
 
                 yon = await rpg.yon(ctx)
-                if yon in ["Yes", "Y"]:
+                if any(w in yon for w in ["yes", "y"]):
                     async with ctx.db.acquire() as db:
                         await db.execute("UPDATE guilds SET leader = $1 WHERE guild=$2", user.id, guild_)
 
@@ -748,7 +748,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
 
         await ctx.send(f"Do you {self.bot.get_user(user).mention}, wage war against {name}?")
         yon = await rpg.yon(ctx)
-        if yon in ["Yes", "Y"]:
+        if any(w in yon for w in ["yes", "y"]):
             await ctx.send(f"{guild_} and {name} are at war; the war will end in 12 hours.")
             await asyncio.sleep(43200)
             choice = random.choice(guild_, name)
@@ -863,7 +863,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
                        "**Yes** or **No**")
 
         yon = await rpg.yon(ctx)
-        if yon in ["Yes", "Y"]:
+        if any(w in yon for w in ["yes", "y"]):
             async with ctx.db.acquire() as db:
                 await db.execute("DELETE FROM profiles WHERE id=$1", ctx.author.id)
                 await db.execute("DELETE FROM abilities WHERE id=$1", ctx.author.id)
@@ -880,7 +880,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
 
         await ctx.send("Are you sure you want to make a custom ability? It costs $20000")
         yon = await rpg.yon(ctx)
-        if yon in ["Yes", "Y"]:
+        if any(w in yon for w in ["yes", "y"]):
             if user[3] >= 20000:
                 await ctx.send("What is the name of this custom ability")
 
