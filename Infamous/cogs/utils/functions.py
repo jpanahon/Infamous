@@ -71,17 +71,18 @@ def ud_embed(definition_, current, max_):
 
 
 class Paginator:
-    def __init__(self, ctx, entries: list, embed=True):
+    def __init__(self, ctx, entries: list, embed=True, timeout=120):
         self.bot = ctx.bot
         self.ctx = ctx
         self.entries = entries
         self.embed = embed
-        self.max_pages = len(entries) - 1
+        self.max_pages = len(entries)
         self.msg = ctx.message
         self.paginating = True
         self.user_ = ctx.author
         self.channel = ctx.channel
         self.current = 0
+        self.timeout = timeout
         self.reactions = [('\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}', self.first_page),
                           ('\N{BLACK LEFT-POINTING TRIANGLE}', self.backward),
                           ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.forward),
@@ -93,8 +94,6 @@ class Paginator:
     async def setup(self):
         if self.embed is False:
             try:
-                self.entries = [x.set_footer(text=f"Page {y+1} of {len(self.entries)}") for y, x in enumerate(
-                    self.entries)]
                 self.msg = await self.channel.send(self.entries[0])
             except AttributeError:
                 await self.channel.send(self.entries)
@@ -122,14 +121,14 @@ class Paginator:
 
     async def backward(self):
         if self.current == 0:
-            self.current = self.max_pages
+            self.current = self.max_pages-1
             await self.alter(self.current)
         else:
             self.current -= 1
             await self.alter(self.current)
 
     async def forward(self):
-        if self.current == self.max_pages:
+        if self.current == self.max_pages-1:
             self.current = 0
             await self.alter(self.current)
         else:
@@ -137,7 +136,7 @@ class Paginator:
             await self.alter(self.current)
 
     async def last_page(self):
-        self.current = self.max_pages
+        self.current = self.max_pages-1
         await self.alter(self.current)
 
     async def selector(self):
@@ -146,11 +145,11 @@ class Paginator:
                 return True
             if m.id == self.msg.id:
                 return True
-            if int(m.content) > 1 <= self.max_pages + 1:
+            if int(m.content) > 1 <= self.max_pages - 1:
                 return True
             return False
 
-        delete = await self.channel.send(f"Which page do you want to turn to? **1-{self.max_pages+1}?**")
+        delete = await self.channel.send(f"Which page do you want to turn to? **1-{self.max_pages}?**")
         try:
             number = int((await self.bot.wait_for('message', check=check, timeout=60)).content)
         except asyncio.TimeoutError:
@@ -205,7 +204,7 @@ class Paginator:
         while self.paginating:
             if perms:
                 try:
-                    reaction, user = await self.bot.wait_for('reaction_add', check=self._check, timeout=120)
+                    reaction, user = await self.bot.wait_for('reaction_add', check=self._check, timeout=self.timeout)
                 except asyncio.TimeoutError:
                     return await self.stop()
 
@@ -217,22 +216,22 @@ class Paginator:
                 await self.execute()
             else:
                 done, pending = await asyncio.wait(
-                    [self.bot.wait_for('reaction_add', check=self._check, timeout=120),
-                     self.bot.wait_for('reaction_remove', check=self._check, timeout=120)],
+                    [self.bot.wait_for('reaction_add', check=self._check, timeout=self.timeout),
+                     self.bot.wait_for('reaction_remove', check=self._check, timeout=self.timeout)],
                     return_when=asyncio.FIRST_COMPLETED)
                 try:
                     done.pop().result()
                 except asyncio.TimeoutError:
-                    return self.stop
+                    return await self.stop()
 
                 for future in pending:
                     future.cancel()
                 await self.execute()
 
 
-class CustomCTX(commands.Context):
-    async def paginate(self, entries: list, embed=True):
-        p = Paginator(self, entries=entries, embed=embed)
+class Awareness(commands.Context):
+    async def paginate(self, entries: list, embed=True, timeout=120):
+        p = Paginator(self, entries=entries, embed=embed, timeout=timeout)
         return await p.paginate()
 
     @property
