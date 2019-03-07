@@ -4,7 +4,6 @@ from .utils.rpg_tools import yon as choose
 import discord
 from discord.ext import commands
 
-
 logging.basicConfig(level=logging.INFO)
 
 
@@ -46,6 +45,7 @@ class Moderation(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.raidmode = {}
 
     async def cog_check(self, ctx):
         if ctx.author.guild_permissions.manage_messages:
@@ -130,10 +130,10 @@ class Moderation(commands.Cog):
     @commands.command()
     async def purge(self, ctx, amount: int, user: discord.Member = None):
         if user:
-            await ctx.channel.purge(amount=amount + 1, check=lambda e: e.author == user)
+            await ctx.channel.purge(limit=amount + 1, check=lambda e: e.author == user)
             await ctx.send(f"Purged {amount} messages from **{user}**.", delete_after=15)
 
-        await ctx.channel.purge(amount=amount + 1)
+        await ctx.channel.purge(limit=amount + 1)
         await ctx.send(f"Purged {amount} messages.", delete_after=15)
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
@@ -145,7 +145,7 @@ class Moderation(commands.Cog):
             await ctx.send(f"Logging is disabled for **{ctx.guild.name}**")
 
     @logging.command(name="enable")
-    async def enable_(self, ctx, channel: discord.TextChannel=None):
+    async def enable_(self, ctx, channel: discord.TextChannel = None):
         channel = channel or ctx.channel
 
         async with ctx.db.acquire() as db:
@@ -173,12 +173,43 @@ class Moderation(commands.Cog):
             await ctx.send("Disabled logging for this server.")
         await ctx.send("Logging is already disabled.")
 
+    @commands.group(invoke_without_command=True, case_insensitive=True)
+    async def antiraid(self, ctx):
+        """Checks if anti-raid mode is enabled"""
+        if self.raidmode[ctx.guild.id] is True:
+            await ctx.send("Anti-raid mode is enabled.")
+        else:
+            await ctx.send("Anti-raid mode is disabled.")
+
+    @antiraid.command()
+    async def on(self, ctx):
+        """Turns on anti-raid mode"""
+        for c in ctx.guild.text_channels:
+            await c.edit(slowmode_delay=120)
+        await ctx.send("Slowmode has been enabled on all channels.")
+        self.raidmode[ctx.guild.id] = True
+
+    @antiraid.command()
+    async def off(self, ctx):
+        """Turns off anti-raid mode"""
+        if self.raidmode[ctx.guild.id] is True:
+            for c in ctx.guild.text_channels:
+                await c.edit(slowmode_delay=0)
+            await ctx.send("Slowmode has been disabled on all channels.")
+            self.raidmode[ctx.guild.id] = False
+        else:
+            await ctx.send("Anti-raid mode is already disabled.")
+
     @commands.Cog.listener()
     async def on_message_delete(self, message):
+        if message.author.bot:
+            return
+
         if self.bot.logging[message.guild.id][0] is True:
             embed = discord.Embed(color=message.author.color)
             embed.set_author(name=message.author, icon_url=message.author.avatar_url)
             embed.description = message.content or "\u200b"
+            embed.add_field(name="Channel", value=message.channel.mention)
             if message.attachments:
                 embed.set_image(url=message.attachments[0].url)
             embed.set_footer(text="Message deleted at")
@@ -187,12 +218,16 @@ class Moderation(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
+        if before.author.bot:
+            return
+
         if self.bot.logging[before.guild.id][0] is True:
             embed = discord.Embed(color=before.author.color)
-            embed.set_author(name=before.author, icon_url=before.author)
+            embed.set_author(name=before.author, icon_url=before.author.avatar_url)
             embed.title = "Before"
             embed.description = before.content
             embed.add_field(name="After", value=after.content, inline=False)
+            embed.add_field(name="Channel", value=before.channel.mention)
             embed.set_footer(text="Message edited at")
             embed.timestamp = datetime.datetime.utcnow()
             if before.attachments:
@@ -201,6 +236,9 @@ class Moderation(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
+        if before.bot:
+            return
+
         if self.bot.logging[before.guild.id][0] is True:
             if before.nick != after.nick:
                 embed = discord.Embed(color=before.color)
