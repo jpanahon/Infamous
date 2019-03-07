@@ -5,10 +5,8 @@ import time
 import traceback
 from contextlib import redirect_stdout
 from datetime import datetime
-import random
 import discord
 import psutil
-import typing
 from discord.ext import commands
 from .utils import functions as funct
 from dateutil.relativedelta import relativedelta
@@ -158,13 +156,24 @@ class Utility(commands.Cog):
 
             if ret is None:
                 if value:
+                    n = 1970
+                    p = []
+                    pages = [value[i:i + n] for i in range(0, len(value), n)]
+                    for n, x in enumerate(pages):
+                        p.append(f"```py\n{x}\n```\nPage {n + 1} of {len(pages)}")
                     await ctx.send(f'```py\n{value}\n```')
             else:
                 self._last_result = ret
                 if "bot.http.token" in body:
                     await ctx.send(f"```py\n" + "*" * 59 + "```")
                 else:
-                    await ctx.send(f'```py\n{value}{ret}\n```')
+                    text = f"{value}{ret}"
+                    p = []
+                    n = 1970
+                    pages = [text[i:i + n] for i in range(0, len(text), n)]
+                    for n, x in enumerate(pages):
+                        p.append(f"```py\n{x}\n```\nPage {n + 1} of {len(pages)}")
+                    await ctx.paginate(entries=p, embed=False)
 
     # From Rapptz
     @commands.command(hidden=True)
@@ -281,7 +290,7 @@ class Utility(commands.Cog):
         embed.add_field(name=f"On Mobile", value=user.is_on_mobile())
         activity_ = funct.activity(user.activity)
         if activity_:
-            embed.add_field(name=f'{activity_[0]} {activity_[1]}', value=user.activity.name, inline=True)
+            embed.add_field(name=activity_, value=user.activity.name, inline=True)
         else:
             embed.add_field(name='Playing', value='Nothing...', inline=True)
 
@@ -322,7 +331,7 @@ class Utility(commands.Cog):
 
         embed.title = f'{ctx.guild.name} 🏰'
         embed.description = f'Created on {created} \nThat\'s {abs(created1.years)}y(s), {abs(created1.months)}m, ' \
-                            f'{abs(created1.days)}d, {abs(created1.minutes)}m  and {abs(created1.seconds)}s ago!'
+            f'{abs(created1.days)}d, {abs(created1.minutes)}m  and {abs(created1.seconds)}s ago!'
 
         embed.add_field(name='Owner 🤵', value=ctx.guild.owner.mention, inline=True)
         embed.set_thumbnail(url=ctx.guild.icon_url)
@@ -401,7 +410,7 @@ class Utility(commands.Cog):
         await ctx.send(f"Your suggestion has been sent!")
 
     @commands.command(aliases=['red', 're'])
-    async def reddit(self, ctx, sr: str=None, sort='hot'):
+    async def reddit(self, ctx, sr: str = None, sort='hot'):
         """Retrieve something from Reddit"""
 
         if not sr:
@@ -410,37 +419,46 @@ class Utility(commands.Cog):
             link = f"https://www.reddit.com/r/{sr}/new.json?sort={sort}"
 
         async with ctx.bot.session.get(link) as resp:
+            if resp.status != 200:
+                return await ctx.send(f"The subreddit `r/{sr}` does not exist or it's private.", delete_after=20)
+
             json_data = await resp.json()
             sub = json_data['data']['children']
-
-        if not sub:
-            await ctx.send(f"The subreddit `r/{sr}` does not exist.")
 
         p = []
         for i in sub:
             line = i['data']
+            if line['over_18'] and ctx.channel.is_nsfw() is False and sub.index(i) == 0:
+                return await ctx.send("This is an nsfw subreddit please go to a nsfw channel to view it.",
+                                      delete_after=20)
+
             text = line['selftext'].replace("&amp;#x200B;", "\u200b")
             if text:
                 n = 2048
                 pages = [text[i:i + n] for i in range(0, len(text), n)]
                 for n, x in enumerate(pages):
                     embed = discord.Embed(color=self.bot.embed_color)
-                    embed.set_author(name=line['title'] + f' (Page {n+1} of {len(pages)})')
+                    embed.set_author(name=line['title'] + f' (Page {n + 1} of {len(pages)})')
                     embed.description = x
                     if line['url']:
+                        if line['over_18'] and ctx.channel.is_nsfw() is False:
+                            embed.set_image(url="https://imgur.com/hPJWFqq.png")
                         embed.set_image(url=line['url'])
 
-                    embed.set_footer(text=f'From r/{line["subreddit"]} | Entry {sub.index(i)+1} of {len(sub)}')
+                    embed.set_footer(text=f'From r/{line["subreddit"]} | Entry {sub.index(i) + 1} of {len(sub)}')
                     p.append(embed)
 
             else:
                 e = discord.Embed(color=self.bot.embed_color)
                 e.set_author(name=line['title'])
-                e.set_image(url=line['url'])
+                if line['url'].endswith((".png", ".jpg")):
+                    e.set_image(url=line['url'])
+                else:
+                    e.add_field(name='Video', value=line['url'])
                 e.set_footer(text=f"From r/{line['subreddit']}")
                 p.append(e)
                 for n, x in enumerate(p):
-                    x.set_footer(text=f'Page {n+1} of {len(sub)} | From r/{line["subreddit"]}')
+                    x.set_footer(text=f'Page {n + 1} of {len(sub)} | From r/{line["subreddit"]}')
 
         await ctx.paginate(entries=p, embed=True, timeout=300)
 
