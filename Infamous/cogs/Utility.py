@@ -161,7 +161,7 @@ class Utility(commands.Cog):
                     pages = [value[i:i + n] for i in range(0, len(value), n)]
                     for n, x in enumerate(pages):
                         p.append(f"```py\n{x}\n```\nPage {n + 1} of {len(pages)}")
-                    await ctx.send(f'```py\n{value}\n```')
+                    await ctx.paginate(entries=p, embed=False)
             else:
                 self._last_result = ret
                 if "bot.http.token" in body:
