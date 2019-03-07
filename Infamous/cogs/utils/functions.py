@@ -37,8 +37,8 @@ def status__(status_):
 
 
 def activity(activity_):
+    activity_status = None
     if activity_:
-        activity_status = None
         if activity_.type.name == "playing":
             activity_status = "Playing <:controller:444678089415458828>"
 
@@ -153,7 +153,7 @@ class Paginator:
         try:
             number = int((await self.bot.wait_for('message', check=check, timeout=60)).content)
         except asyncio.TimeoutError:
-            return await self.ctx.send("You ran out of time.")
+            return await self.channel.send("You ran out of time.")
         else:
             self.current = number - 1
             await self.alter(self.current)
@@ -164,6 +164,8 @@ class Paginator:
             await self.msg.clear_reactions()
         except discord.Forbidden:
             await self.msg.delete()
+        finally:
+            pass
 
         self.paginating = False
 
@@ -175,10 +177,10 @@ class Paginator:
 
         embed.add_field(name="First Page ⏮", value="This reaction takes you to the first page.", inline=False)
         embed.add_field(name="Previous Page ◀", value="This reaction takes you to the previous page. "
-                                                      "If you use this reaction while in the first page it will take"
+                                                      "If you use this reaction while in the first page it will take "
                                                       "you to the last page.", inline=False)
         embed.add_field(name="Next Page ▶", value="This reaction takes you to the next page. "
-                                                  "If you use this reaction while in the last page it will to take"
+                                                  "If you use this reaction while in the last page it will to take "
                                                   "you to the first page.", inline=False)
         embed.add_field(name="Last Page ⏭", value="This reaction takes you to the last page", inline=False)
         embed.add_field(name="Selector 🔢", value="This reaction allows you to choose what page to go to", inline=False)
