@@ -190,6 +190,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
             abilities_ = await db.fetch("SELECT * FROM abilities WHERE id=$1", user.id)
 
         ability = []
+        main = None
         for i in abilities_:
             if i[1] == stats[4]:
                 main = f"{i[1]} - Level {i[2]}"
@@ -387,7 +388,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
         """Shows all the active cooldowns."""
 
         p = []
-        for command in self.bot.get_cog_commands("Rpg2"):
+        for command in ctx.cog.get_commands():
             if command.is_on_cooldown(ctx):
                 p.append(command.name)
 
@@ -523,11 +524,11 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
 
             p.append((discord.Embed(color=self.bot.embed_color,
                                     description=f"**Level:** {user[1]} \n"
-                                                f"**Total XP:** {user[2]} \n"
-                                                f"**Guild:** {user[5]}")
-                      .set_author(name=f"#{place+1} {user_.display_name or user_.name}")
+                                    f"**Total XP:** {user[2]} \n"
+                                    f"**Guild:** {user[5]}")
+                      .set_author(name=f"#{place + 1} {user_.display_name or user_.name}")
                       .set_image(url=user_.avatar_url_as(static_format="png", size=1024))
-                      .set_footer(text=f"Page {place+1} of {len(lb)}")
+                      .set_footer(text=f"Page {place + 1} of {len(lb)}")
                       ))
 
         await ctx.paginate(entries=p)
@@ -784,6 +785,7 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
                 return True
 
             return False
+
         try:
             msg = int((await ctx.input('message', check=check, timeout=20)).content)
         except asyncio.TimeoutError:
@@ -844,12 +846,12 @@ class Rpg2(commands.Cog, name="Infamous RPG"):
                                               user.id)
             p.append(discord.Embed(color=self.bot.embed_color,
                                    description=f"**Level**: {i[2]} \n"
-                                               f"**XP**: {i[3]} \n"
-                                               f"**DMG**: {i[4]} \n"
-                                               f"**DUR**: {i[5]}")
+                                   f"**XP**: {i[3]} \n"
+                                   f"**DMG**: {i[4]} \n"
+                                   f"**DUR**: {i[5]}")
                      .set_author(name=i[1])
                      .set_image(url=image or shop_items[i[1]][1])
-                     .set_footer(text=f"Page {x+1} of {len(ab_)}")
+                     .set_footer(text=f"Page {x + 1} of {len(ab_)}")
                      )
 
         await ctx.paginate(entries=p)
