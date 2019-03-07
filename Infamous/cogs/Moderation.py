@@ -176,16 +176,21 @@ class Moderation(commands.Cog):
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def antiraid(self, ctx):
         """Checks if anti-raid mode is enabled"""
-        if self.raidmode[ctx.guild.id] is True:
-            await ctx.send("Anti-raid mode is enabled.")
-        else:
-            await ctx.send("Anti-raid mode is disabled.")
+        if self.raidmode[ctx.guild.id]:
+            if self.raidmode[ctx.guild.id] is True:
+                await ctx.send("Anti-raid mode is enabled.")
+
+        await ctx.send("Anti-raid mode is disabled.")
 
     @antiraid.command()
     async def on(self, ctx):
         """Turns on anti-raid mode"""
         for c in ctx.guild.text_channels:
-            await c.edit(slowmode_delay=120)
+            try:
+                await c.edit(slowmode_delay=120)
+            except discord.Forbidden:
+                pass
+
         await ctx.send("Slowmode has been enabled on all channels.")
         self.raidmode[ctx.guild.id] = True
 
@@ -194,7 +199,11 @@ class Moderation(commands.Cog):
         """Turns off anti-raid mode"""
         if self.raidmode[ctx.guild.id] is True:
             for c in ctx.guild.text_channels:
-                await c.edit(slowmode_delay=0)
+                try:
+                    await c.edit(slowmode_delay=0)
+                except discord.Forbidden:
+                    pass
+
             await ctx.send("Slowmode has been disabled on all channels.")
             self.raidmode[ctx.guild.id] = False
         else:
