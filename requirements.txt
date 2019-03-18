@@ -1,4 +1,4 @@
-git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice]
+git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice] == 1.0.0a1765+g5e65ec9
 aiohttp==3.4.4
 asyncpg==0.15.0
 Pillow==5.2.0
@@ -6,5 +6,5 @@ psutil==5.4.3
 websockets==6.0
 python-dateutil==2.7.
 parawrap==1.0
-jishaku 
+jishaku > 1.9.1
 youtube_dl
