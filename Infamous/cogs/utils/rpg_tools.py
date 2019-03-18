@@ -480,3 +480,4 @@ async def turn(ctx, skill1, skill2, health, health2, enemy, user=None):
                 await level2(ctx, mon, xp)
                 await guild_level(ctx, xp)
                 raise MatchEnd
+
