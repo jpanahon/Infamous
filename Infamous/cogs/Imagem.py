@@ -73,8 +73,8 @@ class Imagem(commands.Cog, name="Image Manipulation"):
         timestamp = (166, 26)
         time_ = datetime.datetime.now()
         time_ = time_.strftime("%-I:%M %p")
-        font = ImageFont.truetype("fonts/whitney-book.otf", int(16.5))
-        font2 = ImageFont.truetype("fonts/whitney-light.otf", 11)
+        font = ImageFont.truetype("Infamous/fonts/whitney-book.otf", int(16.5))
+        font2 = ImageFont.truetype("Infamous/fonts/whitney-light.otf", 11)
         async with ctx.typing():
             def write():
                 i = Image.open("Infamous/img/scapexcutout.png")
@@ -127,9 +127,9 @@ class Imagem(commands.Cog, name="Image Manipulation"):
         text1_pos = (65, 76)
         text2_pos = (65, 462)
         text3_pos = (65, 869)
-        text1_ = parawrap.wrap(text1, 16)
-        text2_ = parawrap.wrap(text2, 16)
-        text3_ = parawrap.wrap(text3, 16)
+        text1_ = parawrap.wrap(text1, 10)
+        text2_ = parawrap.wrap(text2, 10)
+        text3_ = parawrap.wrap(text3, 10)
         async with ctx.typing():
             def write():
                 font = ImageFont.truetype("Infamous/fonts/Arial.ttf", 72)
