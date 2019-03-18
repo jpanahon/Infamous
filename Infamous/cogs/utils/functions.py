@@ -83,13 +83,13 @@ class Paginator:
         self.channel = ctx.channel
         self.current = 0
         self.timeout = timeout
-        self.reactions = [('\N{BLACK LEFT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}', self.first_page),
-                          ('\N{BLACK LEFT-POINTING TRIANGLE}', self.backward),
-                          ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.forward),
-                          ('\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}', self.last_page),
-                          ('\N{INPUT SYMBOL FOR NUMBERS}', self.selector),
-                          ('\N{BLACK SQUARE FOR STOP}', self.stop),
-                          ('\N{INFORMATION SOURCE}', self.info)]
+        self.reactions = [('<:first_page:556312967797407754>', self.first_page),
+                          ('<:previous_page:556312942966997033>', self.backward),
+                          ('<:next_page:556313016832884736>', self.forward),
+                          ('<:last_page:556312980665663504>', self.last_page),
+                          ('<:select:556320090862387211>', self.selector),
+                          ('<:exit:556320106247094300>', self.stop),
+                          ('<:info:556320125599350808>', self.info)]
 
     async def setup(self):
         if self.embed is False:
@@ -107,7 +107,7 @@ class Paginator:
             return
 
         for (r, _) in self.reactions:
-            await self.msg.add_reaction(r)
+            await self.msg.add_reaction(r.strip("<" and ">"))
 
     async def alter(self, page: int):
         try:
@@ -121,14 +121,14 @@ class Paginator:
 
     async def backward(self):
         if self.current == 0:
-            self.current = self.max_pages-1
+            self.current = self.max_pages - 1
             await self.alter(self.current)
         else:
             self.current -= 1
             await self.alter(self.current)
 
     async def forward(self):
-        if self.current == self.max_pages-1:
+        if self.current == self.max_pages - 1:
             self.current = 0
             await self.alter(self.current)
         else:
@@ -136,7 +136,7 @@ class Paginator:
             await self.alter(self.current)
 
     async def last_page(self):
-        self.current = self.max_pages-1
+        self.current = self.max_pages - 1
         await self.alter(self.current)
 
     async def selector(self):
@@ -145,7 +145,7 @@ class Paginator:
                 return True
             if m.id == self.msg.id:
                 return True
-            if int(m.content) > 1 <= self.max_pages - 1:
+            if int(m.content) > 1 <= self.max_pages:
                 return True
             return False
 
@@ -175,16 +175,27 @@ class Paginator:
         embed.description = "This is a reaction paginator; when you react to one of the buttons below " \
                             "the message gets edited. Below you will find what the reactions do."
 
-        embed.add_field(name="First Page ⏮", value="This reaction takes you to the first page.", inline=False)
-        embed.add_field(name="Previous Page ◀", value="This reaction takes you to the previous page. "
-                                                      "If you use this reaction while in the first page it will take "
-                                                      "you to the last page.", inline=False)
-        embed.add_field(name="Next Page ▶", value="This reaction takes you to the next page. "
-                                                  "If you use this reaction while in the last page it will to take "
-                                                  "you to the first page.", inline=False)
-        embed.add_field(name="Last Page ⏭", value="This reaction takes you to the last page", inline=False)
-        embed.add_field(name="Selector 🔢", value="This reaction allows you to choose what page to go to", inline=False)
-        embed.add_field(name="Information ℹ", value="This reaction takes you to this page.")
+        embed.add_field(name="First Page <:first_page:556312967797407754>",
+                        value="This reaction takes you to the first page.", inline=False)
+
+        embed.add_field(name="Previous Page <:previous_page:556312942966997033>",
+                        value="This reaction takes you to the previous page. "
+                              "If you use this reaction while in the first page it will take "
+                              "you to the last page.", inline=False)
+
+        embed.add_field(name="Next Page <:next_page:556313016832884736>",
+                        value="This reaction takes you to the next page. "
+                              "If you use this reaction while in the last page it will to take "
+                              "you to the first page.", inline=False)
+
+        embed.add_field(name="Last Page <:last_page:556312980665663504>",
+                        value="This reaction takes you to the last page.", inline=False)
+
+        embed.add_field(name="Selector <:select:556320090862387211>",
+                        value="This reaction allows you to choose what page to go to", inline=False)
+
+        embed.add_field(name="Information <:info:556320125599350808>",
+                        value="This reaction takes you to this page.")
         await self.msg.edit(embed=embed)
 
     def _check(self, reaction, user):
@@ -195,7 +206,7 @@ class Paginator:
             return False
 
         for (emoji, func) in self.reactions:
-            if reaction.emoji == emoji:
+            if str(reaction.emoji) == emoji:
                 self.execute = func
                 return True
         return False
@@ -206,7 +217,8 @@ class Paginator:
         while self.paginating:
             if perms:
                 try:
-                    reaction, user = await self.bot.wait_for('reaction_add', check=self._check, timeout=self.timeout)
+                    reaction, user = await self.bot.wait_for('reaction_add', check=self._check,
+                                                             timeout=self.timeout)
                 except asyncio.TimeoutError:
                     return await self.stop()
 
