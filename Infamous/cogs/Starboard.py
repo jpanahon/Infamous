@@ -1,136 +1,109 @@
 import discord
 from discord.ext import commands
+import asyncpg
 from datetime import datetime
-from .utils.functions import Awareness
 
 
-class Starboard:
-    def __init__(self, ctx, message, user, reaction):
-        self.bot = ctx.bot
-        self.star = "\U00002b50"
-        self.channel = message.channel
-        self.msg = message
-        self.starboard = ctx.guild.get_channel(537941975706632193)
-        self.db = ctx.db
-        self.starrer = user
-        self.starred = []
-        self.reaction = reaction
-        self.server = self.bot.get_guild(258801388836880385)
-
-    async def check(self, msg):
-        async with self.db.acquire() as db:
-            m = await db.fetchrow("SELECT * FROM starboard WHERE original = $1", msg.id)
-        if not m:
-            return False
-        return True
-
-    async def setup(self):
-        if await self.check(self.msg) is False:
-            embed = discord.Embed(color=self.msg.author.color)
-            embed.set_author(name=self.msg.author.display_name,
-                             icon_url=self.msg.author.avatar_url,
-                             url=self.msg.jump_url)
-            embed.description = self.msg.content
-            if self.msg.attachments:
-                embed.set_image(url=self.msg.attachments[0].url)
-            embed.timestamp = datetime.utcnow()
-            msg = await self.starboard.send(content=f"{self.star} 3 {self.channel.mention}", embed=embed)
-            async with self.db.acquire() as db:
-                await db.execute("INSERT INTO starboard VALUES($1, $2, $3, $4)", msg.id, self.msg.id, 3,
-                                 self.channel.id)
-                for u in self.reaction.users:
-                    await db.execute("INSERT INTO starboard VALUES($1, $2)", u.id, self.msg.id)
-        else:
-            async with self.db.acquire() as db:
-                thing = await db.fetch("SELECT * FROM starboard WHERE original=$1", self.msg.id)
-                await db.execute("UPDATE starboard SET stars=$1 WHERE original=$2", self.reaction.count, self.msg.id)
-                for u in self.reaction.users:
-                    await db.execute("INSERT INTO starboard VALUES($1, $2)", u.id, self.msg.id)
-
-            edit = await self.starboard.get_message(thing)
-            reactions = self.reaction.count
-            await edit.edit(content=f"{self.star} {reactions} {self.channel.mention}")
-
-    async def edit_board(self):
-        async with self.db.acquire() as db:
-            original = await db.fetchrow("SELECT * FROM starboard WHERE id=$1", self.msg.id)
-            await db.execute("UPDATE starboard SET stars=stars+1 WHERE id=$1", self.msg.id)
-        channel = self.server.get_channel(original[3])
-        await self.msg.edit(content=f"{self.star} {original[2]+1} {channel.mention}")
-
-    async def starr(self):
-        async with self.db.acquire() as db:
-            self.starred = await db.fetch("SELECT * FROM starrers WHERE msg=$1", self.msg.id)
-
-        if p:
-            if self.starrer.id in p:
-                return
-            async with self.db.acquire() as db:
-                await db.execute("INSERT INTO starrers VALUES($1, $2)", self.starrer.id, self.msg.id)
-
-    async def _edit_board(self):
-        async with self.db.acquire() as db:
-            original = await db.fetchrow("SELECT * FROM starboard WHERE id=$1", self.msg.id)
-            await db.execute("UPDATE starboard SET stars=stars-1 WHERE id=$1", self.msg.id)
-        await self.starr()
-        channel = self.server.get_channel(original[3])
-        await self.msg.edit(content=f"{self.star} {original[2]-1} {channel.mention}")
-
-    async def remover(self):
-        if self.reaction.emoji == self.star:
-            if self.reaction.count < 3:
-                if self.channel.id != self.starboard.id:
-                    async with self.db.acquire() as db:
-                        await db.execute("UPDATE starboard SET stars=stars-1 WHERE original=$1", self.msg.id)
-                        await db.fetchval("SELECT stars FROM starboard WHERE original=$1", self.msg.id)
-                        c = await db.fetchval("SELECT id FROM starboard WHERE original=$1", self.msg.id)
-                        await db.execute("DELETE FROM starboard WHERE original=$1", self.msg.id)
-                    msg = await self.starboard.get_message(c)
-                    await msg.delete()
-                else:
-                    await self._edit_board()
-
-    async def start(self):
-        if self.msg.guild.id != self.server.id:
-            return
-
-        if self.reaction.emoji == self.star:
-            if self.reaction.message.channel.id != self.starboard.id:
-                if self.reaction.count >= 3:
-                    if self.starrer != self.msg.author or self.starrer in self.starred:
-                        await self.setup()
-
-            else:
-                await self.edit_board()
-                async with self.db.acquire() as db:
-                    stars = await db.fetchval("SELECT stars FROM starboard WHERE id=$1", self.msg.id)
-                if stars < 3:
-                    async with self.db.acquire() as db:
-                        await db.execute("DELETE FROM starboard WHERE id=$1", self.msg.id)
-                    await self.reaction.message.delete()
-
-
-class Stars(commands.Cog):
-    """Starboard Only for Fame"""
+class Starboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.star_emoji = "\N{WHITE MEDIUM STAR}"
+        self.messages = {}
+        self.board = bot.get_channel(523309243395473447)
 
-    async def on_reaction_add(self, reaction, user):
-        if user.guild is None or user.guild.id != 258801388836880385:
+    async def fetch(self, channel, message):
+        try:
+            return self.messages[message]
+        except KeyError:
+            # Used Danny's trick
+            msg = await channel.history(limit=1, before=discord.Object(id=message+1)).next()
+            self.messages[message] = msg
+            return msg
+
+    def construct(self, message, stars):
+        embed = discord.Embed(color=message.author.color)
+        embed.set_author(name=message.author.display_name,
+                         icon_url=message.author.avatar_url,
+                         url=message.jump_url)
+        if message.content:
+            embed.description = message.content
+        else:
+            embed.set_image(url=message.attachments[0].url)
+
+        if message.attachments:
+            embed.set_image(url=message.attachments[0].url)
+
+        embed.timestamp = datetime.utcnow()
+        embed.set_footer(text=f"{self.star_emoji} {stars}")
+        return embed
+
+    async def star(self, payload):
+        if str(payload.emoji) != self.star_emoji:
             return
 
-        ctx = await self.bot.get_context(reaction.message, cls=Awareness)
-        s = Starboard(ctx, reaction.message, user, reaction)
-        await s.start()
-
-    async def on_reaction_remove(self, reaction, user):
-        if user.guild is None or user.guild.id != 258801388836880385:
+        channel = self.bot.get_channel(payload.channel_id)
+        msg = await self.fetch(channel, payload.message_id)
+        if payload.user_id == msg.author.id:
             return
 
-        ctx = await self.bot.get_context(reaction.message, cls=Awareness)
-        s = Starboard(ctx, reaction.message, user, reaction)
-        await s.remover()
+        async with self.bot.db.acquire() as db:
+            try:
+                await db.execute("INSERT INTO starboard VALUES($1, $2, $3)", msg.id, None, channel.id)
+            except asyncpg.UniqueViolationError:
+                pass
+            else:
+                count = await db.fetchval("SELECT u_id FROM starrers WHERE u_id=$1 AND m_id=$2",
+                                          payload.user_id, msg.id)
+                if count:
+                    return
+                else:
+                    await db.execute("INSERT INTO starrers VALUES($1, $2)", msg.id, payload.user_id)
+                    count = await db.fetchrow("SELECT COUNT(*) FROM starrers WHERE m_id=$1", msg.id)
+                    data = await db.fetchval("SELECT b_id FROM starboard WHERE m_id=$1", msg.id)
+
+                    if count[0] < 3:
+                        return
+
+                    if not data:
+                        d = await self.board.send(embed=self.construct(msg, count[0]))
+                        await db.execute("UPDATE starboard SET b_id=$1 WHERE m_id=$2", d.id, msg.id)
+                    else:
+                        msg = await self.fetch(self.board, data)
+                        await msg.edit(embed=self.construct(msg, count))
+
+    async def unstar(self, payload):
+        if str(payload.emoji) != self.star_emoji:
+            return
+
+        channel = self.bot.get_channel(payload.channel_id)
+        msg = await self.fetch(channel, payload.message_id)
+        data = await self.bot.db.fetchval("SELECT b_id FROM starboard WHERE m_id=$1", msg.id)
+
+        async with self.bot.db.acquire() as db:
+            await db.execute("DELETE FROM starrers WHERE u_id=$1 AND m_id=$2", payload.user_id, msg.id)
+            count = await db.fetchrow("SELECT COUNT(*) FROM starrers WHERE m_id=$1", msg.id)
+            if count[0] < 3:
+                await (await self.fetch(self.board, data)).delete()
+
+            elif count == 0:
+                await db.execute("DELETE FROM starrers WHERE m_id=$1 AND u_id=$2", msg.id, payload.user_id)
+            else:
+                await (await self.fetch(self.board, data)).edit(embed=self.construct(msg, count))
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        if payload.guild_id != 258801388836880385:
+            return
+
+        await self.star(payload)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, payload):
+        if payload.guild_id != 258801388836880385:
+            return
+
+        await self.unstar(payload)
 
 
 def setup(bot):
-    bot.add_cog(Stars(bot))
+    bot.add_cog(Starboard(bot))
