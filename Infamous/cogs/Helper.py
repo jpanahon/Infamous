@@ -43,7 +43,7 @@ class Help(commands.Cog):
 
             for b, a in enumerate(cmds_):
                 a.set_footer(
-                    text=f'Page {b+1} of {len(cmds_)} | Type "{ctx.prefix}help <command>" for more information'
+                    text=f'Page {b + 1} of {len(cmds_)} | Type "{ctx.prefix}help <command>" for more information'
                 )
         return cmds_
 
@@ -59,7 +59,7 @@ class Help(commands.Cog):
                     .set_author(name="ERROR \N{NO ENTRY SIGN}", icon_url=self.icon))
 
         for i in list(self.bot.chunk(list(cmd), 6)):
-            embed = discord.Embed(color=self.bot.embed_color)
+            embed = self.bot.embed(color=self.bot.embed_color)
             embed.set_author(name=f"{name} Commands ({len(cmd)})", icon_url=self.icon)
             embed.description = cog.__doc__
             for x in i:
@@ -67,7 +67,7 @@ class Help(commands.Cog):
             cmds_.append(embed)
 
         for b, a in enumerate(cmds_):
-            a.set_footer(text=f"Page {b+1} of {len(cmds_)}")
+            a.set_footer(text=f"Page {b + 1} of {len(cmds_)}")
 
         return cmds_
 
@@ -86,13 +86,13 @@ class Help(commands.Cog):
                 cmds_.append(embed)
 
             for x, y in enumerate(cmds_):
-                y.set_footer(text=f"Page {x+1} of {len(cmds_)}")
+                y.set_footer(text=f"Page {x + 1} of {len(cmds_)}")
             return cmds_
         except AttributeError:
             embed = discord.Embed(color=self.bot.embed_color)
             embed.set_author(name=command.signature)
             embed.description = command.help
-            return embed
+            return [embed]
 
     @commands.command(hidden=True)
     async def help(self, ctx, *, command=None):
