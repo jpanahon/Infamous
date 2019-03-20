@@ -9,7 +9,7 @@ class Starboard(commands.Cog):
         self.bot = bot
         self.star_emoji = "\N{WHITE MEDIUM STAR}"
         self.messages = {}
-        self.board = bot.get_channel(523309243395473447)
+        self.board = bot.get_channel(537941975706632193)
 
     async def fetch(self, channel, message):
         try:
@@ -39,6 +39,9 @@ class Starboard(commands.Cog):
 
     async def star(self, payload):
         if str(payload.emoji) != self.star_emoji:
+            return
+
+        if payload.guild_id != 258801388836880385:
             return
 
         channel = self.bot.get_channel(payload.channel_id)
@@ -75,6 +78,9 @@ class Starboard(commands.Cog):
         if str(payload.emoji) != self.star_emoji:
             return
 
+        if payload.guild_id != 258801388836880385:
+            return
+
         channel = self.bot.get_channel(payload.channel_id)
         msg = await self.fetch(channel, payload.message_id)
         data = await self.bot.db.fetchval("SELECT b_id FROM starboard WHERE m_id=$1", msg.id)
@@ -92,16 +98,10 @@ class Starboard(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
-        if payload.guild_id != 258801388836880385:
-            return
-
         await self.star(payload)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
-        if payload.guild_id != 258801388836880385:
-            return
-
         await self.unstar(payload)
 
 
