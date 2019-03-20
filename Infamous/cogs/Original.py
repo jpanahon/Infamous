@@ -152,7 +152,9 @@ class Original(commands.Cog):
                     if not (3 <= len(text.content) <= 60):
                         await ctx.send("Text must be longer than 3 chars and shorter than 60.")
                     else:
-                        payload = {"text": text.content, "context": [text.content, text.author.display_name]}
+                        payload = {"text": text.content,
+                                   "context": [text.content, await ctx.history(limit=1, before=discord.Object(
+                                       id=text.id))]}
                         async with ctx.channel.typing(), ctx.bot.session.post("https://public-api.travitia.xyz/talk",
                                                                               json=payload,
                                                                               headers={
@@ -222,7 +224,7 @@ class Original(commands.Cog):
 
             active = True
             while active:
-                react = await ctx.get_message(react.id)
+                react = await channel.history(limit=1, before=discord.Object(id=react.id+1)).next()
                 if react.reactions[0].count >= 3:
                     def create():
                         i_ = Image.open(BytesIO(image)).resize((128, 128)).convert("RGBA")
@@ -272,7 +274,7 @@ class Original(commands.Cog):
 
         active = True
         while active:
-            msg = await channel.get_message(msg.id)
+            msg = await channel.history(limit=1, before=discord.Object(id=msg.id+1)).next()
             if msg.reactions[0].count >= 3:
                 await ctx.send(f"{str(emote)} will be deleted.")
                 try:
