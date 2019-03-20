@@ -15,7 +15,7 @@ class Starboard(commands.Cog):
         if ctx.guild.id != 258801388836880385:
             return False
         return True
-    
+
     async def fetch(self, channel, message):
         try:
             return self.messages[message]
@@ -26,8 +26,9 @@ class Starboard(commands.Cog):
             return msg
 
     def construct(self, message, stars):
+        content = f"From {message.channel.mention}"
         embed = discord.Embed(color=message.author.color)
-        embed.set_author(name=f"{message.author.display_name} | {self.star_emoji} {stars}",
+        embed.set_author(name=f"{message.author.display_name} | {self.star_emoji} {stars} ",
                          icon_url=message.author.avatar_url,
                          url=message.jump_url)
         if message.content:
@@ -40,7 +41,7 @@ class Starboard(commands.Cog):
 
         embed.timestamp = datetime.utcnow()
         embed.set_footer(text=f"ID: {message.id}")
-        return embed
+        return content, embed
 
     async def star(self, payload):
         if str(payload.emoji) != self.star_emoji:
@@ -73,11 +74,13 @@ class Starboard(commands.Cog):
                         return
 
                     if not data:
-                        d = await self.board.send(embed=self.construct(msg, count[0]))
+                        c, e = self.construct(msg, count[0])
+                        d = await self.board.send(content=c, embed=e)
                         await db.execute("UPDATE starboard SET b_id=$1 WHERE m_id=$2", d.id, msg.id)
                     else:
                         msg = await self.fetch(self.board, data)
-                        await msg.edit(embed=self.construct(msg, count))
+                        c, e = self.construct(msg, count)
+                        await msg.edit(content=c, embed=e)
 
     async def unstar(self, payload):
         if str(payload.emoji) != self.star_emoji:
@@ -99,7 +102,8 @@ class Starboard(commands.Cog):
             elif count == 0:
                 await db.execute("DELETE FROM starrers WHERE m_id=$1 AND u_id=$2", msg.id, payload.user_id)
             else:
-                await (await self.fetch(self.board, data)).edit(embed=self.construct(msg, count))
+                c, e = self.construct(msg, count)
+                await (await self.fetch(self.board, data)).edit(content=c, embed=e)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
