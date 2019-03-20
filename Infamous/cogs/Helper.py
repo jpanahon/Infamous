@@ -38,7 +38,7 @@ class Help(commands.Cog):
                 embed.set_author(name=f"{i} Commands ({len(cmd_)})", icon_url=self.icon)
                 embed.description = ctx.bot.cogs[i].__doc__
                 for y in x:
-                    embed.add_field(name=y.signature, value=y.help, inline=False)
+                    embed.add_field(name=y.signature or y.name, value=y.help, inline=False)
                 cmds_.append(embed)
 
             for b, a in enumerate(cmds_):
@@ -63,7 +63,7 @@ class Help(commands.Cog):
             embed.set_author(name=f"{name} Commands ({len(cmd)})", icon_url=self.icon)
             embed.description = cog.__doc__
             for x in i:
-                embed.add_field(name=x.signature, value=x.help, inline=False)
+                embed.add_field(name=x.signature or x.name, value=x.help, inline=False)
             cmds_.append(embed)
 
         for b, a in enumerate(cmds_):
@@ -79,7 +79,7 @@ class Help(commands.Cog):
             cmds_ = []
             for i in list(self.bot.chunk(list(cmd), 6)):
                 embed = discord.Embed(color=self.bot.embed_color)
-                embed.set_author(name=command.signature, icon_url=self.icon)
+                embed.set_author(name=command.signature or command.name, icon_url=self.icon)
                 embed.description = command.help
                 for x in i:
                     embed.add_field(name=x.signature, value=x.help, inline=False)
@@ -90,7 +90,7 @@ class Help(commands.Cog):
             return cmds_
         except AttributeError:
             embed = discord.Embed(color=self.bot.embed_color)
-            embed.set_author(name=command.signature)
+            embed.set_author(name=command.signature or command.name)
             embed.description = command.help
             return [embed]
 
