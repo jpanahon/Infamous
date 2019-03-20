@@ -87,7 +87,7 @@ class Imagem(commands.Cog, name="Image Manipulation"):
                 return b.getvalue()
 
         fp = await self.bot.loop.run_in_executor(None, write)
-        file = discord.File(filename="scape.png", fp=fp)
+        file = discord.File(filename="scape.png", fp=BytesIO(fp))
         await ctx.send(file=file)
 
     @commands.command()
@@ -114,7 +114,7 @@ class Imagem(commands.Cog, name="Image Manipulation"):
                 return b.getvalue()
 
         fp = await self.bot.loop.run_in_executor(None, draw)
-        file = discord.File(filename="drake.png", fp=fp)
+        file = discord.File(filename="drake.png", fp=BytesIO(fp))
         await ctx.send(file=file)
 
     @commands.command(aliases=['brain'])
@@ -144,7 +144,7 @@ class Imagem(commands.Cog, name="Image Manipulation"):
                 return b.getvalue()
 
         fp = await self.bot.loop.run_in_executor(None, write)
-        file = discord.File(filename="mind.png", fp=fp)
+        file = discord.File(filename="mind.png", fp=BytesIO(fp))
         await ctx.send(file=file)
 
     @commands.command()
@@ -169,7 +169,7 @@ class Imagem(commands.Cog, name="Image Manipulation"):
                 return b.getvalue()
 
         fp = await self.bot.loop.run_in_executor(None, draw_)
-        file = discord.File(filename="gon.png", fp=fp)
+        file = discord.File(filename="gon.png", fp=BytesIO(fp))
         await ctx.send(file=file)
 
     @commands.command()
@@ -208,7 +208,7 @@ class Imagem(commands.Cog, name="Image Manipulation"):
                 return b.getvalue()
 
             fp = await self.bot.loop.run_in_executor(None, blurplify)
-            file = discord.File(filename="blurple.png", fp=fp)
+            file = discord.File(filename="blurple.png", fp=BytesIO(fp))
             await ctx.send(file=file)
 
 
