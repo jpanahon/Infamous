@@ -11,6 +11,11 @@ class Starboard(commands.Cog):
         self.messages = {}
         self.board = bot.get_channel(537941975706632193)
 
+    async def cog_check(self, ctx):
+        if ctx.guild.id != 258801388836880385:
+            return False
+        return True
+    
     async def fetch(self, channel, message):
         try:
             return self.messages[message]
@@ -22,7 +27,7 @@ class Starboard(commands.Cog):
 
     def construct(self, message, stars):
         embed = discord.Embed(color=message.author.color)
-        embed.set_author(name=message.author.display_name,
+        embed.set_author(name=f"{message.author.display_name} | {self.star_emoji} {stars}",
                          icon_url=message.author.avatar_url,
                          url=message.jump_url)
         if message.content:
@@ -34,7 +39,7 @@ class Starboard(commands.Cog):
             embed.set_image(url=message.attachments[0].url)
 
         embed.timestamp = datetime.utcnow()
-        embed.set_footer(text=f"{self.star_emoji} {stars}")
+        embed.set_footer(text=f"ID: {message.id}")
         return embed
 
     async def star(self, payload):
@@ -103,6 +108,17 @@ class Starboard(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
         await self.unstar(payload)
+
+    @commands.command(name="context")
+    async def context_(self, ctx, msg: int):
+        async with ctx.db.acquire() as db:
+            channel = await db.fetchval("SELECT c_id FROM starboard WHERE m_id=$1", msg)
+            if not channel:
+                return await ctx.send("Invalid message id/not in the starboard.")
+
+            channel = ctx.bot.get_channel(channel)
+            url = await channel.history(limit=1, before=discord.Object(msg+1)).next()
+            await ctx.send(f"Context: {url.jump_url}")
 
 
 def setup(bot):
