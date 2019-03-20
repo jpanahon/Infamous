@@ -21,27 +21,27 @@ class Starboard(commands.Cog):
             return self.messages[message]
         except KeyError:
             # Used Danny's trick
-            msg = await channel.history(limit=1, before=discord.Object(id=message+1)).next()
+            msg = await channel.history(limit=1, before=discord.Object(id=message + 1)).next()
             self.messages[message] = msg
             return msg
 
     def construct(self, message, stars):
-        content = f"From {message.channel.mention}"
-        embed = discord.Embed(color=message.author.color)
-        embed.set_author(name=f"{message.author.display_name} | {self.star_emoji} {stars} ",
-                         icon_url=message.author.avatar_url,
-                         url=message.jump_url)
+        c = f"From {message.channel.mention}"
+        e = discord.Embed(color=message.author.color)
+        e.set_author(name=f"{message.author.display_name} | {self.star_emoji} {stars} ",
+                     icon_url=message.author.avatar_url,
+                     url=message.jump_url)
         if message.content:
-            embed.description = message.content
+            e.description = message.content
         else:
-            embed.set_image(url=message.attachments[0].url)
+            e.set_image(url=message.attachments[0].url)
 
         if message.attachments:
-            embed.set_image(url=message.attachments[0].url)
+            e.set_image(url=message.attachments[0].url)
 
-        embed.timestamp = datetime.utcnow()
-        embed.set_footer(text=f"ID: {message.id}")
-        return content, embed
+        e.timestamp = datetime.utcnow()
+        e.set_footer(text=f"ID: {message.id}")
+        return c, e
 
     async def star(self, payload):
         if str(payload.emoji) != self.star_emoji:
@@ -96,6 +96,9 @@ class Starboard(commands.Cog):
         async with self.bot.db.acquire() as db:
             await db.execute("DELETE FROM starrers WHERE u_id=$1 AND m_id=$2", payload.user_id, msg.id)
             count = await db.fetchrow("SELECT COUNT(*) FROM starrers WHERE m_id=$1", msg.id)
+            if not data:
+                return
+
             if count[0] < 3:
                 await (await self.fetch(self.board, data)).delete()
 
@@ -121,7 +124,7 @@ class Starboard(commands.Cog):
                 return await ctx.send("Invalid message id/not in the starboard.")
 
             channel = ctx.bot.get_channel(channel)
-            url = await channel.history(limit=1, before=discord.Object(msg+1)).next()
+            url = await channel.history(limit=1, before=discord.Object(msg + 1)).next()
             await ctx.send(f"Context: {url.jump_url}")
 
 
