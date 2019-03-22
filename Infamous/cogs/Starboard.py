@@ -11,11 +11,6 @@ class Starboard(commands.Cog):
         self.messages = {}
         self.board = bot.get_channel(537941975706632193)
 
-    async def cog_check(self, ctx):
-        if ctx.guild.id != 258801388836880385:
-            return False
-        return True
-
     async def fetch(self, channel, message):
         try:
             return self.messages[message]
@@ -26,14 +21,14 @@ class Starboard(commands.Cog):
             return msg
 
     def construct(self, message, stars):
-        c = f"From {message.channel.mention}"
+        c = f"{self.star_emoji} {stars} | {message.channel.mention}"
         e = discord.Embed(color=message.author.color)
-        e.set_author(name=f"{message.author.display_name} | {self.star_emoji} {stars} ",
-                     icon_url=message.author.avatar_url,
-                     url=message.jump_url)
+        e.set_author(name=message.author.display_name,
+                     icon_url=message.author.avatar_url)
         if message.content:
-            e.description = message.content
+            e.description = f"{message.content} \n\n{message.jump_url}"
         else:
+            e.description = message.jump_url
             e.set_image(url=message.attachments[0].url)
 
         if message.attachments:
@@ -56,10 +51,13 @@ class Starboard(commands.Cog):
             return
 
         async with self.bot.db.acquire() as db:
+            query = """INSERT INTO starboard (m_id, c_id) VALUES($1, $2)
+                       ON CONFLICT (m_id) DO NOTHING"""
+
             try:
-                await db.execute("INSERT INTO starboard VALUES($1, $2, $3)", msg.id, None, channel.id)
+                await db.execute(query, msg.id, channel.id)
             except asyncpg.UniqueViolationError:
-                pass
+                await self.bot.get_channel(payload.channel_id).send("did not work")
             else:
                 count = await db.fetchval("SELECT u_id FROM starrers WHERE u_id=$1 AND m_id=$2",
                                           payload.user_id, msg.id)
@@ -67,14 +65,14 @@ class Starboard(commands.Cog):
                     return
                 else:
                     await db.execute("INSERT INTO starrers VALUES($1, $2)", msg.id, payload.user_id)
-                    count = await db.fetchrow("SELECT COUNT(*) FROM starrers WHERE m_id=$1", msg.id)
+                    count = await db.fetchval("SELECT COUNT(*) FROM starrers WHERE m_id=$1", msg.id)
                     data = await db.fetchval("SELECT b_id FROM starboard WHERE m_id=$1", msg.id)
 
-                    if count[0] < 3:
+                    if count < 3:
                         return
 
                     if not data:
-                        c, e = self.construct(msg, count[0])
+                        c, e = self.construct(msg, count)
                         d = await self.board.send(content=c, embed=e)
                         await db.execute("UPDATE starboard SET b_id=$1 WHERE m_id=$2", d.id, msg.id)
                     else:
@@ -91,22 +89,25 @@ class Starboard(commands.Cog):
 
         channel = self.bot.get_channel(payload.channel_id)
         msg = await self.fetch(channel, payload.message_id)
-        data = await self.bot.db.fetchval("SELECT b_id FROM starboard WHERE m_id=$1", msg.id)
 
         async with self.bot.db.acquire() as db:
-            await db.execute("DELETE FROM starrers WHERE u_id=$1 AND m_id=$2", payload.user_id, msg.id)
-            count = await db.fetchrow("SELECT COUNT(*) FROM starrers WHERE m_id=$1", msg.id)
+            data = await db.fetchval("SELECT b_id FROM starboard WHERE m_id=$1", msg.id)
             if not data:
                 return
 
-            if count[0] < 3:
-                await (await self.fetch(self.board, data)).delete()
+            await db.execute("DELETE FROM starrers WHERE u_id=$1 AND m_id=$2", payload.user_id, msg.id)
+            count = await db.fetchval("SELECT COUNT(*) FROM starrers WHERE m_id=$1", msg.id)
 
+            if count < 3:
+                _msg = await self.fetch(self.board, data)
+                await _msg.delete()
+                await db.execute("UPDATE starboard SET b_id = NULL WHERE b_id=$1", _msg.id)
             elif count == 0:
-                await db.execute("DELETE FROM starrers WHERE m_id=$1 AND u_id=$2", msg.id, payload.user_id)
+                await db.execute("DELETE FROM starboard WHERE m_id=$1", msg.id)
             else:
                 c, e = self.construct(msg, count)
-                await (await self.fetch(self.board, data)).edit(content=c, embed=e)
+                _msg = await self.fetch(self.board, data)
+                await _msg.edit(content=c, embed=e)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
@@ -115,17 +116,6 @@ class Starboard(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
         await self.unstar(payload)
-
-    @commands.command(name="context")
-    async def context_(self, ctx, msg: int):
-        async with ctx.db.acquire() as db:
-            channel = await db.fetchval("SELECT c_id FROM starboard WHERE m_id=$1", msg)
-            if not channel:
-                return await ctx.send("Invalid message id/not in the starboard.")
-
-            channel = ctx.bot.get_channel(channel)
-            url = await channel.history(limit=1, before=discord.Object(msg + 1)).next()
-            await ctx.send(f"Context: {url.jump_url}")
 
 
 def setup(bot):
