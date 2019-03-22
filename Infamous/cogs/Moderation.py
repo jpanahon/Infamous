@@ -2,6 +2,7 @@ import datetime
 import logging
 from .utils.rpg_tools import yon as choose
 import discord
+import typing
 from discord.ext import commands
 
 logging.basicConfig(level=logging.INFO)
@@ -128,10 +129,22 @@ class Moderation(commands.Cog):
                 await ctx.send(f"**{user}** has been softbanned from the server for **{reason}**")
 
     @commands.command()
-    async def purge(self, ctx, amount: int, user: discord.Member = None):
-        if user:
-            await ctx.channel.purge(limit=amount + 1, check=lambda e: e.author == user)
-            await ctx.send(f"Purged {amount} messages from **{user}**.", delete_after=15)
+    async def purge(
+            self, ctx, amount: int, *, word: typing.Union[discord.Member, str] = None, user: discord.Member = None):
+        if isinstance(word, discord.Member) and user is None:
+            await ctx.channel.purge(limit=amount + 1, check=lambda e: e.author == word or user)
+            await ctx.send(f"Purged {amount} messages from **{word or user}**.", delete_after=15)
+            return
+
+        if isinstance(word, str) and user:
+            await ctx.channel.purge(limit=amount + 1, check=lambda e: e.author == user and word in e.content.lower())
+            await ctx.send(f"Purged {amount} messages that contained **{word}** from **{user}**.", delete_after=15)
+            return
+
+        if isinstance(word, str):
+            await ctx.channel.purge(limit=amount + 1, check=lambda e: word in e.content.lower())
+            await ctx.send(f"Purged {amount} messages that contained **{word}**.", delete_after=15)
+            return
 
         await ctx.channel.purge(limit=amount + 1)
         await ctx.send(f"Purged {amount} messages.", delete_after=15)
@@ -176,7 +189,7 @@ class Moderation(commands.Cog):
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def antiraid(self, ctx):
         """Checks if anti-raid mode is enabled"""
-        if self.raidmode[ctx.guild.id]:
+        if self.raidmode is not None:
             if self.raidmode[ctx.guild.id] is True:
                 await ctx.send("Anti-raid mode is enabled.")
 
@@ -210,11 +223,14 @@ class Moderation(commands.Cog):
             await ctx.send("Anti-raid mode is already disabled.")
 
     @commands.Cog.listener()
-    async def on_message_delete(self, message):
+    async def on_raw_message_delete(self, payload):
+        guild = self.bot.get_guild(payload.guild_id)
+        channel = self.bot.get_channel(payload.channel_id)
+        message = await channel.history(limit=1, before=discord.Object(id=payload.message_id+1)).next()
         if message.author.bot:
             return
 
-        if self.bot.logging[message.guild.id][0] is True:
+        if self.bot.logging[guild.id][0] is True:
             embed = discord.Embed(color=message.author.color)
             embed.set_author(name=message.author, icon_url=message.author.avatar_url)
             embed.description = message.content or "\u200b"
@@ -259,11 +275,12 @@ class Moderation(commands.Cog):
                 embed.timestamp = datetime.datetime.utcnow()
                 await (self.bot.get_channel(self.bot.logging[before.guild.id][1])).send(embed=embed)
             elif before.roles != after.roles:
-                embed = discord.Embed(color=after.author.color)
+                embed = discord.Embed(color=after.color)
                 embed.set_author(name=before, icon_url=before.avatar_url)
                 embed.title = "Before"
                 embed.description = ", ".join([x.mention for x in before.roles])
-                embed.add_field(name="After", value=", ".join([x.mention for x in after.roles]))
+                embed.add_field(name="After",
+                                value=", ".join([x.mention for x in after.roles if not x.name == "@everyone"]))
                 embed.set_footer(text="Roles changed at")
                 embed.timestamp = datetime.datetime.utcnow()
                 await (self.bot.get_channel(self.bot.logging[before.guild.id][1])).send(embed=embed)
