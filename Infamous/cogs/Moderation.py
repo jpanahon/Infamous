@@ -133,7 +133,7 @@ class Moderation(commands.Cog):
             self, ctx, amount: int, *, word: typing.Union[discord.Member, str] = None, user: discord.Member = None):
         if isinstance(word, discord.Member) and user is None:
             await ctx.channel.purge(limit=amount + 1, check=lambda e: e.author == word or user)
-            await ctx.send(f"Purged {amount} messages from **{word or user}**.", delete_after=15)
+            await ctx.send(f"Purged {amount} messages from **{word}**.", delete_after=15)
             return
 
         if isinstance(word, str) and user:
@@ -223,20 +223,21 @@ class Moderation(commands.Cog):
             await ctx.send("Anti-raid mode is already disabled.")
 
     @commands.Cog.listener()
-    async def on_raw_message_delete(self, payload):
-        guild = self.bot.get_guild(payload.guild_id)
-        channel = self.bot.get_channel(payload.channel_id)
-        message = await channel.history(limit=1, before=discord.Object(id=payload.message_id+1)).next()
+    async def on_message_delete(self, message):
         if message.author.bot:
             return
 
-        if self.bot.logging[guild.id][0] is True:
+        if self.bot.logging[message.guild.id][0] is True:
             embed = discord.Embed(color=message.author.color)
             embed.set_author(name=message.author, icon_url=message.author.avatar_url)
-            embed.description = message.content or "\u200b"
+            if message.content:
+                embed.description = message.content
+            else:
+                embed.set_image(url=message.attachments[0].proxy_url)
+
             embed.add_field(name="Channel", value=message.channel.mention)
             if message.attachments:
-                embed.set_image(url=message.attachments[0].url)
+                embed.set_image(url=message.attachments[0].proxy_url)
             embed.set_footer(text="Message deleted at")
             embed.timestamp = datetime.datetime.utcnow()
             await (self.bot.get_channel(self.bot.logging[message.guild.id][1])).send(embed=embed)
