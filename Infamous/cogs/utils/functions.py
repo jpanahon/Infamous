@@ -145,7 +145,7 @@ class Paginator:
                 return True
             if m.id == self.msg.id:
                 return True
-            if m.content.isdigit() and int(m.content) > 1 <= self.max_pages:
+            if m.content.isdigit():
                 return True
             return False
 
@@ -155,9 +155,14 @@ class Paginator:
         except asyncio.TimeoutError:
             return await self.channel.send("You ran out of time.")
         else:
-            self.current = number - 1
-            await self.alter(self.current)
-            await delete.delete()
+            if number > self.max_pages:
+                await self.channel.send(f"Invalid number **1-{self.max_pages}**", delete_after=5)
+                await delete.delete()
+                await self.selector()
+            else:
+                self.current = number - 1
+                await self.alter(self.current)
+                await delete.delete()
 
     async def stop(self):
         try:
