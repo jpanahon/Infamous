@@ -82,12 +82,12 @@ class Help(commands.Cog):
     def command_helper(self, command):
         """Displays a command and it's sub commands"""
 
-        try:
+        if isinstance(command, commands.Group):
             cmd = [x for x in command.commands if not x.hidden]
             cmds_ = []
             for i in list(self.bot.chunk(list(cmd), 6)):
                 embed = discord.Embed(color=self.bot.embed_color)
-                if i.aliases:
+                if command.aliases:
                     embed.set_author(name=f"[{command.name}|{'|'.join(command.aliases)}] {command.signature}",
                                      icon_url=self.icon)
                 else:
@@ -104,10 +104,11 @@ class Help(commands.Cog):
 
             for x, y in enumerate(cmds_):
                 y.set_footer(text=f"Page {x + 1} of {len(cmds_)}")
+
             return cmds_
-        except AttributeError:
+        else:
             embed = discord.Embed(color=self.bot.embed_color)
-            embed.set_author(name=command.signature or command.name)
+            embed.set_author(name=f"{command.name} {command.signature}")
             embed.description = command.help
             return [embed]
 
