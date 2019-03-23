@@ -145,7 +145,7 @@ class Paginator:
                 return True
             if m.id == self.msg.id:
                 return True
-            if int(m.content) > 1 <= self.max_pages:
+            if m.content.isdigit() and int(m.content) > 1 <= self.max_pages:
                 return True
             return False
 
