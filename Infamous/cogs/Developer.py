@@ -82,7 +82,7 @@ class Developer(commands.Cog):
         """Restart bot."""
 
         await ctx.send("Restarting..")
-        os.system("python3.6 Infamous/Infamous/cogs/utils/restart.py")
+        os.system("python3.6 Infamous/cogs/utils/restart.py")
         await self.bot.logout()
 
     @commands.group(hidden=True, case_insensitive=True, invoke_without_command=True)
