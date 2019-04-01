@@ -12,8 +12,8 @@ class Help(commands.Cog):
     def information(self):
         embed = discord.Embed(color=self.bot.embed_color)
         embed.set_author(name='Infamous Helper', icon_url=self.icon)
-        embed.description = 'Welcome to the Infamous help pages. React :information_source: for information on how ' \
-                            'the reactions below work.'
+        embed.description = 'Welcome to the Infamous help pages. ' \
+                            'React <:info:556320125599350808> for information on how the reactions below work.'
         embed.add_field(name='Syntax', value='When you see **<>** encased around a word, this means it is a '
                                              '**__required__** argument. The bot will tell you if you have missed an '
                                              'argument. \n\nWhen you see **[]** encased around a word this means it '
