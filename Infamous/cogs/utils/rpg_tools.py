@@ -1,6 +1,7 @@
 import asyncio
 import random
 import discord
+from .functions import Paginator
 
 embed_color = 0x740f10
 
@@ -139,8 +140,8 @@ async def lb_embed(ctx, pfp, current, max_):
     member = ctx.bot.get_user(pfp[0])
     embed.set_author(name=member.name)
     embed.description = f"**Level:** {pfp[2]} \n" \
-                        f"**Class:** {pfp[1]} \n" \
-                        f"**Main Skill:** {pfp[5]}"
+        f"**Class:** {pfp[1]} \n" \
+        f"**Main Skill:** {pfp[5]}"
     duels = await ctx.db.fetchrow("SELECT * FROM rpg_duels WHERE id=$1", member.id)
     if duels:
         embed.add_field(name="Fighting Statistics", value=f"**Wins:** {duels[1]} \n"
@@ -260,224 +261,308 @@ async def lb(ctx, win, loss, user=None):
             await db.execute("INSERT INTO rpg_duels VALUES($1, $2, $3)", user.id, win, loss)
 
 
-async def level2(ctx, mon, xp, user=None):
-    if not user:
-        user = ctx.author
-
-    async with ctx.db.acquire() as db:
-        lvl_ = await db.fetchrow("SELECT * FROM profiles WHERE id=$1", user.id)
-
-    lvl_ = {"xp": lvl_[2] + xp, "lvl": lvl_[1]}
-
-    if lvl_["xp"] >= (lvl_["lvl"] * 2000) * 3:
-        await ctx.send(f"Congratulations {user.mention} you have leveled up to Level {lvl_['lvl'] + 1} "
-                       f"after executing `{ctx.prefix}{ctx.command.name}`")
-
-        async with ctx.db.acquire() as db:
-            await db.execute("UPDATE profiles SET level = level + 1, bal = bal + $1, xp = xp + $2 WHERE id=$3",
-                             mon, xp, user.id)
-    else:
-        await ctx.send(f"{user.mention} You have {(lvl_['lvl'] * 2000) * 3 - lvl_['xp']}xp left to the next level "
-                       f"after executing `{ctx.prefix}{ctx.command.name}`")
-
-        async with ctx.db.acquire() as db:
-            await db.execute("UPDATE profiles SET bal = bal + $1, xp = xp + $2 WHERE id=$3",
-                             mon, xp, user.id)
-
-
-async def fetch_user2(ctx, user=None):
-    if not user:
-        user = ctx.author
-
-    async with ctx.db.acquire() as db:
-        info = await db.fetchrow("SELECT * FROM profiles WHERE id=$1", user.id)
-    return info
-
-
-async def fetch_abilities(ctx, user=None):
-    if not user:
-        user = ctx.author
-    p = []
-
-    async with ctx.db.acquire() as db:
-        abilities = await db.fetch("SELECT * FROM abilities WHERE id=$1", user.id)
-
-    for i in abilities:
-        p.append(i[1])
-    return p
-
-
-def ability_embed(ctx, dict_, ability, current, max_):
-    embed = discord.Embed(color=embed_color)
-    embed.set_author(name=f"{ability} | ${dict_[ability][0]}")
-    embed.description = dict_[ability][2]
-    embed.add_field(name="Stats", value=f"**Damage:** {dict_[ability][3]} \n"
-                                        f"**Durability:** {dict_[ability][4]}")
-    embed.set_image(url=dict_[ability][1])
-    embed.set_footer(text=f'Page {current} of {max_} | Use "{ctx.prefix}acquire <ability>" to get this ability')
-    return embed
-
-
-async def ability_level(ctx, xp, dmg, dur, ability, user=None):
-    if not user:
-        user = ctx.author
-
-    async with ctx.db.acquire() as db:
-        lvl_ = await db.fetchrow("SELECT * FROM abilities WHERE id=$1 AND ability=$2", user.id, ability)
-
-    lvl_ = {"lvl": lvl_[2], "xp": lvl_[3] + xp}
-
-    if lvl_["xp"] >= lvl_["lvl"] * 1000:
-        await ctx.send(f"Congratulations {user.mention} you have leveled up {ability} to Level {lvl_['lvl'] + 1} "
-                       f"after executing `{ctx.prefix}{ctx.command.name}`")
-
-        async with ctx.db.acquire() as db:
-            await db.execute(
-                "UPDATE abilities SET level = level + 1, damage=damage + $1, "
-                "durability=durability + $2, xp = xp + $3 WHERE id=$4 AND ability=$5",
-                dmg, dur, xp, user.id, ability)
-    else:
-        await ctx.send(
-            f"{user.mention} You have {lvl_['lvl'] * 2000 - lvl_['xp']}xp left to upgrade your "
-            f"{ability} to the next level after executing `{ctx.prefix}{ctx.command.name}`")
-
-        async with ctx.db.acquire() as db:
-            await db.execute("UPDATE abilities SET damage=damage + $1, "
-                             "durability=durability + $2, xp = xp + $3 WHERE id=$4 AND ability=$5",
-                             dmg, dur, xp, user.id, ability)
-
-
-async def guild_level(ctx, xp, user=None):
-    if not user:
-        user = ctx.author
-
-    async with ctx.db.acquire() as db:
-        lvl_ = await db.fetchval("SELECT guild FROM profiles WHERE id=$1", user.id)
-        lvl_ = await db.fetchrow("SELECT * FROM guilds WHERE guild=$1", lvl_)
-
-    if not lvl_:
-        return await ctx.send("You currently aren't apart of a guild; therefore there are no guild rewards.")
-    else:
-        lvl_ = {"xp": lvl_[3] + xp, "lvl": lvl_[2], "name": lvl_[0]}
-
-    if lvl_["xp"] >= (lvl_["lvl"] * 2000) * 3:
-        await ctx.send(f"{lvl_['name']} has leveled up to Level {lvl_['lvl'] + 1}.")
-
-        async with ctx.db.acquire() as db:
-            await db.execute("UPDATE guilds SET level = level + 1, xp = xp + $1 WHERE guild=$2",
-                             xp, lvl_['name'])
-    else:
-        await ctx.send(f"**{lvl_['name']}** needs {(lvl_['lvl'] * 2000) * 3 - lvl_['xp']}xp left to the next level.")
-
-        async with ctx.db.acquire() as db:
-            await db.execute("UPDATE guilds SET xp = xp + $1 WHERE guild=$2",
-                             xp, lvl_['name'])
-
-
 class MatchEnd(Exception):
     pass
 
 
-async def reward(ctx, enemy, health):
-    if type(enemy) == discord.Member:
-        if health <= 0:
-            xp = random.randint(250, 500)
-            mon = random.randint(250, 500)
-            await ctx.send(f"{enemy.mention} wins! They earn {xp}xp and ${mon}")
-            await level2(ctx, mon, xp, user=enemy)
-            await guild_level(ctx, xp, user=enemy)
-            raise MatchEnd  
-        
-    if health <= 0:
-        await ctx.send(f"**{enemy}** wins!")
-        raise MatchEnd
-        
-        
-async def turn(ctx, skill1, skill2, health, health2, enemy, user=None):
-    if not user:
-        user = ctx.author
+class RpgMethods:
+    def __init__(self, cache):
+        self.cache = cache
 
-    if type(enemy) == discord.Member:
-        enemy = enemy.mention
-        
-    def player1(m):
-        return m.author == user and m.content.title() in [skill1[1], skill2[1]]
+    async def yon(self, ctx, user=None):
+        if not user:
+            user = ctx.author
 
-    try:
-        msg_ = (await ctx.input('message', check=player1, timeout=30)).content.title()
-    except asyncio.TimeoutError:
-        await ctx.send(f"{user.mention} has been disqualified. Duel is over!")
-        raise MatchEnd
-    else:
-        if msg_ == skill1[1]:
-            dmg = random.randint(10, skill1[4] / 2)
-            if dmg > round(health2 / 2):
-                chance = random.choice(["Hit", "Miss"])
-                if chance == "Hit":
-                    health2 -= dmg
-                    await ctx.send(
-                        f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
-                        f"**{enemy}** has `{health2} health.")
-                else:
-                    health -= dmg
-                    await ctx.send(
-                        f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
-                        f"They now have `{health}` health.")
-            else:
-                chance = random.choice(["Hit", "Miss"])
-                if chance == "Hit":
-                    health2 -= dmg
-                    await ctx.send(
-                        f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
-                        f"**{enemy}** has `{health2}` health.")
-                else:
-                    health -= dmg
-                    await ctx.send(
-                        f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
-                        f"They now have `{health}` health.")
-                    await reward(ctx, enemy, health)
-                    
-            if health2 <= 0:
-                xp = random.randint(250, 500)
-                mon = random.randint(250, 500)
-                await ctx.send(f"{user.mention} wins! They earn {xp}xp and ${mon}")
-                await level2(ctx, mon, xp)
-                await guild_level(ctx, xp)
-                raise MatchEnd
+        def check(m):
+            if m.author == user:
+                return True
+            if any(word in m.content.lower() for word in ["yes", "y", "n", "no"]):
+                return True
+            return False
+
+        try:
+            check_ = (await ctx.input('message', check=check, timeout=30)).content.lower()
+            return check_
+        except asyncio.TimeoutError:
+            pass
+
+    async def level2(self, ctx, mon, xp, user=None):
+        if not user:
+            user = ctx.author
+
+        lvl_ = [self.cache[user.id]["Information"]["LVL"], self.cache[user.id]["Information"]["XP"]]
+        lvl_ = {"xp": lvl_[1] + xp, "lvl": lvl_[0]}
+
+        if lvl_["xp"] >= (lvl_["lvl"] * 2000) * 3:
+            try:
+                await user.send(f"Congratulations {user.mention} you have leveled up to Level {lvl_['lvl'] + 1} "
+                                f"after executing `{ctx.prefix}{ctx.command.name}`")
+            except discord.Forbidden:
+                await ctx.send(f"Congratulations {user.mention} you have leveled up to Level {lvl_['lvl'] + 1} "
+                               f"after executing `{ctx.prefix}{ctx.command.name}`")
+
+            async with ctx.db.acquire() as db:
+                await db.execute("UPDATE profiles SET level = level + 1, bal = bal + $1, xp = xp + $2 WHERE id=$3",
+                                 mon, xp, user.id)
+                self.cache[user.id]["Information"]["LVL"] += 1
+                self.cache[user.id]["Information"]["XP"] += xp
+                self.cache[user.id]["Information"]["BAL"] += mon
         else:
-            dmg = random.randint(10, skill2[4] / 2)
-            if dmg > round(health2 / 2):
-                chance = random.choice(["Hit", "Miss"])
-                if chance == "Hit":
-                    health2 -= dmg
-                    await ctx.send(
-                        f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
-                        f"**{enemy}** has `{health2}` health.")
-                else:
-                    health -= dmg
-                    await ctx.send(
-                        f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
-                        f"They now have `{health}` health.")
-                    await reward(ctx, enemy, health)
-            else:
-                chance = random.choice(["Hit", "Miss"])
-                if chance == "Hit":
-                    health2 -= dmg
-                    await ctx.send(
-                        f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
-                        f"**{enemy}** has `{health2}` health.")
-                else:
-                    health -= dmg
-                    await ctx.send(
-                        f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
-                        f"They now have `{health}` health.")
-                    await reward(ctx, enemy, health)
-                    
-            if health2 <= 0:
+            try:
+                await user.send(f"{user.mention} You have {(lvl_['lvl'] * 2000) * 3 - lvl_['xp']}"
+                                f"xp left to the next level after executing `{ctx.prefix}{ctx.command.name}`")
+            except discord.Forbidden:
+                await ctx.send(f"{user.mention} You have {(lvl_['lvl'] * 2000) * 3 - lvl_['xp']}"
+                               f"xp left to the next level after executing `{ctx.prefix}{ctx.command.name}`")
+
+            async with ctx.db.acquire() as db:
+                await db.execute("UPDATE profiles SET bal = bal + $1, xp = xp + $2 WHERE id=$3",
+                                 mon, xp, user.id)
+                self.cache[user.id]["Information"]["BAL"] += mon
+                self.cache[user.id]["Information"]["XP"] += xp
+
+    async def fetch_user2(self, ctx, user=None):
+        if not user:
+            user = ctx.author
+
+        return self.cache[user.id]
+
+    async def fetch_abilities(self, ctx, user=None):
+        if not user:
+            user = ctx.author
+
+        return self.cache[user.id]["Abilities"]
+
+    def ability_embed(self, dict_, ability, current, max_):
+        embed = discord.Embed(color=embed_color)
+        embed.set_author(name=f"{ability} | ${dict_[ability][0]}")
+        embed.description = dict_[ability][2]
+        embed.add_field(name="Stats", value=f"**Damage:** {dict_[ability][3]} \n"
+                                            f"**Durability:** {dict_[ability][4]}")
+        embed.set_image(url=dict_[ability][1])
+        embed.set_footer(text=f'Page {current} of {max_} | React 🛒 to get this ability')
+        return embed
+
+    async def upgrade_ability(self, ctx, dmg, dur, ability, user=None):
+        if not user:
+            user = ctx.author
+
+        _ability = self.cache[user.id]["Abilities"][ability]
+        _ability["DMG"] += dmg
+        _ability["DUR"] += dur
+        async with ctx.db.acquire() as db:
+            await db.execute("UPDATE abilities SET damage + $1, durability + $2 WHERE ability=$3 AND id=$4", dmg,
+                             dur, ability, user.id)
+
+    async def guild_level(self, ctx, xp, user=None):
+        if not user:
+            user = ctx.author
+
+        lvl_ = self.cache[user.id]["Guild"]
+        if not lvl_:
+            return await ctx.send("You currently aren't apart of a guild; therefore there are no guild rewards.")
+        else:
+            lvl_ = {"xp": lvl_["XP"] + xp, "lvl": lvl_["LVL"], "name": lvl_["NAME"]}
+
+        if lvl_["xp"] >= (lvl_["lvl"] * 2000) * 3:
+            try:
+                await user.send(f"{lvl_['name']} has leveled up to Level {lvl_['lvl'] + 1}.")
+            except discord.Forbidden:
+                await ctx.send(f"{lvl_['name']} has leveled up to Level {lvl_['lvl'] + 1}.")
+
+            async with ctx.db.acquire() as db:
+                await db.execute("UPDATE guilds SET level = level + 1, xp = xp + $1 WHERE guild=$2",
+                                 xp, lvl_['name'])
+
+            for i in self.cache:
+                if self.cache[i]['Guild']:
+                    if self.cache[i]['Guild']['NAME'] == self.cache[ctx.author.id]['Guild']['NAME']:
+                        self.cache[i]['Guild']['LVL'] += 1
+                        self.cache[i]['Guild']['LVL'] += xp
+        else:
+            try:
+                await user.send(
+                    f"**{lvl_['name']}** needs {(lvl_['lvl'] * 2000) * 3 - lvl_['xp']}xp left to the next level.")
+            except discord.Forbidden:
+                await ctx.send(
+                    f"**{lvl_['name']}** needs {(lvl_['lvl'] * 2000) * 3 - lvl_['xp']}xp left to the next level.")
+
+            async with ctx.db.acquire() as db:
+                await db.execute("UPDATE guilds SET xp = xp + $1 WHERE guild=$2",
+                                 xp, lvl_['name'])
+
+            for i in self.cache:
+                if self.cache[i]['Guild']:
+                    if self.cache[i]['Guild']['NAME'] == self.cache[ctx.author.id]['Guild']['NAME']:
+                        self.cache[i]['Guild']['LVL'] += xp
+
+    async def reward(self, ctx, enemy, health):
+        if type(enemy) == discord.Member:
+            if health <= 0:
                 xp = random.randint(250, 500)
                 mon = random.randint(250, 500)
-                await ctx.send(f"{user.mention} wins! They earn {xp}xp and ${mon}")
-                await level2(ctx, mon, xp)
-                await guild_level(ctx, xp)
+                await ctx.send(f"{enemy.mention} wins! They earn {xp}xp and ${mon}")
+                await self.level2(ctx, mon, xp, user=enemy)
+                await self.guild_level(ctx, xp, user=enemy)
                 raise MatchEnd
 
+        if health <= 0:
+            await ctx.send(f"**{enemy}** wins!")
+            raise MatchEnd
+
+    async def turn(self, ctx, skill1, skill2, health, health2, enemy, user=None):
+        if not user:
+            user = ctx.author
+
+        if type(enemy) == discord.Member:
+            enemy = enemy.mention
+
+        def player1(m):
+            return m.author == user and m.content.title() in [skill1[1], skill2[1]]
+
+        try:
+            msg_ = (await ctx.input('message', check=player1, timeout=30)).content.title()
+        except asyncio.TimeoutError:
+            await ctx.send(f"{user.mention} has been disqualified. Duel is over!")
+            raise MatchEnd
+        else:
+            if msg_ == skill1:
+                dmg = random.randint(10, skill1["DMG"] / 2)
+                if dmg > round(health2 / 2):
+                    chance = random.choice(["Hit", "Miss"])
+                    if chance == "Hit":
+                        health2 -= dmg
+                        await ctx.send(
+                            f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
+                            f"**{enemy}** has `{health2} health.")
+                    else:
+                        health -= dmg
+                        await ctx.send(
+                            f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
+                            f"They now have `{health}` health.")
+                else:
+                    chance = random.choice(["Hit", "Miss"])
+                    if chance == "Hit":
+                        health2 -= dmg
+                        await ctx.send(
+                            f"{user.mention} Your attack using your {skill1[1]} has dealt {dmg}dmg \n"
+                            f"**{enemy}** has `{health2}` health.")
+                    else:
+                        health -= dmg
+                        await ctx.send(
+                            f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
+                            f"They now have `{health}` health.")
+                        await self.reward(ctx, enemy, health)
+
+                if health2 <= 0:
+                    xp = random.randint(250, 500)
+                    mon = random.randint(250, 500)
+                    await ctx.send(f"{user.mention} wins! They earn {xp}xp and ${mon}")
+                    await self.level2(ctx, mon, xp)
+                    await self.guild_level(ctx, xp)
+                    raise MatchEnd
+            else:
+                dmg = random.randint(10, skill2["DMG"] / 2)
+                if dmg > round(health2 / 2):
+                    chance = random.choice(["Hit", "Miss"])
+                    if chance == "Hit":
+                        health2 -= dmg
+                        await ctx.send(
+                            f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
+                            f"**{enemy}** has `{health2}` health.")
+                    else:
+                        health -= dmg
+                        await ctx.send(
+                            f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
+                            f"They now have `{health}` health.")
+                        await self.reward(ctx, enemy, health)
+                else:
+                    chance = random.choice(["Hit", "Miss"])
+                    if chance == "Hit":
+                        health2 -= dmg
+                        await ctx.send(
+                            f"{user.mention} Your attack using your {skill2[1]} has dealt {dmg}dmg \n"
+                            f"**{enemy}** has `{health2}` health.")
+                    else:
+                        health -= dmg
+                        await ctx.send(
+                            f"{user.mention} missed! Causing **{enemy}** to deal {dmg}dmg \n"
+                            f"They now have `{health}` health.")
+                        await self.reward(ctx, enemy, health)
+
+                if health2 <= 0:
+                    xp = random.randint(250, 500)
+                    mon = random.randint(250, 500)
+                    await ctx.send(f"{user.mention} wins! They earn {xp}xp and ${mon}")
+                    await self.level2(ctx, mon, xp)
+                    await self.guild_level(ctx, xp)
+                    raise MatchEnd
+
+
+class ShopPaginator(Paginator):
+    def __init__(self, ctx, entries: list, shop_items: dict, cache: dict, embed=True, timeout=120):
+        super().__init__(ctx, entries=entries, embed=embed, timeout=timeout)
+        self.reactions.append(('<:buy:559703253940568085>', self.buy_item))
+        self.shop_items = shop_items
+        self.cache = cache
+
+    def find_item(self):
+        embed = self.entries[self.current].to_dict()
+        name = (embed['author']['name'].split(' | $'))[0]
+        item = self.shop_items[name]
+        return item, name
+
+    async def info(self):
+        embed = discord.Embed(color=self.bot.embed_color)
+        embed.set_author(name='Instructions')
+        embed.description = "This is a reaction paginator; when you react to one of the buttons below " \
+                            "the message gets edited. Below you will find what the reactions do."
+
+        embed.add_field(name="First Page <:first_page:556312967797407754>",
+                        value="This reaction takes you to the first page.", inline=False)
+
+        embed.add_field(name="Previous Page <:previous_page:556312942966997033>",
+                        value="This reaction takes you to the previous page. "
+                              "If you use this reaction while in the first page it will take "
+                              "you to the last page.", inline=False)
+
+        embed.add_field(name="Next Page <:next_page:556313016832884736>",
+                        value="This reaction takes you to the next page. "
+                              "If you use this reaction while in the last page it will to take "
+                              "you to the first page.", inline=False)
+
+        embed.add_field(name="Last Page <:last_page:556312980665663504>",
+                        value="This reaction takes you to the last page.", inline=False)
+
+        embed.add_field(name="Selector <:select:556320090862387211>",
+                        value="This reaction allows you to choose what page to go to", inline=False)
+
+        embed.add_field(name="Information <:info:556320125599350808>",
+                        value="This reaction takes you to this page.")
+
+        embed.add_field(name="Buy <:buy:559703253940568085>",
+                        value="This reaction allows you to buy the ability displayed.")
+        await self.msg.edit(embed=embed)
+
+    async def buy_item(self):
+        item, name = self.find_item()
+        if self.cache[self.user_.id]["Information"]["BAL"] >= item[0]:
+            to_delete = await self.channel.send(f"Are you sure you want to buy {name}?")
+            _yon = await yon(self.ctx)
+            if any(word in _yon for word in ['y', 'yes']):
+                async with self.bot.db.acquire() as db:
+                    await db.execute("INSERT INTO abilities VALUES($1, $2, $3, $4, $5)", self.user_.id,
+                                     name, item[3], item[4], None)
+                    await db.execute("UPDATE profiles SET bal = bal - $1 WHERE id=$2", item[0], self.user_.id)
+
+                    self.cache[self.user_.id]["Abilities"][name] = {"DMG": item[2], "DUR": item[3],
+                                                                    "ICON": None}
+                    self.cache[self.user_.id]['Information']['BAL'] -= item[0]
+                await self.channel.send(f"You have acquired {name}!", delete_after=15)
+                await to_delete.delete()
+            else:
+                await self.channel.send("I guess you don't want to buy it.")
+
+        else:
+            await self.channel.send(f"You need ${item[0] - self.cache[self.user_.id]['Information']['BAL']} more.",
+                                    delete_after=10)
