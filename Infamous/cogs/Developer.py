@@ -82,7 +82,7 @@ class Developer(commands.Cog):
         """Restart bot."""
 
         await ctx.send("Restarting..")
-        os.system("python3.6 /Users/admin/Documents/FameAssassin/cogs/utils/restart.py")
+        os.system("python3.6 Infamous/Infamous/cogs/utils/restart.py")
         await self.bot.logout()
 
     @commands.group(hidden=True, case_insensitive=True, invoke_without_command=True)
@@ -132,7 +132,7 @@ class Developer(commands.Cog):
 
             await ctx.send(embed=embed)
         except:
-            user = await self.bot.get_user_info(id)
+            user = await self.bot.fetch_user(id)
             embed = discord.Embed(color=self.bot.embed_color)
             embed.set_author(name=user)
             embed.title = 'Discord ID'
@@ -151,6 +151,7 @@ class Developer(commands.Cog):
         await ctx.send(text)
 
     @commands.command(hidden=True)
+    @checks.is_admin()
     async def loop(self, ctx, time: int, command: str):
         """Executes a command for x times."""
 
@@ -196,6 +197,7 @@ class Developer(commands.Cog):
             await webhook.send(text, username=user.display_name, avatar_url=user.avatar_url)
 
     @commands.command(hidden=True)
+    @checks.is_admin()
     async def clear(self, ctx, *, amount: int):
         """Deletes bot messages."""
 
@@ -279,6 +281,7 @@ class Developer(commands.Cog):
             await ctx.message.add_reaction('➕')
 
     @commands.command(hidden=True)
+    @checks.is_admin()
     async def guilds(self, ctx):
         p = []
         for page, guild in enumerate(self.bot.guilds):
