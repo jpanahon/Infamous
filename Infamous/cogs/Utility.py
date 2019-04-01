@@ -156,7 +156,7 @@ class Utility(commands.Cog):
 
             if ret is None:
                 if value:
-                    n = 1970
+                    n = 1000
                     p = []
                     pages = [value[i:i + n] for i in range(0, len(value), n)]
                     for n, x in enumerate(pages):
@@ -169,7 +169,7 @@ class Utility(commands.Cog):
                 else:
                     text = f"{value}{ret}"
                     p = []
-                    n = 1970
+                    n = 1000
                     pages = [text[i:i + n] for i in range(0, len(text), n)]
                     for n, x in enumerate(pages):
                         p.append(f"```py\n{x}\n```\nPage {n + 1} of {len(pages)}")
@@ -206,8 +206,11 @@ class Utility(commands.Cog):
 
         fmt = f'```\n{render}\n```\n*Returned {Plural(row=rows)} in {dt:.2f}ms*'
         if len(fmt) > 2000:
-            fp = io.BytesIO(fmt.encode('utf-8'))
-            await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+            async with ctx.bot.session.post("https://hastebin.com/documents", data=fmt.encode('utf-8')) as post:
+                post = await post.json()
+                url = f"https://hastebin.com/{post['key']}"
+
+            await ctx.send(f'Too many results... \n{url}')
         else:
             await ctx.send(fmt)
 
