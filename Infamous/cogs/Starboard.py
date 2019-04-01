@@ -1,4 +1,5 @@
 import discord
+import asyncio
 from discord.ext import commands
 import asyncpg
 from datetime import datetime
@@ -9,13 +10,23 @@ class Starboard(commands.Cog):
         self.bot = bot
         self.star_emoji = "\N{WHITE MEDIUM STAR}"
         self.messages = {}
+        self.bot.loop.create_task(self.reset_cache())
         self.board = bot.get_channel(537941975706632193)
 
+    async def reset_cache(self):
+        """Got it from Danny"""
+        try:
+            while not self.bot.is_closed():
+                self.messages.clear()
+                await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            pass
+
     async def fetch(self, channel, message):
+        """Also got this from Danny"""
         try:
             return self.messages[message]
         except KeyError:
-            # Used Danny's trick
             msg = await channel.history(limit=1, before=discord.Object(id=message + 1)).next()
             self.messages[message] = msg
             return msg
