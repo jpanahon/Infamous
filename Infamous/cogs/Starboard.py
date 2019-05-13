@@ -87,9 +87,9 @@ class Starboard(commands.Cog):
                         d = await self.board.send(content=c, embed=e)
                         await db.execute("UPDATE starboard SET b_id=$1 WHERE m_id=$2", d.id, msg.id)
                     else:
-                        msg = await self.fetch(self.board, data)
+                        msg_ = await self.fetch(self.board, data)
                         c, e = self.construct(msg, count)
-                        await msg.edit(content=c, embed=e)
+                        await msg_.edit(content=c, embed=e)
 
     async def unstar(self, payload):
         if str(payload.emoji) != self.star_emoji:
