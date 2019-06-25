@@ -138,7 +138,9 @@ class Utility(commands.Cog):
         try:
             exec(to_compile, env)
         except Exception as e:
-            return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
+            original = await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
+            self.bot.previous_error = original
+            return
 
         func = env['func']
         try:
@@ -146,7 +148,9 @@ class Utility(commands.Cog):
                 ret = await func()
         except Exception:
             value = stdout.getvalue()
-            await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+            original = await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+            self.bot.previous_error = original
+
         else:
             value = stdout.getvalue()
             try:
@@ -464,6 +468,20 @@ class Utility(commands.Cog):
                     x.set_footer(text=f'Page {n + 1} of {len(sub)} | From r/{line["subreddit"]}')
 
         await ctx.paginate(entries=p, embed=True, timeout=300)
+
+    @commands.command(aliases=['ls'])
+    async def last_seen(self, ctx, user: discord.Member):
+        async with ctx.db.acquire() as db:
+            last_seen = await db.fetchval("SELECT lastseen FROM last_seen WHERE id=$1", user.id)
+
+        if last_seen and user.status.name == "offline":
+            _time = funct.time_(last_seen)
+            await ctx.send(f"{user.display_name or user.name} was last seen **{_time[0]}d**, **{_time[1]}h**, "
+                           f"**{_time[2]}m** and **{_time[3]}s**.")
+        elif user.status.name != "offline":
+            await ctx.send(f"{user.display_name or user.name} is currently **{user.status.name.capitalize()}**")
+        else:
+            await ctx.send(f"I don't have data from {user.display_name or user.name}")
 
 
 def setup(bot):
