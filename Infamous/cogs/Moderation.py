@@ -1,6 +1,7 @@
 import datetime
+import asyncpg
 import logging
-from .utils.rpg_tools import yon as choose
+from .utils.rpg_tools import RpgMethods as Method
 import discord
 import typing
 from discord.ext import commands
@@ -47,6 +48,7 @@ class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.raidmode = {}
+        self.method = Method({})
 
     async def cog_check(self, ctx):
         if ctx.author.guild_permissions.manage_messages:
@@ -64,7 +66,7 @@ class Moderation(commands.Cog):
         user = user or await ctx.send("Pick a user to mute.")
         reason = reason or "No reason provided"
         await ctx.send(f"Are you sure you want to mute {', '.join(x.mention for x in user)} for **{reason}**?")
-        yon = await choose(ctx)
+        yon = await self.method.yon(ctx)
         if any(w in yon for w in ["yes", "y"]):
             try:
                 for user_ in user:
@@ -94,7 +96,7 @@ class Moderation(commands.Cog):
         reason = reason or "No reason provided"
 
         await ctx.send(f"Are you sure you want to ban {', '.join(x.mention for x in user)} for **{reason}**")
-        yon = await choose(ctx)
+        yon = await self.method.yon(ctx)
         if any(w in yon for w in ["yes", "y"]):
             try:
                 for user_ in user:
@@ -115,7 +117,7 @@ class Moderation(commands.Cog):
         reason = reason or "No reason provided"
 
         await ctx.send(f"Are you sure you want to ban {user.mention} for **{reason}**")
-        yon = await choose(ctx)
+        yon = await self.method.yon(ctx)
         if any(w in yon for w in ["yes", "y"]):
             try:
                 for user_ in user:
@@ -132,7 +134,7 @@ class Moderation(commands.Cog):
     async def purge(
             self, ctx, amount: int, *, word: typing.Union[discord.Member, str] = None, user: discord.Member = None):
         if isinstance(word, discord.Member) and user is None:
-            await ctx.channel.purge(limit=amount + 1, check=lambda e: e.author == word or user)
+            await ctx.channel.purge(limit=amount + 1, check=lambda e: e.author == word)
             await ctx.send(f"Purged {amount} messages from **{word}**.", delete_after=15)
             return
 
@@ -141,7 +143,7 @@ class Moderation(commands.Cog):
             await ctx.send(f"Purged {amount} messages that contained **{word}** from **{user}**.", delete_after=15)
             return
 
-        if isinstance(word, str):
+        if isinstance(word, str) and user is None:
             await ctx.channel.purge(limit=amount + 1, check=lambda e: word in e.content.lower())
             await ctx.send(f"Purged {amount} messages that contained **{word}**.", delete_after=15)
             return
@@ -285,6 +287,14 @@ class Moderation(commands.Cog):
                 embed.set_footer(text="Roles changed at")
                 embed.timestamp = datetime.datetime.utcnow()
                 await (self.bot.get_channel(self.bot.logging[before.guild.id][1])).send(embed=embed)
+
+        if after.status.name == "offline":
+            async with self.bot.db.acquire() as db:
+                try:
+                    await db.execute("INSERT INTO last_seen VALUES($1, $2)", after.id, datetime.datetime.utcnow())
+                except asyncpg.exceptions.UniqueViolationError:
+                    await db.execute("UPDATE last_seen SET lastseen = $1 WHERE id=$2", datetime.datetime.utcnow(),
+                                     after.id)
 
     @commands.Cog.listener()
     async def on_guild_role_create(self, role):
